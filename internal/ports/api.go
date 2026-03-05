@@ -18,5 +18,8 @@ type Application interface {
 	GetFlow(ctx context.Context, id string) (*domain.Flow, error)
 	ExecuteFlow(ctx context.Context, entrypointId string, req *http.Request) (target string, err error)
 
+	LoadLoadBalancers(ctx context.Context) ([]*domain.LoadBalancer, error)
+	GetLoadBalancer(ctx context.Context, id string) (*domain.LoadBalancer, error)
+
 	GetVersion() string
 }

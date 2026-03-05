@@ -5,9 +5,10 @@ import (
 )
 
 type Config struct {
-	EntryPoints []EntrypointConfig `mapstructure:"entry_points"`
-	Flows       []FlowConfig       `mapstructure:"flows"`
-	Routers     []RouterConfig     `mapstructure:"routers"`
+	EntryPoints   []EntrypointConfig   `mapstructure:"entry_points"`
+	Flows         []FlowConfig         `mapstructure:"flows"`
+	Routers       []RouterConfig       `mapstructure:"routers"`
+	LoadBalancers []LoadBalancerConfig `mapstructure:"balancers"`
 }
 
 type EntrypointConfig struct {
@@ -47,9 +48,16 @@ type RouterMatchConfig struct {
 }
 
 type FlowConfig struct {
-	Id         string `mapstructure:"string"`
+	Id         string `mapstructure:"id"`
 	RouterId   string `mapstructure:"router,omitempty"`
 	BalancerId string `mapstructure:"balancer"`
+}
+
+type LoadBalancerConfig struct {
+	Id    string `mapstructure:"id"`
+	Title string `mapstructure:"title"`
+	Type  string `mapstructure:"type"`
+	Pool  string `mapstructure:"pool"`
 }
 
 var c *Config

@@ -16,6 +16,8 @@ func (a *Application) GetFlow(ctx context.Context, id string) (*domain.Flow, err
 	return a.flowRepo.Find(ctx, id)
 }
 
+// ExecuteFlow executes the flow for given entry point
+// and returns the load balancer id
 func (a *Application) ExecuteFlow(ctx context.Context, entrypointId string, req *http.Request) (target string, err error) {
 	ep, err := a.GetEntryPoint(ctx, entrypointId)
 

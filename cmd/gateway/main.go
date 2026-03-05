@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
+	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/balancer/config"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/entrypoint/config"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/flow/config"
 	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/router/config"
@@ -44,7 +45,13 @@ func main() {
 		zap.L().Fatal("failed to initialize routers", zap.Error(err))
 	}
 
-	app := api.NewApplication(entryPointRepository, flowRepository, routerRepository)
+	lbRepository, err := lbRepo.NewConfigRepository(config.Get())
+
+	if err != nil {
+		zap.L().Fatal("failed to initialize load balancers", zap.Error(err))
+	}
+
+	app := api.NewApplication(entryPointRepository, flowRepository, routerRepository, lbRepository)
 	ctx := context.Background()
 	httpAdapter, err := http.NewHttpAdapter(ctx, app)
 

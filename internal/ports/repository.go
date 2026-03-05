@@ -20,3 +20,8 @@ type RouterRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Router, error)
 	Find(ctx context.Context, id string) (*domain.Router, error)
 }
+
+type LoadBalancerRepositoryPort interface {
+	GetAll(ctx context.Context) ([]*domain.LoadBalancer, error)
+	Find(ctx context.Context, id string) (*domain.LoadBalancer, error)
+}
