@@ -53,9 +53,9 @@ func mapToDomain(ep config.EntrypointConfig) *domain.Entrypoint {
 	return &domain.Entrypoint{
 		Id:       ep.Id,
 		Title:    ep.Title,
-		Protocol: ep.Protocol,
+		Protocol: domain.Protocol(ep.Protocol),
 		Host:     ep.Host,
-		Port:     ep.Port,
+		Port:     uint16(ep.Port),
 		Flow:     ep.Flow,
 	}
 }

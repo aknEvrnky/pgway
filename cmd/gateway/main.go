@@ -24,39 +24,45 @@ func main() {
 	flag.Parse()
 
 	if err := config.Load(*configPath); err != nil {
-		zap.L().Fatal("failed to load configuration file", zap.Error(err))
+		zap.L().Fatal("load configuration file", zap.Error(err))
 	}
 
 	entryPointRepository, err := epRepo.NewConfigRepository(config.Get())
 
 	if err != nil {
-		zap.L().Fatal("failed to initialize entrypoints", zap.Error(err))
+		zap.L().Fatal("init entrypoints", zap.Error(err))
 	}
 
 	routerRepository, err := routerRepo.NewConfigRepository(config.Get())
 
 	if err != nil {
-		zap.L().Fatal("failed to initialize routers", zap.Error(err))
+		zap.L().Fatal("init routers", zap.Error(err))
 	}
 
 	flowRepository, err := flowRepo.NewConfigRepository(config.Get())
 
 	if err != nil {
-		zap.L().Fatal("failed to initialize routers", zap.Error(err))
+		zap.L().Fatal("init flows", zap.Error(err))
 	}
 
 	lbRepository, err := lbRepo.NewConfigRepository(config.Get())
 
 	if err != nil {
-		zap.L().Fatal("failed to initialize load balancers", zap.Error(err))
+		zap.L().Fatal("init load balancers", zap.Error(err))
 	}
 
 	app := api.NewApplication(entryPointRepository, flowRepository, routerRepository, lbRepository)
 	ctx := context.Background()
+
+	err = app.ValidateAll(ctx)
+	if err != nil {
+		zap.L().Fatal("init application", zap.Error(err))
+	}
+
 	httpAdapter, err := http.NewHttpAdapter(ctx, app)
 
 	if err != nil {
-		zap.L().Fatal("failed to initialize http adapter", zap.Error(err))
+		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -72,7 +78,6 @@ func main() {
 	select {
 	// Wait for term signal
 	case <-sigCtx.Done():
-		break
 	case err := <-runErr:
 		zap.L().Error("server failed", zap.Error(err))
 	}
@@ -82,6 +87,6 @@ func main() {
 	defer cancel()
 
 	if err = httpAdapter.Shutdown(shutdownCtx); err != nil {
-		zap.L().Fatal("failed to graceful shutdown. Exiting.", zap.Error(err))
+		zap.L().Error("graceful shutdown", zap.Error(err))
 	}
 }
