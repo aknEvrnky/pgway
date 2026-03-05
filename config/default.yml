@@ -1,0 +1,36 @@
+entry_points:
+  - id: main
+    title: "http"
+    protocol: http
+    host: 0.0.0.0
+    port: 50100
+    flow: main-flow
+
+flows:
+  - id: main-flow
+    router: main-router
+    balancer: main-balancer
+
+routers:
+  - id: main-router
+    title: "router"
+    rules:
+      - id: rule-default
+        match:
+          type: catch_all
+        target: main-balancer
+
+balancers:
+  - id: main-balancer
+    title: "Main Balancer"
+    type: round-robin
+    pool: main-pool
+
+pools:
+  - id: main-pool
+    tags: [main]
+    proxies:
+      - id: p1
+        url: "http://user:pass@1.2.3.4:8080"
+      - id: p2
+        url: "http://user:pass@1.2.3.5:8080"
