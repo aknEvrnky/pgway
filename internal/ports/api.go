@@ -21,5 +21,8 @@ type Application interface {
 	LoadLoadBalancers(ctx context.Context) ([]*domain.LoadBalancer, error)
 	GetLoadBalancer(ctx context.Context, id string) (*domain.LoadBalancer, error)
 
+	LoadPools(ctx context.Context) ([]*domain.Pool, error)
+	GetPool(ctx context.Context, id string) (*domain.Pool, error)
+
 	GetVersion() string
 }

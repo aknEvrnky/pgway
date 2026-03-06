@@ -25,3 +25,8 @@ type LoadBalancerRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.LoadBalancer, error)
 	Find(ctx context.Context, id string) (*domain.LoadBalancer, error)
 }
+
+type PoolRepositoryPort interface {
+	GetAll(ctx context.Context) ([]*domain.Pool, error)
+	Find(ctx context.Context, id string) (*domain.Pool, error)
+}

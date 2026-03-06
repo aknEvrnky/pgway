@@ -12,6 +12,7 @@ type Application struct {
 	flowRepo         ports.FlowRepositoryPort
 	routerRepo       ports.RouterRepositoryPort
 	loadBalancerRepo ports.LoadBalancerRepositoryPort
+	poolRepo         ports.PoolRepositoryPort
 }
 
 func NewApplication(
@@ -19,12 +20,14 @@ func NewApplication(
 	fRepo ports.FlowRepositoryPort,
 	rRepo ports.RouterRepositoryPort,
 	lbRepo ports.LoadBalancerRepositoryPort,
+	pRepo ports.PoolRepositoryPort,
 ) *Application {
 	return &Application{
 		entryPointRepo:   epRepo,
 		flowRepo:         fRepo,
 		routerRepo:       rRepo,
 		loadBalancerRepo: lbRepo,
+		poolRepo:         pRepo,
 	}
 }
 

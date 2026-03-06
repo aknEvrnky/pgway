@@ -12,6 +12,7 @@ import (
 	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/balancer/config"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/entrypoint/config"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/flow/config"
+	poolRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/pool/csv"
 	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/router/config"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -27,31 +28,45 @@ func main() {
 		zap.L().Fatal("load configuration file", zap.Error(err))
 	}
 
-	entryPointRepository, err := epRepo.NewConfigRepository(config.Get())
+	cfg := config.Get()
+
+	entryPointRepository, err := epRepo.NewConfigRepository(cfg)
 
 	if err != nil {
 		zap.L().Fatal("init entrypoints", zap.Error(err))
 	}
 
-	routerRepository, err := routerRepo.NewConfigRepository(config.Get())
+	routerRepository, err := routerRepo.NewConfigRepository(cfg)
 
 	if err != nil {
 		zap.L().Fatal("init routers", zap.Error(err))
 	}
 
-	flowRepository, err := flowRepo.NewConfigRepository(config.Get())
+	flowRepository, err := flowRepo.NewConfigRepository(cfg)
 
 	if err != nil {
 		zap.L().Fatal("init flows", zap.Error(err))
 	}
 
-	lbRepository, err := lbRepo.NewConfigRepository(config.Get())
+	lbRepository, err := lbRepo.NewConfigRepository(cfg)
 
 	if err != nil {
 		zap.L().Fatal("init load balancers", zap.Error(err))
 	}
 
-	app := api.NewApplication(entryPointRepository, flowRepository, routerRepository, lbRepository)
+	poolRepository, err := poolRepo.NewCsvRepository(cfg.PoolPath)
+
+	if err != nil {
+		zap.L().Fatal("init pools", zap.Error(err))
+	}
+
+	app := api.NewApplication(
+		entryPointRepository,
+		flowRepository,
+		routerRepository,
+		lbRepository,
+		poolRepository,
+	)
 	ctx := context.Background()
 
 	err = app.ValidateAll(ctx)

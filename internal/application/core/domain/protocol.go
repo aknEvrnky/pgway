@@ -8,6 +8,8 @@ const (
 	ProtocolSOCKS5 Protocol = "socks5"
 )
 
+const DefaultProtocol = ProtocolHTTP
+
 func (p Protocol) IsValid() bool {
 	switch p {
 	case ProtocolHTTP, ProtocolHTTPS, ProtocolSOCKS5:

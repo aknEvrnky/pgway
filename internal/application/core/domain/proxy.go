@@ -1,6 +1,12 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"net"
+	"net/url"
+	"strconv"
+	"strings"
+)
 
 type Proxy struct {
 	Id       string     `json:"id"`
@@ -37,4 +43,46 @@ func (p *Proxy) Validate() error {
 	}
 
 	return nil
+}
+
+func NewProxyFromURL(str string) (*Proxy, error) {
+	// add the schema if it does not exist
+	if !strings.Contains(str, "://") {
+		str = string(DefaultProtocol) + str
+	}
+
+	parsed, err := url.Parse(str)
+	if err != nil {
+		return nil, fmt.Errorf("url parse: %w", err)
+	}
+
+	host, portStr, err := net.SplitHostPort(parsed.Host)
+
+	if err != nil {
+		return nil, fmt.Errorf("parsing host:port: %w", err)
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return nil, fmt.Errorf("port parsing: %w", err)
+	}
+
+	proxy := &Proxy{
+		Protocol: Protocol(parsed.Scheme),
+		Host:     host,
+		Port:     uint16(port),
+	}
+
+	if parsed.User != nil {
+		pass, _ := parsed.User.Password()
+
+		auth := &BasicAuth{
+			User: parsed.User.Username(),
+			Pass: pass,
+		}
+
+		proxy.Auth = auth
+	}
+
+	return proxy, nil
 }

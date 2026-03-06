@@ -1,3 +1,5 @@
+pool_path: pools
+
 entry_points:
   - id: main
     title: "http"
