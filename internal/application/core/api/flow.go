@@ -17,32 +17,34 @@ func (a *Application) GetFlow(ctx context.Context, id string) (*domain.Flow, err
 }
 
 // ExecuteFlow executes the flow for given entry point
-// and returns the load balancer id
-func (a *Application) ExecuteFlow(ctx context.Context, entrypointId string, req *http.Request) (target string, err error) {
+// and returns the next proxy
+func (a *Application) ExecuteFlow(ctx context.Context, entrypointId string, req *http.Request) (proxy *domain.Proxy, balancerId string, err error) {
 	ep, err := a.GetEntryPoint(ctx, entrypointId)
 
 	if err != nil {
-		return "", fmt.Errorf("entrypoint: %w", err)
+		return nil, "", fmt.Errorf("entrypoint: %w", err)
 	}
 
 	flow, err := a.GetFlow(ctx, ep.Flow)
 
 	if err != nil {
-		return "", fmt.Errorf("flow: %w", err)
+		return nil, "", fmt.Errorf("flow: %w", err)
 	}
 
 	if flow.RouterId != "" {
-		balancerId, err := a.RouteRequest(ctx, flow.RouterId, req)
+		routedBalancer, err := a.RouteRequest(ctx, flow.RouterId, req)
 		if err != nil {
-			return "", fmt.Errorf("router: %w", err)
+			return nil, "", fmt.Errorf("router: %w", err)
 		}
 
-		return balancerId, nil
+		balancerId = routedBalancer
+	} else if flow.BalancerId != "" {
+		balancerId = flow.BalancerId
+	} else {
+		return nil, "", fmt.Errorf("no router or balancer for flow: %q", flow.Id)
 	}
 
-	if flow.BalancerId == "" {
-		return "", fmt.Errorf("flow %q: no router or balancer defined", flow.Id)
-	}
+	proxy, err = a.BalancerService.Next(balancerId)
 
-	return flow.BalancerId, nil
+	return proxy, balancerId, err
 }

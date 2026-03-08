@@ -45,6 +45,19 @@ func (p *Proxy) Validate() error {
 	return nil
 }
 
+func (p *Proxy) URL() *url.URL {
+	u := &url.URL{
+		Scheme: string(p.Protocol),
+		Host:   p.Addr(),
+	}
+
+	if p.HasAuth() {
+		u.User = url.UserPassword(p.Auth.User, p.Auth.Pass)
+	}
+
+	return u
+}
+
 func NewProxyFromURL(str string) (*Proxy, error) {
 	// add the schema if it does not exist
 	if !strings.Contains(str, "://") {

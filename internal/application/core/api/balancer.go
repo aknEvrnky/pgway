@@ -13,3 +13,14 @@ func (a *Application) LoadLoadBalancers(ctx context.Context) ([]*domain.LoadBala
 func (a *Application) GetLoadBalancer(ctx context.Context, id string) (*domain.LoadBalancer, error) {
 	return a.loadBalancerRepo.Find(ctx, id)
 }
+
+func (a *Application) Release(ctx context.Context, balancerId string, result domain.BalancerResult) error {
+	lb, err := a.BalancerService.Get(balancerId)
+	if err != nil {
+		return err
+	}
+
+	lb.Release(result)
+
+	return nil
+}

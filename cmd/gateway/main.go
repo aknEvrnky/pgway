@@ -69,9 +69,9 @@ func main() {
 	)
 	ctx := context.Background()
 
-	err = app.ValidateAll(ctx)
+	err = app.Bootstrap(ctx)
 	if err != nil {
-		zap.L().Fatal("init application", zap.Error(err))
+		zap.L().Fatal("bootstrapping application", zap.Error(err))
 	}
 
 	httpAdapter, err := http.NewHttpAdapter(ctx, app)

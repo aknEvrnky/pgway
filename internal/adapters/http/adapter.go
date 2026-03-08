@@ -12,9 +12,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	EntryPointIDKey = "entry_point_id"
-)
+type contextKey string
+
+const entrypointContextKey contextKey = "entry_point_id"
 
 type Adapter struct {
 	api     ports.Application
@@ -30,7 +30,7 @@ func NewHttpAdapter(ctx context.Context, api ports.Application) (*Adapter, error
 	servers := make(map[string]*http.Server)
 
 	for _, ep := range entrypoints {
-		servers[ep.Id] = createServer(ep)
+		servers[ep.Id] = newServer(api, ep)
 	}
 
 	return &Adapter{
@@ -39,15 +39,18 @@ func NewHttpAdapter(ctx context.Context, api ports.Application) (*Adapter, error
 	}, nil
 }
 
-func createServer(ep *domain.Entrypoint) *http.Server {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), EntryPointIDKey, ep.Id)
-		handleRequest(w, r.WithContext(ctx))
+func newServer(api ports.Application, ep *domain.Entrypoint) *http.Server {
+	handler := NewHandler(api)
+
+	mw := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), entrypointContextKey, ep.Id)
+		handler.ServeHTTP(w, r.WithContext(ctx))
+
 	})
 
 	return &http.Server{
 		Addr:         ep.ListenAddr(),
-		Handler:      handler,
+		Handler:      mw,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aknEvrnky/pgway/internal/application/balancer"
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
@@ -13,6 +14,8 @@ type Application struct {
 	routerRepo       ports.RouterRepositoryPort
 	loadBalancerRepo ports.LoadBalancerRepositoryPort
 	poolRepo         ports.PoolRepositoryPort
+
+	BalancerService *balancer.Service
 }
 
 func NewApplication(
@@ -28,7 +31,20 @@ func NewApplication(
 		routerRepo:       rRepo,
 		loadBalancerRepo: lbRepo,
 		poolRepo:         pRepo,
+		BalancerService:  balancer.NewService(lbRepo, pRepo),
 	}
+}
+
+func (a *Application) Bootstrap(ctx context.Context) error {
+	if err := a.ValidateAll(ctx); err != nil {
+		return err
+	}
+
+	if err := a.BalancerService.Bootstrap(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *Application) ValidateAll(ctx context.Context) error {

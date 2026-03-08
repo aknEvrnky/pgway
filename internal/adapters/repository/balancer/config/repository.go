@@ -51,9 +51,9 @@ func (r *ConfigRepository) Find(ctx context.Context, id string) (*domain.LoadBal
 
 func mapToDomain(lb config.LoadBalancerConfig) *domain.LoadBalancer {
 	return &domain.LoadBalancer{
-		Id:    lb.Id,
-		Title: lb.Title,
-		Type:  lb.Type,
-		Pool:  lb.Pool,
+		Id:     lb.Id,
+		Title:  lb.Title,
+		Type:   domain.BalancerType(lb.Type),
+		PoolId: lb.Pool,
 	}
 }

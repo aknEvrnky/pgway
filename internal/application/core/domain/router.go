@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -10,10 +9,6 @@ import (
 )
 
 type MatchType string
-
-var (
-	ErrNoMatchingRule = errors.New("no matching rule found")
-)
 
 const (
 	MatchTypeHost       MatchType = "host"
