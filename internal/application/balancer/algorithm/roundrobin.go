@@ -18,9 +18,14 @@ func (r *RoundRobin) Release(result domain.BalancerResult) {
 
 func NewRoundRobin(pool *domain.Pool) (*RoundRobin, error) {
 	r := &RoundRobin{
-		pool:   pool,
-		window: uint32(len(pool.Proxies)),
+		pool: pool,
 	}
+
+	if pool == nil {
+		return nil, domain.ErrNoPool
+	}
+
+	r.window = uint32(len(pool.Proxies))
 
 	if r.window == 0 {
 		return nil, domain.ErrNoProxy
