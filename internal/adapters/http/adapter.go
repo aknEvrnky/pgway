@@ -21,7 +21,7 @@ type Adapter struct {
 	servers map[string]*http.Server
 }
 
-func NewHttpAdapter(ctx context.Context, api ports.Application) (*Adapter, error) {
+func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort) (*Adapter, error) {
 	entrypoints, err := api.LoadEntryPoints(ctx)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func NewHttpAdapter(ctx context.Context, api ports.Application) (*Adapter, error
 	servers := make(map[string]*http.Server)
 
 	for _, ep := range entrypoints {
-		servers[ep.Id] = newServer(api, ep)
+		servers[ep.Id] = newServer(api, ep, transport)
 	}
 
 	return &Adapter{
@@ -39,11 +39,11 @@ func NewHttpAdapter(ctx context.Context, api ports.Application) (*Adapter, error
 	}, nil
 }
 
-func newServer(api ports.Application, ep *domain.Entrypoint) *http.Server {
-	handler := NewHandler(api)
+func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.ProxyTransportPort) *http.Server {
+	handler := NewHandler(api, transport)
 
 	mw := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), entrypointContextKey, ep.Id)
+		ctx := context.WithValue(r.Context(), entrypointContextKey, contextKey(ep.Id))
 		handler.ServeHTTP(w, r.WithContext(ctx))
 
 	})

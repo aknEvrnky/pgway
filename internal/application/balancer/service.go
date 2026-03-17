@@ -9,6 +9,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
+// todo could we use sync.Map?
 type Service struct {
 	lbRepo   ports.LoadBalancerRepositoryPort
 	poolRepo ports.PoolRepositoryPort

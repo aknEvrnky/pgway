@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
+	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/balancer/config"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/entrypoint/config"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/flow/config"
@@ -74,7 +75,9 @@ func main() {
 		zap.L().Fatal("bootstrapping application", zap.Error(err))
 	}
 
-	httpAdapter, err := http.NewHttpAdapter(ctx, app)
+	proxyTransport := net.NewAdapter()
+
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport)
 
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))

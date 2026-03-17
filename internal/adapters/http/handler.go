@@ -2,24 +2,30 @@ package http
 
 import (
 	"io"
-	"net"
 	"net/http"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
-	app ports.Application
+	app       ports.Application
+	transport ports.ProxyTransportPort
 }
 
-func NewHandler(app ports.Application) *Handler {
-	return &Handler{app: app}
+func NewHandler(app ports.Application, t ports.ProxyTransportPort) *Handler {
+	return &Handler{
+		app:       app,
+		transport: t,
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	entrypointId, ok := r.Context().Value(entrypointContextKey).(contextKey)
 	if !ok {
+		zap.L().Info("missing entrypoint", zap.String("ep", string(entrypointId)))
+
 		http.Error(w, "missing entrypoint", http.StatusInternalServerError)
 		return
 	}
@@ -29,6 +35,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+
+	zap.L().Info("using proxy", zap.String("proxy", proxy.URL().String()))
 
 	// todo: handle byte calculation
 	defer h.app.Release(r.Context(), balancerId, domain.BalancerResult{
@@ -46,12 +54,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy) {
 	// connect to target
-	dst, err := net.Dial("tcp", r.Host)
-
+	dst, err := h.transport.Dial(r.Context(), proxy, r.Host)
 	if err != nil {
+		zap.L().Error("dial failed", zap.Error(err), zap.String("proxy", proxy.Addr()), zap.String("target", r.Host))
+
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+
 	defer dst.Close()
 
 	// send conn OK
@@ -81,7 +91,7 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	r.RequestURI = ""
 	h.removeHopHeaders(r.Header)
 
-	resp, err := http.DefaultTransport.RoundTrip(r)
+	resp, err := h.transport.RoundTrip(r.Context(), proxy, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
