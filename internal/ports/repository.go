@@ -30,3 +30,10 @@ type PoolRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Pool, error)
 	Find(ctx context.Context, id string) (*domain.Pool, error)
 }
+
+type ProxyRepositoryPort interface {
+	GetAll(ctx context.Context) ([]*domain.Proxy, error)
+	Find(ctx context.Context, id string) (*domain.Proxy, error)
+	Save(ctx context.Context, proxy *domain.Proxy) error
+	Delete(ctx context.Context, id string) error
+}

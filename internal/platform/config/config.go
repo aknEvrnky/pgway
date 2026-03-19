@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	PoolPath      string               `mapstructure:"pool_path"`
+	BadgerPath    string               `mapstructure:"badger_path"`
 	EntryPoints   []EntrypointConfig   `mapstructure:"entry_points"`
 	Flows         []FlowConfig         `mapstructure:"flows"`
 	Routers       []RouterConfig       `mapstructure:"routers"`

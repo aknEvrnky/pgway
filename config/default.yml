@@ -1,4 +1,5 @@
 pool_path: pools
+badger_path: /var/pgway/lib
 
 entry_points:
   - id: main

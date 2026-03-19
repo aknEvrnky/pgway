@@ -10,14 +10,16 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
-	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/balancer/config"
-	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/entrypoint/config"
-	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/flow/config"
-	poolRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/pool/csv"
-	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/router/config"
+	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/balancer"
+	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/entrypoint"
+	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/flow"
+	poolRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/pool"
+	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/router"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
+	"github.com/aknEvrnky/pgway/internal/platform/badger"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	_ "github.com/aknEvrnky/pgway/internal/platform/logger"
+	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
 
@@ -30,6 +32,14 @@ func main() {
 	}
 
 	cfg := config.Get()
+
+	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badger.NewBadgerLogger())
+	db, err := badgerdb.Open(opts)
+	if err != nil {
+		zap.L().Fatal("unable to init badger", zap.Error(err), zap.String("path", cfg.BadgerPath))
+	}
+
+	defer db.Close()
 
 	entryPointRepository, err := epRepo.NewConfigRepository(cfg)
 
