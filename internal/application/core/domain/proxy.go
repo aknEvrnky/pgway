@@ -9,11 +9,12 @@ import (
 )
 
 type Proxy struct {
-	Id       string     `json:"id"`
-	Protocol Protocol   `json:"protocol"`
-	Host     string     `json:"host"`
-	Port     uint16     `json:"port"`
-	Auth     *BasicAuth `json:"auth,omitempty"`
+	Id       string            `json:"id"`
+	Protocol Protocol          `json:"protocol"`
+	Host     string            `json:"host"`
+	Port     uint16            `json:"port"`
+	Auth     *BasicAuth        `json:"auth,omitempty"`
+	Labels   map[string]string `json:"labels,omitempty"`
 }
 
 type BasicAuth struct {
