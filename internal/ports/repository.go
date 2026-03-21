@@ -29,11 +29,15 @@ type LoadBalancerRepositoryPort interface {
 type PoolRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Pool, error)
 	Find(ctx context.Context, id string) (*domain.Pool, error)
+	Save(ctx context.Context, pool *domain.Pool) error
+	Delete(ctx context.Context, id string) error
 }
 
 type ProxyRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Proxy, error)
 	Find(ctx context.Context, id string) (*domain.Proxy, error)
+	GetByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error)
+	FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)
 	Save(ctx context.Context, proxy *domain.Proxy) error
 	Delete(ctx context.Context, id string) error
 }

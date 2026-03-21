@@ -14,6 +14,7 @@ type Application struct {
 	routerRepo       ports.RouterRepositoryPort
 	loadBalancerRepo ports.LoadBalancerRepositoryPort
 	poolRepo         ports.PoolRepositoryPort
+	proxyRepo        ports.ProxyRepositoryPort
 
 	BalancerService *balancer.Service
 }
@@ -24,6 +25,7 @@ func NewApplication(
 	rRepo ports.RouterRepositoryPort,
 	lbRepo ports.LoadBalancerRepositoryPort,
 	pRepo ports.PoolRepositoryPort,
+	prRepo ports.ProxyRepositoryPort,
 ) *Application {
 	return &Application{
 		entryPointRepo:   epRepo,
@@ -31,7 +33,8 @@ func NewApplication(
 		routerRepo:       rRepo,
 		loadBalancerRepo: lbRepo,
 		poolRepo:         pRepo,
-		BalancerService:  balancer.NewService(lbRepo, pRepo),
+		proxyRepo:        prRepo,
+		BalancerService:  balancer.NewService(lbRepo, pRepo, prRepo),
 	}
 }
 

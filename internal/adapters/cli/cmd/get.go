@@ -16,6 +16,7 @@ func newGetCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 
 	cmd.AddCommand(newGetProxyCmd(cp))
+	cmd.AddCommand(newGetPoolCmd(cp))
 
 	return cmd
 }
@@ -52,6 +53,39 @@ func newGetProxyCmd(cp ports.ControlPlane) *cobra.Command {
 			}
 
 			return enc.Encode(proxies)
+		},
+	}
+}
+
+func newGetPoolCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:     "pool [name]",
+		Short:   "Get pool or list all pools",
+		Example: "  pgctl get pool\n  pgctl get pool my-pool",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			if len(args) > 0 {
+				pool, err := cp.GetPool(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				return enc.Encode(pool)
+			}
+
+			pools, err := cp.ListPools(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(pools) == 0 {
+				fmt.Println("no pools found")
+				return nil
+			}
+
+			return enc.Encode(pools)
 		},
 	}
 }

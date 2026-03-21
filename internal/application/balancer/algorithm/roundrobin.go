@@ -1,6 +1,7 @@
 package algorithm
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -25,7 +26,11 @@ func NewRoundRobin(pool *domain.Pool) (*RoundRobin, error) {
 		return nil, domain.ErrNoPool
 	}
 
-	r.window = uint32(len(pool.Proxies))
+	if !pool.HasProxiesResolved() {
+		return nil, fmt.Errorf("pool %q proxies not resolved", pool.Id)
+	}
+
+	r.window = uint32(len(pool.ResolvedProxies()))
 
 	if r.window == 0 {
 		return nil, domain.ErrNoProxy
@@ -36,6 +41,6 @@ func NewRoundRobin(pool *domain.Pool) (*RoundRobin, error) {
 
 func (r *RoundRobin) Next() (*domain.Proxy, error) {
 	val := (r.counter.Add(1) - 1) % r.window
-	proxy := r.pool.Proxies[val]
+	proxy := r.pool.ResolvedProxies()[val]
 	return proxy, nil
 }

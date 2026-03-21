@@ -82,7 +82,7 @@ func (r *ProxyRepository) Find(ctx context.Context, id string) (*domain.Proxy, e
 
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(proxyKey(id))
-		if !errors.Is(err, badgerdb.ErrKeyNotFound) {
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
 			return fmt.Errorf("proxy %q not found", id)
 		}
 
@@ -124,4 +124,59 @@ func (r *ProxyRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	return err
+}
+
+func (r *ProxyRepository) GetByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error) {
+	var proxies []*domain.Proxy
+
+	err := r.db.View(func(txn *badgerdb.Txn) error {
+		for _, id := range ids {
+			item, err := txn.Get(proxyKey(id))
+			if errors.Is(err, badgerdb.ErrKeyNotFound) {
+				return fmt.Errorf("proxy %q not found", id)
+			}
+			if err != nil {
+				return err
+			}
+
+			err = item.Value(func(val []byte) error {
+				proxy, err := r.unmarshal(val)
+				if err != nil {
+					return err
+				}
+				proxies = append(proxies, proxy)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	return proxies, err
+}
+
+func (r *ProxyRepository) FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	all, err := r.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var matched []*domain.Proxy
+	for _, p := range all {
+		if matchesLabels(p.Labels, labels) {
+			matched = append(matched, p)
+		}
+	}
+	return matched, nil
+}
+
+func matchesLabels(proxyLabels, selector map[string]string) bool {
+	for k, v := range selector {
+		if proxyLabels[k] != v {
+			return false
+		}
+	}
+	return true
 }

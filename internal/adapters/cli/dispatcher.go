@@ -6,6 +6,7 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/aknEvrnky/pgway/internal/schema"
+	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	"gopkg.in/yaml.v3"
 )
@@ -22,6 +23,8 @@ func (d *Dispatcher) Apply(ctx context.Context, raw schema.RawResource) error {
 	switch raw.Key() {
 	case "Proxy/v1":
 		return d.applyProxyV1(ctx, raw)
+	case "Pool/v1":
+		return d.applyPoolV1(ctx, raw)
 	default:
 		return fmt.Errorf("unknown resource: %s", raw.Key())
 	}
@@ -48,5 +51,20 @@ func (d *Dispatcher) applyProxyV1(ctx context.Context, raw schema.RawResource) e
 	}
 
 	fmt.Printf("proxy/%s applied\n", proxy.Id)
+	return nil
+}
+
+func (d *Dispatcher) applyPoolV1(ctx context.Context, raw schema.RawResource) error {
+	var spec poolv1.PoolSpecV1
+	if err := yaml.Unmarshal(raw.SpecRaw, &spec); err != nil {
+		return fmt.Errorf("decode pool spec: %w", err)
+	}
+
+	pool, err := d.controlPlane.ApplyPoolV1(ctx, raw.Metadata, spec)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("pool/%s applied\n", pool.Id)
 	return nil
 }

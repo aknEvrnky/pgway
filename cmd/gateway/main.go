@@ -10,10 +10,10 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
+	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/balancer"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/entrypoint"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/flow"
-	poolRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/pool"
 	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/router"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/badger"
@@ -65,11 +65,8 @@ func main() {
 		zap.L().Fatal("init load balancers", zap.Error(err))
 	}
 
-	poolRepository, err := poolRepo.NewCsvRepository(cfg.PoolPath)
-
-	if err != nil {
-		zap.L().Fatal("init pools", zap.Error(err))
-	}
+	poolRepository := badgerrepo.NewPoolRepository(db)
+	proxyRepo := badgerrepo.NewProxyRepository(db)
 
 	app := api.NewApplication(
 		entryPointRepository,
@@ -77,6 +74,7 @@ func main() {
 		routerRepository,
 		lbRepository,
 		poolRepository,
+		proxyRepo,
 	)
 	ctx := context.Background()
 

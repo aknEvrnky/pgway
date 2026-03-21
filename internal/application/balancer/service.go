@@ -11,17 +11,23 @@ import (
 
 // todo could we use sync.Map?
 type Service struct {
-	lbRepo   ports.LoadBalancerRepositoryPort
-	poolRepo ports.PoolRepositoryPort
-	mu       sync.RWMutex
-	registry map[string]LoadBalancer
+	lbRepo    ports.LoadBalancerRepositoryPort
+	poolRepo  ports.PoolRepositoryPort
+	proxyRepo ports.ProxyRepositoryPort
+	mu        sync.RWMutex
+	registry  map[string]LoadBalancer
 }
 
-func NewService(lb ports.LoadBalancerRepositoryPort, p ports.PoolRepositoryPort) *Service {
+func NewService(
+	lbRepo ports.LoadBalancerRepositoryPort,
+	poolRepo ports.PoolRepositoryPort,
+	proxyRepo ports.ProxyRepositoryPort,
+) *Service {
 	return &Service{
-		lbRepo:   lb,
-		poolRepo: p,
-		registry: make(map[string]LoadBalancer),
+		lbRepo:    lbRepo,
+		poolRepo:  poolRepo,
+		proxyRepo: proxyRepo,
+		registry:  make(map[string]LoadBalancer),
 	}
 }
 
@@ -40,6 +46,15 @@ func (s *Service) Bootstrap(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("loading pool: %w", err)
 		}
+
+		// load proxies for pool
+		proxies, err := s.resolveProxies(ctx, pool)
+
+		if err != nil {
+			return fmt.Errorf("resolving proxies: %w", err)
+		}
+
+		pool.LoadResolvedProxies(proxies)
 
 		instance, err := Build(lb, pool)
 
@@ -75,4 +90,22 @@ func (s *Service) Next(id string) (*domain.Proxy, error) {
 		return nil, err
 	}
 	return lb.Next()
+}
+
+func (s *Service) resolveProxies(ctx context.Context, pool *domain.Pool) ([]*domain.Proxy, error) {
+	switch pool.Type {
+	case domain.PoolTypeStatic:
+		proxies, err := s.proxyRepo.GetByIds(ctx, pool.ProxyIds)
+		if err != nil {
+			return nil, err
+		}
+
+		return proxies, nil
+
+	case domain.PoolTypeDynamic:
+		return s.proxyRepo.FindByLabels(ctx, pool.Selector.Allow)
+
+	default:
+		return nil, fmt.Errorf("unknown pool type: %q", pool.Type)
+	}
 }
