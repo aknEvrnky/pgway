@@ -36,6 +36,9 @@ func (m *mockEntryPointRepo) Find(_ context.Context, id string) (*domain.Entrypo
 	return nil, fmt.Errorf("entrypoint %q not found", id)
 }
 
+func (m *mockEntryPointRepo) Save(_ context.Context, _ *domain.Entrypoint) error { return m.err }
+func (m *mockEntryPointRepo) Delete(_ context.Context, _ string) error           { return m.err }
+
 type mockFlowRepo struct {
 	flows []*domain.Flow
 	err   error
@@ -56,6 +59,9 @@ func (m *mockFlowRepo) Find(_ context.Context, id string) (*domain.Flow, error) 
 	}
 	return nil, fmt.Errorf("flow %q not found", id)
 }
+
+func (m *mockFlowRepo) Save(_ context.Context, _ *domain.Flow) error { return m.err }
+func (m *mockFlowRepo) Delete(_ context.Context, _ string) error     { return m.err }
 
 type mockRouterRepo struct {
 	routers []*domain.Router
@@ -78,6 +84,9 @@ func (m *mockRouterRepo) Find(_ context.Context, id string) (*domain.Router, err
 	return nil, fmt.Errorf("router %q not found", id)
 }
 
+func (m *mockRouterRepo) Save(_ context.Context, _ *domain.Router) error { return m.err }
+func (m *mockRouterRepo) Delete(_ context.Context, _ string) error       { return m.err }
+
 type mockLBRepo struct {
 	lbs []*domain.LoadBalancer
 	err error
@@ -98,6 +107,9 @@ func (m *mockLBRepo) Find(_ context.Context, id string) (*domain.LoadBalancer, e
 	}
 	return nil, fmt.Errorf("load balancer %q not found", id)
 }
+
+func (m *mockLBRepo) Save(_ context.Context, _ *domain.LoadBalancer) error { return m.err }
+func (m *mockLBRepo) Delete(_ context.Context, _ string) error             { return m.err }
 
 type mockPoolRepo struct {
 	pools map[string]*domain.Pool
@@ -123,11 +135,96 @@ func (m *mockPoolRepo) Find(_ context.Context, id string) (*domain.Pool, error) 
 	return pool, nil
 }
 
+func (m *mockPoolRepo) Save(_ context.Context, _ *domain.Pool) error { return m.err }
+func (m *mockPoolRepo) Delete(_ context.Context, _ string) error     { return m.err }
+
+type mockProxyRepo struct {
+	proxies []*domain.Proxy
+	err     error
+}
+
+func (m *mockProxyRepo) GetAll(_ context.Context) ([]*domain.Proxy, error) {
+	return m.proxies, m.err
+}
+
+func (m *mockProxyRepo) Find(_ context.Context, id string) (*domain.Proxy, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	for _, p := range m.proxies {
+		if p.Id == id {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("proxy %q not found", id)
+}
+
+func (m *mockProxyRepo) GetByIds(_ context.Context, ids []string) ([]*domain.Proxy, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	var result []*domain.Proxy
+	for _, p := range m.proxies {
+		if _, ok := idSet[p.Id]; ok {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockProxyRepo) FindByLabels(_ context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []*domain.Proxy
+outer:
+	for _, p := range m.proxies {
+		for k, v := range labels {
+			if p.Labels[k] != v {
+				continue outer
+			}
+		}
+		result = append(result, p)
+	}
+	return result, nil
+}
+
+func (m *mockProxyRepo) Save(_ context.Context, proxy *domain.Proxy) error {
+	if m.err != nil {
+		return m.err
+	}
+	for i, p := range m.proxies {
+		if p.Id == proxy.Id {
+			m.proxies[i] = proxy
+			return nil
+		}
+	}
+	m.proxies = append(m.proxies, proxy)
+	return nil
+}
+
+func (m *mockProxyRepo) Delete(_ context.Context, id string) error {
+	if m.err != nil {
+		return m.err
+	}
+	for i, p := range m.proxies {
+		if p.Id == id {
+			m.proxies = append(m.proxies[:i], m.proxies[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("proxy %q not found", id)
+}
+
 // --- fixtures ---
 
 var (
 	testProxy  = &domain.Proxy{Id: "p1", Protocol: "http", Host: "127.0.0.1", Port: 8080}
-	testPool   = &domain.Pool{Id: "pool-1", Proxies: []*domain.Proxy{testProxy}}
+	testPool   = &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, ProxyIds: []string{"p1"}}
 	testLB     = &domain.LoadBalancer{Id: "lb-1", Type: domain.BalancerTypeRoundRobin, PoolId: "pool-1"}
 	testEP     = &domain.Entrypoint{Id: "ep-1", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 8080, Flow: "flow-1"}
 	testFlow   = &domain.Flow{Id: "flow-1", BalancerId: "lb-1"}
@@ -152,6 +249,7 @@ func newApp(
 		&mockRouterRepo{routers: routers},
 		&mockLBRepo{lbs: lbs},
 		&mockPoolRepo{pools: pools},
+		&mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
 	)
 }
 
@@ -168,19 +266,22 @@ func TestApplication_Bootstrap(t *testing.T) {
 		epRepo      *mockEntryPointRepo
 		lbRepo      *mockLBRepo
 		poolRepo    *mockPoolRepo
+		proxyRepo   *mockProxyRepo
 		expectedErr string
 	}{
 		{
-			name:     "successful bootstrap",
-			epRepo:   &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			lbRepo:   &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo: &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
+			name:      "successful bootstrap",
+			epRepo:    &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
+			lbRepo:    &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
+			poolRepo:  &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
+			proxyRepo: &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
 		},
 		{
 			name:        "entrypoint repo error stops bootstrap",
 			epRepo:      &mockEntryPointRepo{err: errors.New("db down")},
 			lbRepo:      &mockLBRepo{},
 			poolRepo:    &mockPoolRepo{},
+			proxyRepo:   &mockProxyRepo{},
 			expectedErr: "loading entrypoints: db down",
 		},
 		{
@@ -190,6 +291,7 @@ func TestApplication_Bootstrap(t *testing.T) {
 			}},
 			lbRepo:      &mockLBRepo{},
 			poolRepo:    &mockPoolRepo{},
+			proxyRepo:   &mockProxyRepo{},
 			expectedErr: `entrypoint "ep-bad": invalid protocol: "ftp"`,
 		},
 		{
@@ -197,11 +299,12 @@ func TestApplication_Bootstrap(t *testing.T) {
 			epRepo:      &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
 			lbRepo:      &mockLBRepo{err: errors.New("lb error")},
 			poolRepo:    &mockPoolRepo{},
+			proxyRepo:   &mockProxyRepo{},
 			expectedErr: "loading balancers: lb error",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.epRepo, &mockFlowRepo{}, &mockRouterRepo{}, tt.lbRepo, tt.poolRepo)
+			app := NewApplication(tt.epRepo, &mockFlowRepo{}, &mockRouterRepo{}, tt.lbRepo, tt.poolRepo, tt.proxyRepo)
 			err := app.Bootstrap(context.Background())
 
 			if tt.expectedErr != "" {
@@ -247,7 +350,7 @@ func TestApplication_ValidateAll(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			app := NewApplication(
 				&mockEntryPointRepo{eps: tt.eps, err: tt.repoErr},
-				&mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{},
+				&mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
 			)
 			err := app.ValidateAll(context.Background())
 
@@ -272,7 +375,7 @@ func TestApplication_LoadEntryPoints(t *testing.T) {
 	t.Run("propagates repo error", func(t *testing.T) {
 		app := NewApplication(
 			&mockEntryPointRepo{err: errors.New("fail")},
-			&mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{},
+			&mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
 		)
 		_, err := app.LoadEntryPoints(context.Background())
 		assert.EqualError(t, err, "fail")
@@ -306,7 +409,7 @@ func TestApplication_LoadRouters(t *testing.T) {
 		app := NewApplication(
 			&mockEntryPointRepo{}, &mockFlowRepo{},
 			&mockRouterRepo{err: errors.New("fail")},
-			&mockLBRepo{}, &mockPoolRepo{},
+			&mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
 		)
 		_, err := app.LoadRouters(context.Background())
 		assert.EqualError(t, err, "fail")
@@ -367,7 +470,7 @@ func TestApplication_RouteRequest(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			app := NewApplication(
-				&mockEntryPointRepo{}, &mockFlowRepo{}, tt.routerRepo, &mockLBRepo{}, &mockPoolRepo{},
+				&mockEntryPointRepo{}, &mockFlowRepo{}, tt.routerRepo, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
 			)
 
 			req, _ := http.NewRequest("GET", "http://"+tt.host+"/", nil)
@@ -394,7 +497,7 @@ func TestApplication_LoadPools(t *testing.T) {
 	t.Run("propagates repo error", func(t *testing.T) {
 		app := NewApplication(
 			&mockEntryPointRepo{}, &mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{},
-			&mockPoolRepo{err: errors.New("fail")},
+			&mockPoolRepo{err: errors.New("fail")}, &mockProxyRepo{},
 		)
 		_, err := app.LoadPools(context.Background())
 		assert.EqualError(t, err, "fail")
@@ -428,7 +531,7 @@ func TestApplication_LoadLoadBalancers(t *testing.T) {
 		app := NewApplication(
 			&mockEntryPointRepo{}, &mockFlowRepo{}, &mockRouterRepo{},
 			&mockLBRepo{err: errors.New("fail")},
-			&mockPoolRepo{},
+			&mockPoolRepo{}, &mockProxyRepo{},
 		)
 		_, err := app.LoadLoadBalancers(context.Background())
 		assert.EqualError(t, err, "fail")
@@ -488,7 +591,7 @@ func TestApplication_LoadFlows(t *testing.T) {
 		app := NewApplication(
 			&mockEntryPointRepo{},
 			&mockFlowRepo{err: errors.New("fail")},
-			&mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{},
+			&mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
 		)
 		_, err := app.LoadFlows(context.Background())
 		assert.EqualError(t, err, "fail")
@@ -503,6 +606,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		routerRepo    *mockRouterRepo
 		lbRepo        *mockLBRepo
 		poolRepo      *mockPoolRepo
+		proxyRepo     *mockProxyRepo
 		entrypointId  string
 		expectedProxy *domain.Proxy
 		expectedLBId  string
@@ -515,6 +619,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			routerRepo:    &mockRouterRepo{},
 			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
 			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
+			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
 			entrypointId:  "ep-1",
 			expectedProxy: testProxy,
 			expectedLBId:  "lb-1",
@@ -532,6 +637,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			}},
 			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
 			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
+			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
 			entrypointId:  "ep-2",
 			expectedProxy: testProxy,
 			expectedLBId:  "lb-1",
@@ -543,6 +649,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			routerRepo:    &mockRouterRepo{},
 			lbRepo:        &mockLBRepo{},
 			poolRepo:      &mockPoolRepo{},
+			proxyRepo:     &mockProxyRepo{},
 			entrypointId:  "missing",
 			expectedProxy: nil,
 			expectedLBId:  "",
@@ -555,6 +662,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			routerRepo:    &mockRouterRepo{},
 			lbRepo:        &mockLBRepo{},
 			poolRepo:      &mockPoolRepo{},
+			proxyRepo:     &mockProxyRepo{},
 			entrypointId:  "ep-1",
 			expectedProxy: nil,
 			expectedLBId:  "",
@@ -569,6 +677,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			routerRepo:    &mockRouterRepo{},
 			lbRepo:        &mockLBRepo{},
 			poolRepo:      &mockPoolRepo{},
+			proxyRepo:     &mockProxyRepo{},
 			entrypointId:  "ep-1",
 			expectedProxy: nil,
 			expectedLBId:  "",
@@ -587,6 +696,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 			}},
 			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
 			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
+			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
 			entrypointId:  "ep-3",
 			expectedProxy: nil,
 			expectedLBId:  "",
@@ -594,7 +704,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.epRepo, tt.flowRepo, tt.routerRepo, tt.lbRepo, tt.poolRepo)
+			app := NewApplication(tt.epRepo, tt.flowRepo, tt.routerRepo, tt.lbRepo, tt.poolRepo, tt.proxyRepo)
 			require.NoError(t, app.BalancerService.Bootstrap(context.Background()))
 
 			req, _ := http.NewRequest("GET", "http://example.com/", nil)

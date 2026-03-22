@@ -11,6 +11,12 @@ import (
 )
 
 func TestBuild(t *testing.T) {
+	poolWithProxy := func() *domain.Pool {
+		p := &domain.Pool{Id: "pool-1"}
+		p.LoadResolvedProxies([]*domain.Proxy{{Id: "proxy-1"}})
+		return p
+	}()
+
 	for _, tt := range []struct {
 		name                 string
 		lb                   *domain.LoadBalancer
@@ -19,38 +25,16 @@ func TestBuild(t *testing.T) {
 		expectedErr          error
 	}{
 		{
-			name: "it builds round robin load balancer",
-			p: &domain.Pool{
-				Id: "pool-1",
-				Proxies: []*domain.Proxy{
-					{
-						Id: "proxy-1",
-					},
-				},
-			},
-			lb: &domain.LoadBalancer{
-				Id:     "lb-1",
-				Type:   "round-robin",
-				PoolId: "pool-1",
-			},
+			name:                 "it builds round robin load balancer",
+			p:                    poolWithProxy,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "round-robin", PoolId: "pool-1"},
 			expectedBalancerType: &algorithm.RoundRobin{},
 			expectedErr:          nil,
 		},
 		{
-			name: "it can not build unknown lb type",
-			p: &domain.Pool{
-				Id: "pool-1",
-				Proxies: []*domain.Proxy{
-					{
-						Id: "proxy-1",
-					},
-				},
-			},
-			lb: &domain.LoadBalancer{
-				Id:     "lb-1",
-				Type:   "unknown",
-				PoolId: "pool-1",
-			},
+			name:                 "it can not build unknown lb type",
+			p:                    poolWithProxy,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "unknown", PoolId: "pool-1"},
 			expectedBalancerType: &algorithm.RoundRobin{},
 			expectedErr:          fmt.Errorf(`unknown balancer type "unknown"`),
 		},
