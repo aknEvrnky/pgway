@@ -1,0 +1,63 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message ProxySpecV1 {
+  string url = 1;
+  string protocol = 2;
+  string host = 3;
+  uint32 port = 4;
+  AuthSpec auth = 5;
+}
+
+message AuthSpec {
+  string user = 1;
+  string pass = 2;
+}
+
+message Proxy {
+  string id = 1;
+  string protocol = 2;
+  string host = 3;
+  uint32 port = 4;
+  AuthSpec auth = 5;
+  map<string, string> labels = 6;
+}
+
+message ApplyProxyV1Request {
+  Metadata metadata = 1;
+  ProxySpecV1 spec = 2;
+}
+
+message ApplyProxyV1Response {
+  Proxy proxy = 1;
+}
+
+message GetProxyRequest {
+  string name = 1;
+}
+
+message GetProxyResponse {
+  Proxy proxy = 1;
+}
+
+message ListProxiesRequest {}
+
+message ListProxiesResponse {
+  repeated Proxy proxies = 1;
+}
+
+message DeleteProxyRequest {
+  string name = 1;
+}
+
+message DeleteProxyResponse {}
+
+service ProxyService {
+  rpc ApplyProxyV1(ApplyProxyV1Request) returns (ApplyProxyV1Response);
+  rpc GetProxy(GetProxyRequest) returns (GetProxyResponse);
+  rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
+  rpc DeleteProxy(DeleteProxyRequest) returns (DeleteProxyResponse);
+}

@@ -1,0 +1,52 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message FlowSpecV1 {
+  string router_id = 1;
+  string balancer_id = 2;
+}
+
+message Flow {
+  string id = 1;
+  string router_id = 2;
+  string balancer_id = 3;
+}
+
+message ApplyFlowV1Request {
+  Metadata metadata = 1;
+  FlowSpecV1 spec = 2;
+}
+
+message ApplyFlowV1Response {
+  Flow flow = 1;
+}
+
+message GetFlowRequest {
+  string name = 1;
+}
+
+message GetFlowResponse {
+  Flow flow = 1;
+}
+
+message ListFlowsRequest {}
+
+message ListFlowsResponse {
+  repeated Flow flows = 1;
+}
+
+message DeleteFlowRequest {
+  string name = 1;
+}
+
+message DeleteFlowResponse {}
+
+service FlowService {
+  rpc ApplyFlowV1(ApplyFlowV1Request) returns (ApplyFlowV1Response);
+  rpc GetFlow(GetFlowRequest) returns (GetFlowResponse);
+  rpc ListFlows(ListFlowsRequest) returns (ListFlowsResponse);
+  rpc DeleteFlow(DeleteFlowRequest) returns (DeleteFlowResponse);
+}

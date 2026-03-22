@@ -1,0 +1,61 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message PoolSpecV1 {
+  string title = 1;
+  string type = 2;
+  repeated string proxy_ids = 3;
+  SelectorSpec selector = 4;
+}
+
+message SelectorSpec {
+  map<string, string> allow = 1;
+}
+
+message Pool {
+  string id = 1;
+  string title = 2;
+  string type = 3;
+  map<string, string> labels = 4;
+  repeated string proxy_ids = 5;
+  SelectorSpec selector = 6;
+}
+
+message ApplyPoolV1Request {
+  Metadata metadata = 1;
+  PoolSpecV1 spec = 2;
+}
+
+message ApplyPoolV1Response {
+  Pool pool = 1;
+}
+
+message GetPoolRequest {
+  string name = 1;
+}
+
+message GetPoolResponse {
+  Pool pool = 1;
+}
+
+message ListPoolsRequest {}
+
+message ListPoolsResponse {
+  repeated Pool pools = 1;
+}
+
+message DeletePoolRequest {
+  string name = 1;
+}
+
+message DeletePoolResponse {}
+
+service PoolService {
+  rpc ApplyPoolV1(ApplyPoolV1Request) returns (ApplyPoolV1Response);
+  rpc GetPool(GetPoolRequest) returns (GetPoolResponse);
+  rpc ListPools(ListPoolsRequest) returns (ListPoolsResponse);
+  rpc DeletePool(DeletePoolRequest) returns (DeletePoolResponse);
+}

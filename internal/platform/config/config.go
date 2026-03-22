@@ -5,8 +5,8 @@ import (
 )
 
 type Config struct {
-	PoolPath   string `mapstructure:"pool_path"`
-	BadgerPath string `mapstructure:"badger_path"`
+	BadgerPath     string `mapstructure:"badger_path"`
+	GrpcListenAddr string `mapstructure:"grpc_listen_addr"`
 }
 
 var c *Config
@@ -21,7 +21,8 @@ func Load(path string) error {
 		viper.AddConfigPath(".")
 	}
 
-	//viper.SetDefault("server.port", 50100)
+	viper.SetDefault("badger_path", "/var/pgway/lib")
+	viper.SetDefault("grpc_listen_addr", "9090")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return err

@@ -226,7 +226,7 @@ var (
 	testProxy  = &domain.Proxy{Id: "p1", Protocol: "http", Host: "127.0.0.1", Port: 8080}
 	testPool   = &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, ProxyIds: []string{"p1"}}
 	testLB     = &domain.LoadBalancer{Id: "lb-1", Type: domain.BalancerTypeRoundRobin, PoolId: "pool-1"}
-	testEP     = &domain.Entrypoint{Id: "ep-1", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 8080, Flow: "flow-1"}
+	testEP     = &domain.Entrypoint{Id: "ep-1", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 8080, FlowId: "flow-1"}
 	testFlow   = &domain.Flow{Id: "flow-1", BalancerId: "lb-1"}
 	testRouter = &domain.Router{
 		Id: "router-1",
@@ -489,7 +489,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		},
 		{
 			name:   "flow with router",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, Flow: "flow-router"}}},
+			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, FlowId: "flow-router"}}},
 			flowRepo: &mockFlowRepo{flows: []*domain.Flow{
 				{Id: "flow-router", RouterId: "router-1"},
 			}},
@@ -548,7 +548,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		},
 		{
 			name:   "router returns no matching rule",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-3", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9091, Flow: "flow-r"}}},
+			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-3", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9091, FlowId: "flow-r"}}},
 			flowRepo: &mockFlowRepo{flows: []*domain.Flow{
 				{Id: "flow-r", RouterId: "router-1"},
 			}},

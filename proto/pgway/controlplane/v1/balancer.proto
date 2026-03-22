@@ -1,0 +1,54 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message BalancerSpecV1 {
+  string title = 1;
+  string type = 2;
+  string pool_id = 3;
+}
+
+message LoadBalancer {
+  string id = 1;
+  string title = 2;
+  string type = 3;
+  string pool_id = 4;
+}
+
+message ApplyBalancerV1Request {
+  Metadata metadata = 1;
+  BalancerSpecV1 spec = 2;
+}
+
+message ApplyBalancerV1Response {
+  LoadBalancer balancer = 1;
+}
+
+message GetBalancerRequest {
+  string name = 1;
+}
+
+message GetBalancerResponse {
+  LoadBalancer balancer = 1;
+}
+
+message ListBalancersRequest {}
+
+message ListBalancersResponse {
+  repeated LoadBalancer balancers = 1;
+}
+
+message DeleteBalancerRequest {
+  string name = 1;
+}
+
+message DeleteBalancerResponse {}
+
+service BalancerService {
+  rpc ApplyBalancerV1(ApplyBalancerV1Request) returns (ApplyBalancerV1Response);
+  rpc GetBalancer(GetBalancerRequest) returns (GetBalancerResponse);
+  rpc ListBalancers(ListBalancersRequest) returns (ListBalancersResponse);
+  rpc DeleteBalancer(DeleteBalancerRequest) returns (DeleteBalancerResponse);
+}

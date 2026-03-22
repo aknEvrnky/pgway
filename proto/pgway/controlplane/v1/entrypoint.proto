@@ -1,0 +1,58 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message EntrypointSpecV1 {
+  string title = 1;
+  string protocol = 2;
+  string host = 3;
+  uint32 port = 4;
+  string flow_id = 5;
+}
+
+message Entrypoint {
+  string id = 1;
+  string title = 2;
+  string protocol = 3;
+  string host = 4;
+  uint32 port = 5;
+  string flow_id = 6;
+}
+
+message ApplyEntrypointV1Request {
+  Metadata metadata = 1;
+  EntrypointSpecV1 spec = 2;
+}
+
+message ApplyEntrypointV1Response {
+  Entrypoint entrypoint = 1;
+}
+
+message GetEntrypointRequest {
+  string name = 1;
+}
+
+message GetEntrypointResponse {
+  Entrypoint entrypoint = 1;
+}
+
+message ListEntrypointsRequest {}
+
+message ListEntrypointsResponse {
+  repeated Entrypoint entrypoints = 1;
+}
+
+message DeleteEntrypointRequest {
+  string name = 1;
+}
+
+message DeleteEntrypointResponse {}
+
+service EntrypointService {
+  rpc ApplyEntrypointV1(ApplyEntrypointV1Request) returns (ApplyEntrypointV1Response);
+  rpc GetEntrypoint(GetEntrypointRequest) returns (GetEntrypointResponse);
+  rpc ListEntrypoints(ListEntrypointsRequest) returns (ListEntrypointsResponse);
+  rpc DeleteEntrypoint(DeleteEntrypointRequest) returns (DeleteEntrypointResponse);
+}

@@ -8,7 +8,7 @@ type Entrypoint struct {
 	Protocol Protocol `json:"protocol"`
 	Host     string   `json:"host"`
 	Port     uint16   `json:"port"`
-	Flow     string   `json:"flow"`
+	FlowId   string   `json:"flow_id"`
 }
 
 func (e *Entrypoint) ListenAddr() string {

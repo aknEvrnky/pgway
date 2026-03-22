@@ -1,40 +1,33 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/aknEvrnky/pgway/internal/adapters/cli/cmd"
-	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
-	"github.com/aknEvrnky/pgway/internal/platform/badger"
+	grpcclient "github.com/aknEvrnky/pgway/internal/adapters/grpc/client"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
-	badgerdb "github.com/dgraph-io/badger/v4"
-	"go.uber.org/zap"
 )
 
 func main() {
 	if err := config.Load(""); err != nil {
-		zap.L().Fatal("load configuration", zap.Error(err))
+		fmt.Fprintln(os.Stderr, "load configuration:", err)
+		os.Exit(1)
 	}
 
 	cfg := config.Get()
 
-	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badger.NewBadgerLogger())
-	db, err := badgerdb.Open(opts)
+	client, err := grpcclient.NewClient(cfg.GrpcListenAddr)
 	if err != nil {
-		zap.L().Fatal("open badger", zap.Error(err), zap.String("path", cfg.BadgerPath))
+		fmt.Fprintln(os.Stderr, "connect to control plane:", err)
+		os.Exit(1)
 	}
-	defer db.Close()
+	defer client.Close()
 
-	proxyRepo := badgerrepo.NewProxyRepository(db)
-	poolRepo := badgerrepo.NewPoolRepository(db)
-	lbRepo := badgerrepo.NewBalancerRepository(db)
-	routerRepo := badgerrepo.NewRouterRepository(db)
-	flowRepo := badgerrepo.NewFlowRepository(db)
-	epRepo := badgerrepo.NewEntrypointRepository(db)
+	rootCmd := cmd.NewRootCmd(client)
 
-	cpService := controlplane.NewService(proxyRepo, poolRepo, lbRepo, routerRepo, flowRepo, epRepo)
-
-	rootCmd := cmd.NewRootCmd(cpService)
 	if err := rootCmd.Execute(); err != nil {
-		zap.L().Fatal("unable to run command", zap.Error(err))
+		fmt.Fprintln(os.Stderr, "unable to run command:", err)
+		os.Exit(1)
 	}
 }

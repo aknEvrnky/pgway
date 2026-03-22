@@ -13,7 +13,7 @@ import (
 
 const (
 	flowStorageVersion = "v1"
-	flowKind           = "Flow"
+	flowKind           = "FlowId"
 	flowPrefix         = "flows:"
 )
 

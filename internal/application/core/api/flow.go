@@ -21,7 +21,7 @@ func (a *Application) ExecuteFlow(ctx context.Context, entrypointId string, req 
 		return nil, "", fmt.Errorf("entrypoint: %w", err)
 	}
 
-	flow, err := a.getFlow(ctx, ep.Flow)
+	flow, err := a.getFlow(ctx, ep.FlowId)
 
 	if err != nil {
 		return nil, "", fmt.Errorf("flow: %w", err)

@@ -1,2 +1,2 @@
-pool_path: pools
 badger_path: /var/pgway/lib
+grpc_listen_addr: ":9090"

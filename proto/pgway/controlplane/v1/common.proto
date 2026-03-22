@@ -1,0 +1,8 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+message Metadata {
+  string name = 1;
+  map<string, string> labels = 2;
+}

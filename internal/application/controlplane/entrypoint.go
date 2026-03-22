@@ -27,7 +27,7 @@ func (s *Service) ApplyEntrypointV1(ctx context.Context, meta schema.Metadata, s
 		Protocol: domain.Protocol(spec.Protocol),
 		Host:     spec.Host,
 		Port:     spec.Port,
-		Flow:     spec.FlowId,
+		FlowId:   spec.FlowId,
 	}
 
 	if err := ep.Validate(); err != nil {

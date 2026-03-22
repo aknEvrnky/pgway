@@ -1,0 +1,92 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/common.proto";
+
+message RouterSpecV1 {
+  string title = 1;
+  string description = 2;
+  repeated RuleSpec rules = 3;
+}
+
+message RuleSpec {
+  string id = 1;
+  MatchSpec match = 2;
+  string target = 3;
+}
+
+message MatchSpec {
+  string type = 1;
+  string value = 2;
+  repeated ConditionSpec all = 3;
+  repeated ConditionSpec any = 4;
+  ConditionSpec not = 5;
+}
+
+message ConditionSpec {
+  string type = 1;
+  string value = 2;
+}
+
+message Router {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  repeated RouterRule rules = 4;
+}
+
+message RouterRule {
+  string id = 1;
+  RouterMatch match = 2;
+  string target = 3;
+}
+
+message RouterMatch {
+  string type = 1;
+  string value = 2;
+  repeated RouterCondition all = 3;
+  repeated RouterCondition any = 4;
+  RouterCondition not = 5;
+}
+
+message RouterCondition {
+  string type = 1;
+  string value = 2;
+}
+
+message ApplyRouterV1Request {
+  Metadata metadata = 1;
+  RouterSpecV1 spec = 2;
+}
+
+message ApplyRouterV1Response {
+  Router router = 1;
+}
+
+message GetRouterRequest {
+  string name = 1;
+}
+
+message GetRouterResponse {
+  Router router = 1;
+}
+
+message ListRoutersRequest {}
+
+message ListRoutersResponse {
+  repeated Router routers = 1;
+}
+
+message DeleteRouterRequest {
+  string name = 1;
+}
+
+message DeleteRouterResponse {}
+
+service RouterService {
+  rpc ApplyRouterV1(ApplyRouterV1Request) returns (ApplyRouterV1Response);
+  rpc GetRouter(GetRouterRequest) returns (GetRouterResponse);
+  rpc ListRouters(ListRoutersRequest) returns (ListRoutersResponse);
+  rpc DeleteRouter(DeleteRouterRequest) returns (DeleteRouterResponse);
+}
