@@ -17,6 +17,7 @@ func newGetCmd(cp ports.ControlPlane) *cobra.Command {
 
 	cmd.AddCommand(newGetProxyCmd(cp))
 	cmd.AddCommand(newGetPoolCmd(cp))
+	cmd.AddCommand(newGetBalancerCmd(cp))
 
 	return cmd
 }
@@ -86,6 +87,39 @@ func newGetPoolCmd(cp ports.ControlPlane) *cobra.Command {
 			}
 
 			return enc.Encode(pools)
+		},
+	}
+}
+
+func newGetBalancerCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:     "balancer [name]",
+		Short:   "Get load balancer or list all load balancers",
+		Example: "  pgctl get balancer\n  pgctl get balancer my-pool",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			if len(args) > 0 {
+				pool, err := cp.GetBalancer(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				return enc.Encode(pool)
+			}
+
+			balancers, err := cp.ListBalancers(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(balancers) == 0 {
+				fmt.Println("no load balancer found")
+				return nil
+			}
+
+			return enc.Encode(balancers)
 		},
 	}
 }

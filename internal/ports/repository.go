@@ -24,6 +24,8 @@ type RouterRepositoryPort interface {
 type LoadBalancerRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.LoadBalancer, error)
 	Find(ctx context.Context, id string) (*domain.LoadBalancer, error)
+	Save(ctx context.Context, lb *domain.LoadBalancer) error
+	Delete(ctx context.Context, id string) error
 }
 
 type PoolRepositoryPort interface {

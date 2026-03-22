@@ -11,7 +11,6 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
-	lbRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/balancer"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/entrypoint"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/flow"
 	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/router"
@@ -59,14 +58,9 @@ func main() {
 		zap.L().Fatal("init flows", zap.Error(err))
 	}
 
-	lbRepository, err := lbRepo.NewConfigRepository(cfg)
-
-	if err != nil {
-		zap.L().Fatal("init load balancers", zap.Error(err))
-	}
-
-	poolRepository := badgerrepo.NewPoolRepository(db)
 	proxyRepo := badgerrepo.NewProxyRepository(db)
+	poolRepository := badgerrepo.NewPoolRepository(db)
+	lbRepository := badgerrepo.NewBalancerRepository(db)
 
 	app := api.NewApplication(
 		entryPointRepository,

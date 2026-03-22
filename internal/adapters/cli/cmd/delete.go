@@ -15,6 +15,7 @@ func newDeleteCmd(cp ports.ControlPlane) *cobra.Command {
 
 	cmd.AddCommand(newDeleteProxyCmd(cp))
 	cmd.AddCommand(newDeletePoolCmd(cp))
+	cmd.AddCommand(newDeleteBalancerCmd(cp))
 
 	return cmd
 }
@@ -44,6 +45,21 @@ func newDeletePoolCmd(cp ports.ControlPlane) *cobra.Command {
 				return err
 			}
 			fmt.Printf("pool/%s deleted\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newDeleteBalancerCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:   "balancer <name>",
+		Short: "Delete a load balancer",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cp.DeleteBalancer(cmd.Context(), args[0]); err != nil {
+				return err
+			}
+			fmt.Printf("balancer/%s deleted\n", args[0])
 			return nil
 		},
 	}

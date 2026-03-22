@@ -5,6 +5,7 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
+	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
@@ -13,6 +14,7 @@ import (
 type ControlPlane interface {
 	ProxyControlPlane
 	PoolControlPlane
+	BalancerControlPlane
 }
 
 type ProxyControlPlane interface {
@@ -27,4 +29,11 @@ type PoolControlPlane interface {
 	GetPool(ctx context.Context, name string) (*domain.Pool, error)
 	ListPools(ctx context.Context) ([]*domain.Pool, error)
 	DeletePool(ctx context.Context, name string) error
+}
+
+type BalancerControlPlane interface {
+	ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spec balancerv1.BalancerSpecV1) (*domain.LoadBalancer, error)
+	GetBalancer(ctx context.Context, name string) (*domain.LoadBalancer, error)
+	ListBalancers(ctx context.Context) ([]*domain.LoadBalancer, error)
+	DeleteBalancer(ctx context.Context, name string) error
 }

@@ -26,8 +26,9 @@ func main() {
 
 	proxyRepo := badgerrepo.NewProxyRepository(db)
 	poolRepo := badgerrepo.NewPoolRepository(db)
+	lbRepo := badgerrepo.NewBalancerRepository(db)
 
-	cpService := controlplane.NewService(proxyRepo, poolRepo)
+	cpService := controlplane.NewService(proxyRepo, poolRepo, lbRepo)
 
 	rootCmd := cmd.NewRootCmd(cpService)
 	if err := rootCmd.Execute(); err != nil {
