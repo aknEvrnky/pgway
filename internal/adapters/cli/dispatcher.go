@@ -7,6 +7,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
+	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
@@ -34,6 +35,8 @@ func (d *Dispatcher) Apply(ctx context.Context, raw schema.RawResource) error {
 		return d.applyRouterV1(ctx, raw)
 	case "Flow/v1":
 		return d.applyFlowV1(ctx, raw)
+	case "Entrypoint/v1":
+		return d.applyEntrypointV1(ctx, raw)
 	default:
 		return fmt.Errorf("unknown resource: %s", raw.Key())
 	}
@@ -120,5 +123,20 @@ func (d *Dispatcher) applyFlowV1(ctx context.Context, raw schema.RawResource) er
 	}
 
 	fmt.Printf("flow/%s applied\n", flow.Id)
+	return nil
+}
+
+func (d *Dispatcher) applyEntrypointV1(ctx context.Context, raw schema.RawResource) error {
+	var spec entrypointv1.EntrypointSpecV1
+	if err := yaml.Unmarshal(raw.SpecRaw, &spec); err != nil {
+		return fmt.Errorf("decode flow spec: %w", err)
+	}
+
+	ep, err := d.controlPlane.ApplyEntrypointV1(ctx, raw.Metadata, spec)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("entrypoint/%s applied\n", ep.Id)
 	return nil
 }

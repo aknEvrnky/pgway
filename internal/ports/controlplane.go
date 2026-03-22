@@ -8,6 +8,7 @@ import (
 	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
+	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
@@ -19,6 +20,7 @@ type ControlPlane interface {
 	BalancerControlPlane
 	RouterControlPlane
 	FlowControlPlane
+	EntrypointControlPlane
 }
 
 type ProxyControlPlane interface {
@@ -54,4 +56,11 @@ type FlowControlPlane interface {
 	GetFlow(ctx context.Context, name string) (*domain.Flow, error)
 	ListFlows(ctx context.Context) ([]*domain.Flow, error)
 	DeleteFlow(ctx context.Context, name string) error
+}
+
+type EntrypointControlPlane interface {
+	ApplyEntrypointV1(ctx context.Context, meta schema.Metadata, spec entrypointv1.EntrypointSpecV1) (*domain.Entrypoint, error)
+	GetEntrypoint(ctx context.Context, name string) (*domain.Entrypoint, error)
+	ListEntrypoints(ctx context.Context) ([]*domain.Entrypoint, error)
+	DeleteEntrypoint(ctx context.Context, name string) error
 }

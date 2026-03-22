@@ -9,6 +9,8 @@ import (
 type EntryPointRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Entrypoint, error)
 	Find(ctx context.Context, id string) (*domain.Entrypoint, error)
+	Save(ctx context.Context, ep *domain.Entrypoint) error
+	Delete(ctx context.Context, id string) error
 }
 
 type FlowRepositoryPort interface {

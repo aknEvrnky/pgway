@@ -20,6 +20,7 @@ func newGetCmd(cp ports.ControlPlane) *cobra.Command {
 	cmd.AddCommand(newGetBalancerCmd(cp))
 	cmd.AddCommand(newGetRouterCmd(cp))
 	cmd.AddCommand(newGetFlowCmd(cp))
+	cmd.AddCommand(newGetEntrypointCmd(cp))
 
 	return cmd
 }
@@ -188,6 +189,39 @@ func newGetFlowCmd(cp ports.ControlPlane) *cobra.Command {
 			}
 
 			return enc.Encode(flows)
+		},
+	}
+}
+
+func newGetEntrypointCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:     "entrypoint [name]",
+		Short:   "Get entrypoint or list all entrypoints",
+		Example: "  pgctl get entrypoint\n  pgctl get entrypoint my-entrypoint",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			if len(args) > 0 {
+				pool, err := cp.GetEntrypoint(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				return enc.Encode(pool)
+			}
+
+			entrypoints, err := cp.ListEntrypoints(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(entrypoints) == 0 {
+				fmt.Println("no entrypoint found")
+				return nil
+			}
+
+			return enc.Encode(entrypoints)
 		},
 	}
 }

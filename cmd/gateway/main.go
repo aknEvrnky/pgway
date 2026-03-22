@@ -11,7 +11,6 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
-	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/entrypoint"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/badger"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -38,12 +37,7 @@ func main() {
 
 	defer db.Close()
 
-	entryPointRepository, err := epRepo.NewConfigRepository(cfg)
-
-	if err != nil {
-		zap.L().Fatal("init entrypoints", zap.Error(err))
-	}
-
+	entryPointRepository := badgerrepo.NewEntrypointRepository(db)
 	flowRepository := badgerrepo.NewFlowRepository(db)
 	routerRepository := badgerrepo.NewRouterRepository(db)
 	lbRepository := badgerrepo.NewBalancerRepository(db)

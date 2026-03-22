@@ -18,6 +18,7 @@ func newDeleteCmd(cp ports.ControlPlane) *cobra.Command {
 	cmd.AddCommand(newDeleteBalancerCmd(cp))
 	cmd.AddCommand(newDeleteRouterCmd(cp))
 	cmd.AddCommand(newDeleteFlowCmd(cp))
+	cmd.AddCommand(newDeleteEntrypointCmd(cp))
 
 	return cmd
 }
@@ -92,6 +93,21 @@ func newDeleteFlowCmd(cp ports.ControlPlane) *cobra.Command {
 				return err
 			}
 			fmt.Printf("flow/%s deleted\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newDeleteEntrypointCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:   "entrypoint <name>",
+		Short: "Delete an entrypoint",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cp.DeleteEntrypoint(cmd.Context(), args[0]); err != nil {
+				return err
+			}
+			fmt.Printf("entrypoint/%s deleted\n", args[0])
 			return nil
 		},
 	}
