@@ -22,7 +22,7 @@ type Adapter struct {
 }
 
 func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort) (*Adapter, error) {
-	entrypoints, err := api.LoadEntryPoints(ctx)
+	entrypoints, err := api.EntryPoints(ctx)
 	if err != nil {
 		return nil, err
 	}

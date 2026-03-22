@@ -8,12 +8,8 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 )
 
-func (a *Application) LoadRouters(ctx context.Context) ([]*domain.Router, error) {
-	return a.routerRepo.GetAll(ctx)
-}
-
-func (a *Application) GetRouter(ctx context.Context, id string) (*domain.Router, error) {
-	return a.routerRepo.Find(ctx, id)
+func (a *Application) GetRouter(_ context.Context, id string) (*domain.Router, error) {
+	return a.cache.GetRouter(id)
 }
 
 // RouteRequest finds the router by id, evaluates rules against the request,

@@ -5,18 +5,18 @@ import (
 	"fmt"
 
 	"github.com/aknEvrnky/pgway/internal/application/balancer"
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
+	"golang.org/x/sync/errgroup"
 )
 
 type Application struct {
-	entryPointRepo   ports.EntryPointRepositoryPort
-	flowRepo         ports.FlowRepositoryPort
-	routerRepo       ports.RouterRepositoryPort
-	loadBalancerRepo ports.LoadBalancerRepositoryPort
-	poolRepo         ports.PoolRepositoryPort
-	proxyRepo        ports.ProxyRepositoryPort
+	entryPointRepo ports.EntryPointRepositoryPort
+	flowRepo       ports.FlowRepositoryPort
+	routerRepo     ports.RouterRepositoryPort
 
-	BalancerService *balancer.Service
+	cache           *ResourceCache
+	balancerService *balancer.Service
 }
 
 func NewApplication(
@@ -28,31 +28,83 @@ func NewApplication(
 	prRepo ports.ProxyRepositoryPort,
 ) *Application {
 	return &Application{
-		entryPointRepo:   epRepo,
-		flowRepo:         fRepo,
-		routerRepo:       rRepo,
-		loadBalancerRepo: lbRepo,
-		poolRepo:         pRepo,
-		proxyRepo:        prRepo,
-		BalancerService:  balancer.NewService(lbRepo, pRepo, prRepo),
+		entryPointRepo:  epRepo,
+		flowRepo:        fRepo,
+		routerRepo:      rRepo,
+		cache:           NewResourceCache(),
+		balancerService: balancer.NewService(lbRepo, pRepo, prRepo),
 	}
 }
 
 func (a *Application) Bootstrap(ctx context.Context) error {
-	if err := a.ValidateAll(ctx); err != nil {
+	// warm up cahce
+	if err := a.warmupCache(ctx); err != nil {
 		return err
 	}
 
-	if err := a.BalancerService.Bootstrap(ctx); err != nil {
+	// validate app
+	if err := a.validateAll(ctx); err != nil {
+		return err
+	}
+
+	// bootstrap load balancers
+	if err := a.balancerService.Bootstrap(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (a *Application) ValidateAll(ctx context.Context) error {
+func (a *Application) warmupCache(ctx context.Context) error {
+	// get all necessary resources into cache
+	g, gctx := errgroup.WithContext(ctx)
+
+	var entrypoints []*domain.Entrypoint
+	var flows []*domain.Flow
+	var routers []*domain.Router
+
+	g.Go(func() error {
+		res, err := a.entryPointRepo.GetAll(gctx)
+		if err != nil {
+			return err
+		}
+
+		entrypoints = res
+		return nil
+	})
+
+	g.Go(func() error {
+		res, err := a.flowRepo.GetAll(gctx)
+		if err != nil {
+			return err
+		}
+
+		flows = res
+		return nil
+	})
+
+	g.Go(func() error {
+		res, err := a.routerRepo.GetAll(gctx)
+		if err != nil {
+			return err
+		}
+
+		routers = res
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("cache bootstrap failed: %w", err)
+	}
+
+	a.cache.Reload(entrypoints, flows, routers)
+
+	return nil
+}
+
+func (a *Application) validateAll(ctx context.Context) error {
 	// validate entrypoints
-	eps, err := a.LoadEntryPoints(ctx)
+	eps, err := a.EntryPoints(ctx)
 
 	if err != nil {
 		return fmt.Errorf("loading entrypoints: %w", err)
@@ -65,8 +117,4 @@ func (a *Application) ValidateAll(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func (a *Application) GetVersion() string {
-	return "v0.0.1-dev"
 }

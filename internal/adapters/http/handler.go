@@ -36,7 +36,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zap.L().Info("using proxy", zap.String("proxy", proxy.URL().String()))
+	zap.L().Info("using proxy", zap.String("proxy", proxy.Id))
 
 	// todo: handle byte calculation
 	defer h.app.Release(r.Context(), balancerId, domain.BalancerResult{

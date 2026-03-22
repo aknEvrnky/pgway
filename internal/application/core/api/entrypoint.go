@@ -6,10 +6,10 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 )
 
-func (a *Application) LoadEntryPoints(ctx context.Context) ([]*domain.Entrypoint, error) {
-	return a.entryPointRepo.GetAll(ctx)
+func (a *Application) EntryPoints(_ context.Context) ([]*domain.Entrypoint, error) {
+	return a.cache.AllEntrypoints(), nil
 }
 
-func (a *Application) GetEntryPoint(ctx context.Context, id string) (*domain.Entrypoint, error) {
-	return a.entryPointRepo.Find(ctx, id)
+func (a *Application) getEntryPoint(_ context.Context, id string) (*domain.Entrypoint, error) {
+	return a.cache.GetEntrypoint(id)
 }

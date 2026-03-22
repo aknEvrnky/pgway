@@ -8,24 +8,8 @@ import (
 )
 
 type Application interface {
-	LoadEntryPoints(ctx context.Context) ([]*domain.Entrypoint, error)
-	GetEntryPoint(ctx context.Context, id string) (*domain.Entrypoint, error)
-
-	LoadRouters(ctx context.Context) ([]*domain.Router, error)
-	GetRouter(ctx context.Context, id string) (*domain.Router, error)
-
-	LoadFlows(ctx context.Context) ([]*domain.Flow, error)
-	GetFlow(ctx context.Context, id string) (*domain.Flow, error)
-
+	Bootstrap(ctx context.Context) error
+	EntryPoints(ctx context.Context) ([]*domain.Entrypoint, error)
 	ExecuteFlow(ctx context.Context, entrypointId string, req *http.Request) (proxy *domain.Proxy, balancerId string, err error)
-
-	LoadLoadBalancers(ctx context.Context) ([]*domain.LoadBalancer, error)
-	GetLoadBalancer(ctx context.Context, id string) (*domain.LoadBalancer, error)
-
-	LoadPools(ctx context.Context) ([]*domain.Pool, error)
-	GetPool(ctx context.Context, id string) (*domain.Pool, error)
-
 	Release(ctx context.Context, balancerId string, result domain.BalancerResult) error
-
-	GetVersion() string
 }
