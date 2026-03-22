@@ -5,61 +5,8 @@ import (
 )
 
 type Config struct {
-	PoolPath      string               `mapstructure:"pool_path"`
-	BadgerPath    string               `mapstructure:"badger_path"`
-	EntryPoints   []EntrypointConfig   `mapstructure:"entry_points"`
-	Flows         []FlowConfig         `mapstructure:"flows"`
-	Routers       []RouterConfig       `mapstructure:"routers"`
-	LoadBalancers []LoadBalancerConfig `mapstructure:"balancers"`
-}
-
-type EntrypointConfig struct {
-	Id       string `mapstructure:"id"`
-	Title    string `mapstructure:"title"`
-	Protocol string `mapstructure:"protocol"`
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Flow     string `mapstructure:"flow"`
-}
-
-type RouterConfig struct {
-	Id          string             `mapstructure:"id"`
-	Title       string             `mapstructure:"title"`
-	Description string             `mapstructure:"description,omitempty"`
-	Rules       []RouterRuleConfig `mapstructure:"rules"`
-}
-
-type RouterRuleConfig struct {
-	Id     string            `mapstructure:"id"`
-	Match  RouterMatchConfig `mapstructure:"match"`
-	Target string            `mapstructure:"target"`
-}
-
-type RouterConditionConfig struct {
-	Type  string `mapstructure:"type"`
-	Value string `mapstructure:"value"`
-}
-
-type RouterMatchConfig struct {
-	All []RouterConditionConfig `mapstructure:"all,omitempty"`
-	Any []RouterConditionConfig `mapstructure:"any,omitempty"`
-	Not *RouterConditionConfig  `mapstructure:"not,omitempty"`
-
-	Type  string `mapstructure:"type,omitempty"`
-	Value string `mapstructure:"value,omitempty"`
-}
-
-type FlowConfig struct {
-	Id         string `mapstructure:"id"`
-	RouterId   string `mapstructure:"router,omitempty"`
-	BalancerId string `mapstructure:"balancer"`
-}
-
-type LoadBalancerConfig struct {
-	Id    string `mapstructure:"id"`
-	Title string `mapstructure:"title"`
-	Type  string `mapstructure:"type"`
-	Pool  string `mapstructure:"pool"`
+	PoolPath   string `mapstructure:"pool_path"`
+	BadgerPath string `mapstructure:"badger_path"`
 }
 
 var c *Config
