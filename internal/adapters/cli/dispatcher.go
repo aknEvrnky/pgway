@@ -7,6 +7,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
+	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
@@ -31,6 +32,8 @@ func (d *Dispatcher) Apply(ctx context.Context, raw schema.RawResource) error {
 		return d.applyBalancerV1(ctx, raw)
 	case "Router/v1":
 		return d.applyRouterV1(ctx, raw)
+	case "Flow/v1":
+		return d.applyFlowV1(ctx, raw)
 	default:
 		return fmt.Errorf("unknown resource: %s", raw.Key())
 	}
@@ -81,12 +84,12 @@ func (d *Dispatcher) applyBalancerV1(ctx context.Context, raw schema.RawResource
 		return fmt.Errorf("decode balancer spec: %w", err)
 	}
 
-	pool, err := d.controlPlane.ApplyBalancerV1(ctx, raw.Metadata, spec)
+	balancer, err := d.controlPlane.ApplyBalancerV1(ctx, raw.Metadata, spec)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("balancer/%s applied\n", pool.Id)
+	fmt.Printf("balancer/%s applied\n", balancer.Id)
 	return nil
 }
 
@@ -96,11 +99,26 @@ func (d *Dispatcher) applyRouterV1(ctx context.Context, raw schema.RawResource) 
 		return fmt.Errorf("decode router spec: %w", err)
 	}
 
-	pool, err := d.controlPlane.ApplyRouterV1(ctx, raw.Metadata, spec)
+	router, err := d.controlPlane.ApplyRouterV1(ctx, raw.Metadata, spec)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("router/%s applied\n", pool.Id)
+	fmt.Printf("router/%s applied\n", router.Id)
+	return nil
+}
+
+func (d *Dispatcher) applyFlowV1(ctx context.Context, raw schema.RawResource) error {
+	var spec flowv1.FlowSpecV1
+	if err := yaml.Unmarshal(raw.SpecRaw, &spec); err != nil {
+		return fmt.Errorf("decode flow spec: %w", err)
+	}
+
+	flow, err := d.controlPlane.ApplyFlowV1(ctx, raw.Metadata, spec)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("flow/%s applied\n", flow.Id)
 	return nil
 }

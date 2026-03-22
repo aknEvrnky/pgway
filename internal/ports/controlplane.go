@@ -5,6 +5,7 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
+	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
@@ -17,6 +18,7 @@ type ControlPlane interface {
 	PoolControlPlane
 	BalancerControlPlane
 	RouterControlPlane
+	FlowControlPlane
 }
 
 type ProxyControlPlane interface {
@@ -45,4 +47,11 @@ type RouterControlPlane interface {
 	GetRouter(ctx context.Context, name string) (*domain.Router, error)
 	ListRouters(ctx context.Context) ([]*domain.Router, error)
 	DeleteRouter(ctx context.Context, name string) error
+}
+
+type FlowControlPlane interface {
+	ApplyFlowV1(ctx context.Context, meta schema.Metadata, spec flowv1.FlowSpecV1) (*domain.Flow, error)
+	GetFlow(ctx context.Context, name string) (*domain.Flow, error)
+	ListFlows(ctx context.Context) ([]*domain.Flow, error)
+	DeleteFlow(ctx context.Context, name string) error
 }

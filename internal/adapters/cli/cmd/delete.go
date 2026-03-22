@@ -17,6 +17,7 @@ func newDeleteCmd(cp ports.ControlPlane) *cobra.Command {
 	cmd.AddCommand(newDeletePoolCmd(cp))
 	cmd.AddCommand(newDeleteBalancerCmd(cp))
 	cmd.AddCommand(newDeleteRouterCmd(cp))
+	cmd.AddCommand(newDeleteFlowCmd(cp))
 
 	return cmd
 }
@@ -76,6 +77,21 @@ func newDeleteRouterCmd(cp ports.ControlPlane) *cobra.Command {
 				return err
 			}
 			fmt.Printf("router/%s deleted\n", args[0])
+			return nil
+		},
+	}
+}
+
+func newDeleteFlowCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:   "flow <name>",
+		Short: "Delete a flow",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cp.DeleteFlow(cmd.Context(), args[0]); err != nil {
+				return err
+			}
+			fmt.Printf("flow/%s deleted\n", args[0])
 			return nil
 		},
 	}

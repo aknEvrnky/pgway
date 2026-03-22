@@ -19,6 +19,7 @@ func newGetCmd(cp ports.ControlPlane) *cobra.Command {
 	cmd.AddCommand(newGetPoolCmd(cp))
 	cmd.AddCommand(newGetBalancerCmd(cp))
 	cmd.AddCommand(newGetRouterCmd(cp))
+	cmd.AddCommand(newGetFlowCmd(cp))
 
 	return cmd
 }
@@ -96,7 +97,7 @@ func newGetBalancerCmd(cp ports.ControlPlane) *cobra.Command {
 	return &cobra.Command{
 		Use:     "balancer [name]",
 		Short:   "Get load balancer or list all load balancers",
-		Example: "  pgctl get balancer\n  pgctl get balancer my-pool",
+		Example: "  pgctl get balancer\n  pgctl get balancer my-balancer",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			enc := json.NewEncoder(os.Stdout)
@@ -143,17 +144,50 @@ func newGetRouterCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			balancers, err := cp.ListRouters(ctx)
+			routers, err := cp.ListRouters(ctx)
 			if err != nil {
 				return err
 			}
 
-			if len(balancers) == 0 {
+			if len(routers) == 0 {
 				fmt.Println("no router found")
 				return nil
 			}
 
-			return enc.Encode(balancers)
+			return enc.Encode(routers)
+		},
+	}
+}
+
+func newGetFlowCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:     "flow [name]",
+		Short:   "Get flow or list all flows",
+		Example: "  pgctl get flow\n  pgctl get flow my-flow",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			if len(args) > 0 {
+				pool, err := cp.GetRouter(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				return enc.Encode(pool)
+			}
+
+			flows, err := cp.ListFlows(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(flows) == 0 {
+				fmt.Println("no flow found")
+				return nil
+			}
+
+			return enc.Encode(flows)
 		},
 	}
 }

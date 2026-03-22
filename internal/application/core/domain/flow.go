@@ -1,7 +1,7 @@
 package domain
 
 type Flow struct {
-	Id         string `json:"string"`
-	RouterId   string `json:"router,omitempty"`
-	BalancerId string `json:"balancer"`
+	Id         string `json:"id"`
+	RouterId   string `json:"router_id,omitempty"`
+	BalancerId string `json:"balancer_id,omitempty"`
 }

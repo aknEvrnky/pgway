@@ -7,6 +7,7 @@ type Service struct {
 	poolRepo   ports.PoolRepositoryPort
 	lbRepo     ports.LoadBalancerRepositoryPort
 	routerRepo ports.RouterRepositoryPort
+	flowRepo   ports.FlowRepositoryPort
 }
 
 func NewService(
@@ -14,11 +15,13 @@ func NewService(
 	poolRepo ports.PoolRepositoryPort,
 	lbRepo ports.LoadBalancerRepositoryPort,
 	routerRepo ports.RouterRepositoryPort,
+	flowRepo ports.FlowRepositoryPort,
 ) *Service {
 	return &Service{
 		proxyRepo:  proxyRepo,
 		poolRepo:   poolRepo,
 		lbRepo:     lbRepo,
 		routerRepo: routerRepo,
+		flowRepo:   flowRepo,
 	}
 }

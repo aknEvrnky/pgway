@@ -14,6 +14,8 @@ type EntryPointRepositoryPort interface {
 type FlowRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Flow, error)
 	Find(ctx context.Context, id string) (*domain.Flow, error)
+	Save(ctx context.Context, flow *domain.Flow) error
+	Delete(ctx context.Context, id string) error
 }
 
 type RouterRepositoryPort interface {
