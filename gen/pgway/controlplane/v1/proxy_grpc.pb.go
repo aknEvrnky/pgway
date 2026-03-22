@@ -19,10 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ProxyService_ApplyProxyV1_FullMethodName = "/pgway.controlplane.v1.ProxyService/ApplyProxyV1"
-	ProxyService_GetProxy_FullMethodName     = "/pgway.controlplane.v1.ProxyService/GetProxy"
-	ProxyService_ListProxies_FullMethodName  = "/pgway.controlplane.v1.ProxyService/ListProxies"
-	ProxyService_DeleteProxy_FullMethodName  = "/pgway.controlplane.v1.ProxyService/DeleteProxy"
+	ProxyService_ApplyProxyV1_FullMethodName        = "/pgway.controlplane.v1.ProxyService/ApplyProxyV1"
+	ProxyService_GetProxy_FullMethodName            = "/pgway.controlplane.v1.ProxyService/GetProxy"
+	ProxyService_ListProxies_FullMethodName         = "/pgway.controlplane.v1.ProxyService/ListProxies"
+	ProxyService_DeleteProxy_FullMethodName         = "/pgway.controlplane.v1.ProxyService/DeleteProxy"
+	ProxyService_GetProxiesByIds_FullMethodName     = "/pgway.controlplane.v1.ProxyService/GetProxiesByIds"
+	ProxyService_FindProxiesByLabels_FullMethodName = "/pgway.controlplane.v1.ProxyService/FindProxiesByLabels"
 )
 
 // ProxyServiceClient is the client API for ProxyService service.
@@ -33,6 +35,8 @@ type ProxyServiceClient interface {
 	GetProxy(ctx context.Context, in *GetProxyRequest, opts ...grpc.CallOption) (*GetProxyResponse, error)
 	ListProxies(ctx context.Context, in *ListProxiesRequest, opts ...grpc.CallOption) (*ListProxiesResponse, error)
 	DeleteProxy(ctx context.Context, in *DeleteProxyRequest, opts ...grpc.CallOption) (*DeleteProxyResponse, error)
+	GetProxiesByIds(ctx context.Context, in *GetProxiesByIdsRequest, opts ...grpc.CallOption) (*GetProxiesByIdsResponse, error)
+	FindProxiesByLabels(ctx context.Context, in *FindProxiesByLabelsRequest, opts ...grpc.CallOption) (*FindProxiesByLabelsResponse, error)
 }
 
 type proxyServiceClient struct {
@@ -83,6 +87,26 @@ func (c *proxyServiceClient) DeleteProxy(ctx context.Context, in *DeleteProxyReq
 	return out, nil
 }
 
+func (c *proxyServiceClient) GetProxiesByIds(ctx context.Context, in *GetProxiesByIdsRequest, opts ...grpc.CallOption) (*GetProxiesByIdsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetProxiesByIdsResponse)
+	err := c.cc.Invoke(ctx, ProxyService_GetProxiesByIds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *proxyServiceClient) FindProxiesByLabels(ctx context.Context, in *FindProxiesByLabelsRequest, opts ...grpc.CallOption) (*FindProxiesByLabelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FindProxiesByLabelsResponse)
+	err := c.cc.Invoke(ctx, ProxyService_FindProxiesByLabels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProxyServiceServer is the server API for ProxyService service.
 // All implementations must embed UnimplementedProxyServiceServer
 // for forward compatibility.
@@ -91,6 +115,8 @@ type ProxyServiceServer interface {
 	GetProxy(context.Context, *GetProxyRequest) (*GetProxyResponse, error)
 	ListProxies(context.Context, *ListProxiesRequest) (*ListProxiesResponse, error)
 	DeleteProxy(context.Context, *DeleteProxyRequest) (*DeleteProxyResponse, error)
+	GetProxiesByIds(context.Context, *GetProxiesByIdsRequest) (*GetProxiesByIdsResponse, error)
+	FindProxiesByLabels(context.Context, *FindProxiesByLabelsRequest) (*FindProxiesByLabelsResponse, error)
 	mustEmbedUnimplementedProxyServiceServer()
 }
 
@@ -112,6 +138,12 @@ func (UnimplementedProxyServiceServer) ListProxies(context.Context, *ListProxies
 }
 func (UnimplementedProxyServiceServer) DeleteProxy(context.Context, *DeleteProxyRequest) (*DeleteProxyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteProxy not implemented")
+}
+func (UnimplementedProxyServiceServer) GetProxiesByIds(context.Context, *GetProxiesByIdsRequest) (*GetProxiesByIdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetProxiesByIds not implemented")
+}
+func (UnimplementedProxyServiceServer) FindProxiesByLabels(context.Context, *FindProxiesByLabelsRequest) (*FindProxiesByLabelsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FindProxiesByLabels not implemented")
 }
 func (UnimplementedProxyServiceServer) mustEmbedUnimplementedProxyServiceServer() {}
 func (UnimplementedProxyServiceServer) testEmbeddedByValue()                      {}
@@ -206,6 +238,42 @@ func _ProxyService_DeleteProxy_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProxyService_GetProxiesByIds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProxiesByIdsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProxyServiceServer).GetProxiesByIds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProxyService_GetProxiesByIds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProxyServiceServer).GetProxiesByIds(ctx, req.(*GetProxiesByIdsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProxyService_FindProxiesByLabels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindProxiesByLabelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProxyServiceServer).FindProxiesByLabels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProxyService_FindProxiesByLabels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProxyServiceServer).FindProxiesByLabels(ctx, req.(*FindProxiesByLabelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProxyService_ServiceDesc is the grpc.ServiceDesc for ProxyService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +296,14 @@ var ProxyService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteProxy",
 			Handler:    _ProxyService_DeleteProxy_Handler,
+		},
+		{
+			MethodName: "GetProxiesByIds",
+			Handler:    _ProxyService_GetProxiesByIds_Handler,
+		},
+		{
+			MethodName: "FindProxiesByLabels",
+			Handler:    _ProxyService_FindProxiesByLabels_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

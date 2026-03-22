@@ -13,155 +13,126 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// --- mocks ---
+// --- mock ---
 
-type mockEntryPointRepo struct {
-	eps []*domain.Entrypoint
-	err error
+// mockControlPlane implements ports.ControlPlaneReader for all api tests.
+type mockControlPlane struct {
+	entrypoints []*domain.Entrypoint
+	flows       []*domain.Flow
+	routers     []*domain.Router
+	lbs         []*domain.LoadBalancer
+	pools       map[string]*domain.Pool
+	proxies     []*domain.Proxy
+
+	epErr     error
+	flowErr   error
+	routerErr error
+	lbErr     error
+	poolErr   error
+	proxyErr  error
 }
 
-func (m *mockEntryPointRepo) GetAll(_ context.Context) ([]*domain.Entrypoint, error) {
-	return m.eps, m.err
+// --- Entrypoints ---
+func (m *mockControlPlane) ListEntrypoints(_ context.Context) ([]*domain.Entrypoint, error) {
+	return m.entrypoints, m.epErr
 }
-
-func (m *mockEntryPointRepo) Find(_ context.Context, id string) (*domain.Entrypoint, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetEntrypoint(_ context.Context, name string) (*domain.Entrypoint, error) {
+	if m.epErr != nil {
+		return nil, m.epErr
 	}
-	for _, ep := range m.eps {
-		if ep.Id == id {
+	for _, ep := range m.entrypoints {
+		if ep.Id == name {
 			return ep, nil
 		}
 	}
-	return nil, fmt.Errorf("entrypoint %q not found", id)
+	return nil, fmt.Errorf("entrypoint %q not found", name)
 }
 
-func (m *mockEntryPointRepo) Save(_ context.Context, _ *domain.Entrypoint) error { return m.err }
-func (m *mockEntryPointRepo) Delete(_ context.Context, _ string) error           { return m.err }
-
-type mockFlowRepo struct {
-	flows []*domain.Flow
-	err   error
+// --- Flows ---
+func (m *mockControlPlane) ListFlows(_ context.Context) ([]*domain.Flow, error) {
+	return m.flows, m.flowErr
 }
-
-func (m *mockFlowRepo) GetAll(_ context.Context) ([]*domain.Flow, error) {
-	return m.flows, m.err
-}
-
-func (m *mockFlowRepo) Find(_ context.Context, id string) (*domain.Flow, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetFlow(_ context.Context, name string) (*domain.Flow, error) {
+	if m.flowErr != nil {
+		return nil, m.flowErr
 	}
 	for _, f := range m.flows {
-		if f.Id == id {
+		if f.Id == name {
 			return f, nil
 		}
 	}
-	return nil, fmt.Errorf("flow %q not found", id)
+	return nil, fmt.Errorf("flow %q not found", name)
 }
 
-func (m *mockFlowRepo) Save(_ context.Context, _ *domain.Flow) error { return m.err }
-func (m *mockFlowRepo) Delete(_ context.Context, _ string) error     { return m.err }
-
-type mockRouterRepo struct {
-	routers []*domain.Router
-	err     error
+// --- Routers ---
+func (m *mockControlPlane) ListRouters(_ context.Context) ([]*domain.Router, error) {
+	return m.routers, m.routerErr
 }
-
-func (m *mockRouterRepo) GetAll(_ context.Context) ([]*domain.Router, error) {
-	return m.routers, m.err
-}
-
-func (m *mockRouterRepo) Find(_ context.Context, id string) (*domain.Router, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetRouter(_ context.Context, name string) (*domain.Router, error) {
+	if m.routerErr != nil {
+		return nil, m.routerErr
 	}
 	for _, r := range m.routers {
-		if r.Id == id {
+		if r.Id == name {
 			return r, nil
 		}
 	}
-	return nil, fmt.Errorf("router %q not found", id)
+	return nil, fmt.Errorf("router %q not found", name)
 }
 
-func (m *mockRouterRepo) Save(_ context.Context, _ *domain.Router) error { return m.err }
-func (m *mockRouterRepo) Delete(_ context.Context, _ string) error       { return m.err }
-
-type mockLBRepo struct {
-	lbs []*domain.LoadBalancer
-	err error
+// --- Balancers ---
+func (m *mockControlPlane) ListBalancers(_ context.Context) ([]*domain.LoadBalancer, error) {
+	return m.lbs, m.lbErr
 }
-
-func (m *mockLBRepo) GetAll(_ context.Context) ([]*domain.LoadBalancer, error) {
-	return m.lbs, m.err
-}
-
-func (m *mockLBRepo) Find(_ context.Context, id string) (*domain.LoadBalancer, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetBalancer(_ context.Context, name string) (*domain.LoadBalancer, error) {
+	if m.lbErr != nil {
+		return nil, m.lbErr
 	}
 	for _, lb := range m.lbs {
-		if lb.Id == id {
+		if lb.Id == name {
 			return lb, nil
 		}
 	}
-	return nil, fmt.Errorf("load balancer %q not found", id)
+	return nil, fmt.Errorf("load balancer %q not found", name)
 }
 
-func (m *mockLBRepo) Save(_ context.Context, _ *domain.LoadBalancer) error { return m.err }
-func (m *mockLBRepo) Delete(_ context.Context, _ string) error             { return m.err }
-
-type mockPoolRepo struct {
-	pools map[string]*domain.Pool
-	err   error
-}
-
-func (m *mockPoolRepo) GetAll(_ context.Context) ([]*domain.Pool, error) {
+// --- Pools ---
+func (m *mockControlPlane) ListPools(_ context.Context) ([]*domain.Pool, error) {
 	result := make([]*domain.Pool, 0, len(m.pools))
 	for _, p := range m.pools {
 		result = append(result, p)
 	}
-	return result, m.err
+	return result, m.poolErr
 }
-
-func (m *mockPoolRepo) Find(_ context.Context, id string) (*domain.Pool, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetPool(_ context.Context, name string) (*domain.Pool, error) {
+	if m.poolErr != nil {
+		return nil, m.poolErr
 	}
-	pool, ok := m.pools[id]
+	p, ok := m.pools[name]
 	if !ok {
-		return nil, fmt.Errorf("pool %q not found", id)
+		return nil, fmt.Errorf("pool %q not found", name)
 	}
-	return pool, nil
+	return p, nil
 }
 
-func (m *mockPoolRepo) Save(_ context.Context, _ *domain.Pool) error { return m.err }
-func (m *mockPoolRepo) Delete(_ context.Context, _ string) error     { return m.err }
-
-type mockProxyRepo struct {
-	proxies []*domain.Proxy
-	err     error
+// --- Proxies ---
+func (m *mockControlPlane) ListProxies(_ context.Context) ([]*domain.Proxy, error) {
+	return m.proxies, m.proxyErr
 }
-
-func (m *mockProxyRepo) GetAll(_ context.Context) ([]*domain.Proxy, error) {
-	return m.proxies, m.err
-}
-
-func (m *mockProxyRepo) Find(_ context.Context, id string) (*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	for _, p := range m.proxies {
-		if p.Id == id {
+		if p.Id == name {
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("proxy %q not found", id)
+	return nil, fmt.Errorf("proxy %q not found", name)
 }
-
-func (m *mockProxyRepo) GetByIds(_ context.Context, ids []string) ([]*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetProxiesByIds(_ context.Context, ids []string) ([]*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	idSet := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
@@ -175,10 +146,9 @@ func (m *mockProxyRepo) GetByIds(_ context.Context, ids []string) ([]*domain.Pro
 	}
 	return result, nil
 }
-
-func (m *mockProxyRepo) FindByLabels(_ context.Context, labels map[string]string) ([]*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) FindProxiesByLabels(_ context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	var result []*domain.Proxy
 outer:
@@ -191,33 +161,6 @@ outer:
 		result = append(result, p)
 	}
 	return result, nil
-}
-
-func (m *mockProxyRepo) Save(_ context.Context, proxy *domain.Proxy) error {
-	if m.err != nil {
-		return m.err
-	}
-	for i, p := range m.proxies {
-		if p.Id == proxy.Id {
-			m.proxies[i] = proxy
-			return nil
-		}
-	}
-	m.proxies = append(m.proxies, proxy)
-	return nil
-}
-
-func (m *mockProxyRepo) Delete(_ context.Context, id string) error {
-	if m.err != nil {
-		return m.err
-	}
-	for i, p := range m.proxies {
-		if p.Id == id {
-			m.proxies = append(m.proxies[:i], m.proxies[i+1:]...)
-			return nil
-		}
-	}
-	return fmt.Errorf("proxy %q not found", id)
 }
 
 // --- fixtures ---
@@ -236,21 +179,8 @@ var (
 	}
 )
 
-func newApp(
-	eps []*domain.Entrypoint,
-	flows []*domain.Flow,
-	routers []*domain.Router,
-	lbs []*domain.LoadBalancer,
-	pools map[string]*domain.Pool,
-) *Application {
-	return NewApplication(
-		&mockEntryPointRepo{eps: eps},
-		&mockFlowRepo{flows: flows},
-		&mockRouterRepo{routers: routers},
-		&mockLBRepo{lbs: lbs},
-		&mockPoolRepo{pools: pools},
-		&mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
-	)
+func newApp(cp *mockControlPlane) *Application {
+	return NewApplication(cp)
 }
 
 // --- tests ---
@@ -258,48 +188,41 @@ func newApp(
 func TestApplication_Bootstrap(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
-		epRepo      *mockEntryPointRepo
-		lbRepo      *mockLBRepo
-		poolRepo    *mockPoolRepo
-		proxyRepo   *mockProxyRepo
+		cp          *mockControlPlane
 		expectedErr string
 	}{
 		{
-			name:      "successful bootstrap",
-			epRepo:    &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			lbRepo:    &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:  &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo: &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
+			name: "successful bootstrap",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{testEP},
+				lbs:         []*domain.LoadBalancer{testLB},
+				pools:       map[string]*domain.Pool{"pool-1": testPool},
+				proxies:     []*domain.Proxy{testProxy},
+			},
 		},
 		{
 			name:        "entrypoint repo error stops bootstrap",
-			epRepo:      &mockEntryPointRepo{err: errors.New("db down")},
-			lbRepo:      &mockLBRepo{},
-			poolRepo:    &mockPoolRepo{},
-			proxyRepo:   &mockProxyRepo{},
+			cp:          &mockControlPlane{epErr: errors.New("db down")},
 			expectedErr: "cache bootstrap failed: db down",
 		},
 		{
 			name: "invalid entrypoint fails validation",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{
+			cp: &mockControlPlane{entrypoints: []*domain.Entrypoint{
 				{Id: "ep-bad", Protocol: "ftp", Host: "0.0.0.0", Port: 8080},
 			}},
-			lbRepo:      &mockLBRepo{},
-			poolRepo:    &mockPoolRepo{},
-			proxyRepo:   &mockProxyRepo{},
 			expectedErr: `entrypoint "ep-bad": invalid protocol: "ftp"`,
 		},
 		{
-			name:        "balancer service bootstrap error propagates",
-			epRepo:      &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			lbRepo:      &mockLBRepo{err: errors.New("lb error")},
-			poolRepo:    &mockPoolRepo{},
-			proxyRepo:   &mockProxyRepo{},
+			name: "balancer service bootstrap error propagates",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{testEP},
+				lbErr:       errors.New("lb error"),
+			},
 			expectedErr: "loading balancers: lb error",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.epRepo, &mockFlowRepo{}, &mockRouterRepo{}, tt.lbRepo, tt.poolRepo, tt.proxyRepo)
+			app := NewApplication(tt.cp)
 			err := app.Bootstrap(context.Background())
 
 			if tt.expectedErr != "" {
@@ -337,10 +260,7 @@ func TestApplication_ValidateAll(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(
-				&mockEntryPointRepo{eps: tt.eps},
-				&mockFlowRepo{}, &mockRouterRepo{}, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
-			)
+			app := NewApplication(&mockControlPlane{entrypoints: tt.eps})
 			require.NoError(t, app.warmupCache(context.Background()))
 			err := app.validateAll(context.Background())
 
@@ -355,7 +275,7 @@ func TestApplication_ValidateAll(t *testing.T) {
 
 func TestApplication_LoadEntryPoints(t *testing.T) {
 	t.Run("returns all entrypoints", func(t *testing.T) {
-		app := newApp([]*domain.Entrypoint{testEP}, nil, nil, nil, nil)
+		app := newApp(&mockControlPlane{entrypoints: []*domain.Entrypoint{testEP}})
 		require.NoError(t, app.warmupCache(context.Background()))
 		eps, err := app.EntryPoints(context.Background())
 		require.NoError(t, err)
@@ -383,43 +303,41 @@ func TestApplication_RouteRequest(t *testing.T) {
 
 	for _, tt := range []struct {
 		name           string
-		routerRepo     *mockRouterRepo
+		routers        []*domain.Router
 		host           string
 		expectedTarget string
 		expectedErr    string
 	}{
 		{
 			name:           "routes to specific target",
-			routerRepo:     &mockRouterRepo{routers: []*domain.Router{routerWithRules}},
+			routers:        []*domain.Router{routerWithRules},
 			host:           "youtube.com",
 			expectedTarget: "lb-video",
 		},
 		{
 			name:           "falls back to catch_all",
-			routerRepo:     &mockRouterRepo{routers: []*domain.Router{routerWithRules}},
+			routers:        []*domain.Router{routerWithRules},
 			host:           "other.com",
 			expectedTarget: "lb-default",
 		},
 		{
 			name:        "router not found",
-			routerRepo:  &mockRouterRepo{routers: []*domain.Router{}},
+			routers:     []*domain.Router{},
 			expectedErr: `finding router "router-1":`,
 		},
 		{
 			name: "no matching rule",
-			routerRepo: &mockRouterRepo{routers: []*domain.Router{
+			routers: []*domain.Router{
 				{Id: "router-1", Rules: []*domain.RouterRule{
 					{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeHost, Value: "only.com"}, Target: "lb-x"},
 				}},
-			}},
+			},
 			host:        "other.com",
 			expectedErr: `router "router-1": no matching rule found`,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(
-				&mockEntryPointRepo{}, &mockFlowRepo{}, tt.routerRepo, &mockLBRepo{}, &mockPoolRepo{}, &mockProxyRepo{},
-			)
+			app := NewApplication(&mockControlPlane{routers: tt.routers})
 			require.NoError(t, app.warmupCache(context.Background()))
 
 			req, _ := http.NewRequest("GET", "http://"+tt.host+"/", nil)
@@ -436,8 +354,14 @@ func TestApplication_RouteRequest(t *testing.T) {
 }
 
 func TestApplication_Release(t *testing.T) {
+	cpWithLB := &mockControlPlane{
+		lbs:     []*domain.LoadBalancer{testLB},
+		pools:   map[string]*domain.Pool{"pool-1": testPool},
+		proxies: []*domain.Proxy{testProxy},
+	}
+
 	t.Run("successful release", func(t *testing.T) {
-		app := newApp(nil, nil, nil, []*domain.LoadBalancer{testLB}, map[string]*domain.Pool{"pool-1": testPool})
+		app := newApp(cpWithLB)
 		require.NoError(t, app.Bootstrap(context.Background()))
 
 		err := app.Release(context.Background(), "lb-1", domain.BalancerResult{ProxyId: "p1", Bytes: 1024})
@@ -445,7 +369,7 @@ func TestApplication_Release(t *testing.T) {
 	})
 
 	t.Run("balancer not found", func(t *testing.T) {
-		app := newApp(nil, nil, nil, []*domain.LoadBalancer{testLB}, map[string]*domain.Pool{"pool-1": testPool})
+		app := newApp(cpWithLB)
 		require.NoError(t, app.Bootstrap(context.Background()))
 
 		err := app.Release(context.Background(), "non-existing", domain.BalancerResult{})
@@ -453,7 +377,7 @@ func TestApplication_Release(t *testing.T) {
 	})
 
 	t.Run("release without bootstrap", func(t *testing.T) {
-		app := newApp(nil, nil, nil, []*domain.LoadBalancer{testLB}, map[string]*domain.Pool{"pool-1": testPool})
+		app := newApp(cpWithLB)
 		// Bootstrap çağrılmadı — registry boş
 
 		err := app.Release(context.Background(), "lb-1", domain.BalancerResult{})
@@ -464,102 +388,94 @@ func TestApplication_Release(t *testing.T) {
 func TestApplication_ExecuteFlow(t *testing.T) {
 	for _, tt := range []struct {
 		name          string
-		epRepo        *mockEntryPointRepo
-		flowRepo      *mockFlowRepo
-		routerRepo    *mockRouterRepo
-		lbRepo        *mockLBRepo
-		poolRepo      *mockPoolRepo
-		proxyRepo     *mockProxyRepo
+		cp            *mockControlPlane
 		entrypointId  string
 		expectedProxy *domain.Proxy
 		expectedLBId  string
 		expectedErr   string
 	}{
 		{
-			name:          "flow with direct balancer",
-			epRepo:        &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			flowRepo:      &mockFlowRepo{flows: []*domain.Flow{testFlow}},
-			routerRepo:    &mockRouterRepo{},
-			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
+			name: "flow with direct balancer",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{testEP},
+				flows:       []*domain.Flow{testFlow},
+				lbs:         []*domain.LoadBalancer{testLB},
+				pools:       map[string]*domain.Pool{"pool-1": testPool},
+				proxies:     []*domain.Proxy{testProxy},
+			},
 			entrypointId:  "ep-1",
 			expectedProxy: testProxy,
 			expectedLBId:  "lb-1",
 		},
 		{
-			name:   "flow with router",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, FlowId: "flow-router"}}},
-			flowRepo: &mockFlowRepo{flows: []*domain.Flow{
-				{Id: "flow-router", RouterId: "router-1"},
-			}},
-			routerRepo: &mockRouterRepo{routers: []*domain.Router{
-				{Id: "router-1", Rules: []*domain.RouterRule{
-					{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb-1"},
-				}},
-			}},
-			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
+			name: "flow with router",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{
+					{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, FlowId: "flow-router"},
+				},
+				flows: []*domain.Flow{
+					{Id: "flow-router", RouterId: "router-1"},
+				},
+				routers: []*domain.Router{
+					{Id: "router-1", Rules: []*domain.RouterRule{
+						{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb-1"},
+					}},
+				},
+				lbs:     []*domain.LoadBalancer{testLB},
+				pools:   map[string]*domain.Pool{"pool-1": testPool},
+				proxies: []*domain.Proxy{testProxy},
+			},
 			entrypointId:  "ep-2",
 			expectedProxy: testProxy,
 			expectedLBId:  "lb-1",
 		},
 		{
 			name:          "entrypoint not found",
-			epRepo:        &mockEntryPointRepo{eps: []*domain.Entrypoint{}},
-			flowRepo:      &mockFlowRepo{},
-			routerRepo:    &mockRouterRepo{},
-			lbRepo:        &mockLBRepo{},
-			poolRepo:      &mockPoolRepo{},
-			proxyRepo:     &mockProxyRepo{},
+			cp:            &mockControlPlane{},
 			entrypointId:  "missing",
 			expectedProxy: nil,
 			expectedLBId:  "",
 			expectedErr:   "entrypoint:",
 		},
 		{
-			name:          "flow not found",
-			epRepo:        &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			flowRepo:      &mockFlowRepo{flows: []*domain.Flow{}},
-			routerRepo:    &mockRouterRepo{},
-			lbRepo:        &mockLBRepo{},
-			poolRepo:      &mockPoolRepo{},
-			proxyRepo:     &mockProxyRepo{},
+			name: "flow not found",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{testEP},
+			},
 			entrypointId:  "ep-1",
 			expectedProxy: nil,
 			expectedLBId:  "",
 			expectedErr:   "flow:",
 		},
 		{
-			name:   "flow has neither router nor balancer",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{testEP}},
-			flowRepo: &mockFlowRepo{flows: []*domain.Flow{
-				{Id: "flow-1", RouterId: "", BalancerId: ""},
-			}},
-			routerRepo:    &mockRouterRepo{},
-			lbRepo:        &mockLBRepo{},
-			poolRepo:      &mockPoolRepo{},
-			proxyRepo:     &mockProxyRepo{},
+			name: "flow has neither router nor balancer",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{testEP},
+				flows:       []*domain.Flow{{Id: "flow-1", RouterId: "", BalancerId: ""}},
+			},
 			entrypointId:  "ep-1",
 			expectedProxy: nil,
 			expectedLBId:  "",
 			expectedErr:   `no router or balancer for flow: "flow-1"`,
 		},
 		{
-			name:   "router returns no matching rule",
-			epRepo: &mockEntryPointRepo{eps: []*domain.Entrypoint{{Id: "ep-3", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9091, FlowId: "flow-r"}}},
-			flowRepo: &mockFlowRepo{flows: []*domain.Flow{
-				{Id: "flow-r", RouterId: "router-1"},
-			}},
-			routerRepo: &mockRouterRepo{routers: []*domain.Router{
-				{Id: "router-1", Rules: []*domain.RouterRule{
-					{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeHost, Value: "only.com"}, Target: "lb-1"},
-				}},
-			}},
-			lbRepo:        &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:      &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo:     &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
+			name: "router returns no matching rule",
+			cp: &mockControlPlane{
+				entrypoints: []*domain.Entrypoint{
+					{Id: "ep-3", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9091, FlowId: "flow-r"},
+				},
+				flows: []*domain.Flow{
+					{Id: "flow-r", RouterId: "router-1"},
+				},
+				routers: []*domain.Router{
+					{Id: "router-1", Rules: []*domain.RouterRule{
+						{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeHost, Value: "only.com"}, Target: "lb-1"},
+					}},
+				},
+				lbs:     []*domain.LoadBalancer{testLB},
+				pools:   map[string]*domain.Pool{"pool-1": testPool},
+				proxies: []*domain.Proxy{testProxy},
+			},
 			entrypointId:  "ep-3",
 			expectedProxy: nil,
 			expectedLBId:  "",
@@ -567,7 +483,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.epRepo, tt.flowRepo, tt.routerRepo, tt.lbRepo, tt.poolRepo, tt.proxyRepo)
+			app := NewApplication(tt.cp)
 			require.NoError(t, app.Bootstrap(context.Background()))
 
 			req, _ := http.NewRequest("GET", "http://example.com/", nil)

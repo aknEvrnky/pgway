@@ -76,6 +76,50 @@ func (s *ControlPlaneServer) DeleteProxy(ctx context.Context, req *controlplanev
 	return &controlplanev1.DeleteProxyResponse{}, nil
 }
 
+func (s *ControlPlaneServer) GetProxiesByIds(ctx context.Context, req *controlplanev1.GetProxiesByIdsRequest) (*controlplanev1.GetProxiesByIdsResponse, error) {
+	if len(req.Ids) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "ids are required")
+	}
+
+	proxies, err := s.cp.GetProxiesByIds(ctx, req.Ids)
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get proxies by ids: %q %v", req.Ids, err)
+	}
+
+	var proxyPbs = make([]*controlplanev1.Proxy, 0, len(proxies))
+
+	for _, p := range proxies {
+		proxyPbs = append(proxyPbs, proxyToProto(p))
+	}
+
+	return &controlplanev1.GetProxiesByIdsResponse{
+		Proxies: proxyPbs,
+	}, nil
+}
+
+func (s *ControlPlaneServer) FindProxiesByLabels(ctx context.Context, req *controlplanev1.FindProxiesByLabelsRequest) (*controlplanev1.FindProxiesByLabelsResponse, error) {
+	if len(req.Labels) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "labels are required")
+	}
+
+	proxies, err := s.cp.FindProxiesByLabels(ctx, req.Labels)
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "find proxies by labels: %q %v", req.Labels, err)
+	}
+
+	var proxyPbs = make([]*controlplanev1.Proxy, 0, len(proxies))
+
+	for _, p := range proxies {
+		proxyPbs = append(proxyPbs, proxyToProto(p))
+	}
+
+	return &controlplanev1.FindProxiesByLabelsResponse{
+		Proxies: proxyPbs,
+	}, nil
+}
+
 func proxySpecFromProto(pb *controlplanev1.ProxySpecV1) proxyv1.ProxySpecV1 {
 	if pb == nil {
 		return proxyv1.ProxySpecV1{}

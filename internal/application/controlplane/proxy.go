@@ -79,6 +79,26 @@ func (s *Service) DeleteProxy(ctx context.Context, name string) error {
 	return nil
 }
 
+func (s *Service) GetProxiesByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error) {
+	proxies, err := s.proxyRepo.GetByIds(ctx, ids)
+
+	if err != nil {
+		return nil, fmt.Errorf("get proxies by ids: %q %w", ids, err)
+	}
+
+	return proxies, nil
+}
+
+func (s *Service) FindProxiesByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	proxies, err := s.proxyRepo.FindByLabels(ctx, labels)
+
+	if err != nil {
+		return nil, fmt.Errorf("find proxies by labels: %q %w", labels, err)
+	}
+
+	return proxies, nil
+}
+
 func proxyFromSpecV1(meta schema.Metadata, spec proxyv1.ProxySpecV1) (*domain.Proxy, error) {
 	if spec.URL != "" {
 		proxy, err := domain.NewProxyFromURL(spec.URL)

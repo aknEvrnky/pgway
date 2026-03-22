@@ -11,78 +11,71 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockLBRepo struct {
-	lbs []*domain.LoadBalancer
-	err error
+// mockControlPlane implements ports.ControlPlaneReader for balancer tests.
+// Only lb/pool/proxy fields are relevant; other methods are no-ops.
+type mockControlPlane struct {
+	proxies []*domain.Proxy
+	pools   map[string]*domain.Pool
+	lbs     []*domain.LoadBalancer
+
+	lbErr    error
+	poolErr  error
+	proxyErr error
 }
 
-func (m *mockLBRepo) GetAll(_ context.Context) ([]*domain.LoadBalancer, error) {
-	return m.lbs, m.err
+// --- Balancers ---
+func (m *mockControlPlane) ListBalancers(_ context.Context) ([]*domain.LoadBalancer, error) {
+	return m.lbs, m.lbErr
 }
-
-func (m *mockLBRepo) Find(_ context.Context, id string) (*domain.LoadBalancer, error) {
+func (m *mockControlPlane) GetBalancer(_ context.Context, name string) (*domain.LoadBalancer, error) {
+	if m.lbErr != nil {
+		return nil, m.lbErr
+	}
 	for _, lb := range m.lbs {
-		if lb.Id == id {
+		if lb.Id == name {
 			return lb, nil
 		}
 	}
-	return nil, fmt.Errorf("load balancer %q not found", id)
+	return nil, fmt.Errorf("load balancer %q not found", name)
 }
 
-func (m *mockLBRepo) Save(_ context.Context, _ *domain.LoadBalancer) error { return m.err }
-func (m *mockLBRepo) Delete(_ context.Context, _ string) error             { return m.err }
-
-type mockPoolRepo struct {
-	pools map[string]*domain.Pool
-	err   error
-}
-
-func (m *mockPoolRepo) GetAll(_ context.Context) ([]*domain.Pool, error) {
+// --- Pools ---
+func (m *mockControlPlane) ListPools(_ context.Context) ([]*domain.Pool, error) {
 	result := make([]*domain.Pool, 0, len(m.pools))
 	for _, p := range m.pools {
 		result = append(result, p)
 	}
-	return result, m.err
+	return result, m.poolErr
 }
-
-func (m *mockPoolRepo) Find(_ context.Context, id string) (*domain.Pool, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetPool(_ context.Context, name string) (*domain.Pool, error) {
+	if m.poolErr != nil {
+		return nil, m.poolErr
 	}
-	pool, ok := m.pools[id]
+	p, ok := m.pools[name]
 	if !ok {
-		return nil, fmt.Errorf("pool %q not found", id)
+		return nil, fmt.Errorf("pool %q not found", name)
 	}
-	return pool, nil
+	return p, nil
 }
 
-func (m *mockPoolRepo) Save(_ context.Context, _ *domain.Pool) error { return m.err }
-func (m *mockPoolRepo) Delete(_ context.Context, _ string) error     { return m.err }
-
-type mockProxyRepo struct {
-	proxies []*domain.Proxy
-	err     error
+// --- Proxies ---
+func (m *mockControlPlane) ListProxies(_ context.Context) ([]*domain.Proxy, error) {
+	return m.proxies, m.proxyErr
 }
-
-func (m *mockProxyRepo) GetAll(_ context.Context) ([]*domain.Proxy, error) {
-	return m.proxies, m.err
-}
-
-func (m *mockProxyRepo) Find(_ context.Context, id string) (*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	for _, p := range m.proxies {
-		if p.Id == id {
+		if p.Id == name {
 			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("proxy %q not found", id)
+	return nil, fmt.Errorf("proxy %q not found", name)
 }
-
-func (m *mockProxyRepo) GetByIds(_ context.Context, ids []string) ([]*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) GetProxiesByIds(_ context.Context, ids []string) ([]*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	idSet := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
@@ -96,10 +89,9 @@ func (m *mockProxyRepo) GetByIds(_ context.Context, ids []string) ([]*domain.Pro
 	}
 	return result, nil
 }
-
-func (m *mockProxyRepo) FindByLabels(_ context.Context, labels map[string]string) ([]*domain.Proxy, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockControlPlane) FindProxiesByLabels(_ context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	if m.proxyErr != nil {
+		return nil, m.proxyErr
 	}
 	var result []*domain.Proxy
 outer:
@@ -114,8 +106,23 @@ outer:
 	return result, nil
 }
 
-func (m *mockProxyRepo) Save(_ context.Context, _ *domain.Proxy) error { return m.err }
-func (m *mockProxyRepo) Delete(_ context.Context, _ string) error      { return m.err }
+// --- Stubs (not used by balancer.Service) ---
+func (m *mockControlPlane) ListRouters(_ context.Context) ([]*domain.Router, error) { return nil, nil }
+func (m *mockControlPlane) GetRouter(_ context.Context, _ string) (*domain.Router, error) {
+	return nil, nil
+}
+func (m *mockControlPlane) ListFlows(_ context.Context) ([]*domain.Flow, error) { return nil, nil }
+func (m *mockControlPlane) GetFlow(_ context.Context, _ string) (*domain.Flow, error) {
+	return nil, nil
+}
+func (m *mockControlPlane) ListEntrypoints(_ context.Context) ([]*domain.Entrypoint, error) {
+	return nil, nil
+}
+func (m *mockControlPlane) GetEntrypoint(_ context.Context, _ string) (*domain.Entrypoint, error) {
+	return nil, nil
+}
+
+// --- fixtures ---
 
 var (
 	testProxy = &domain.Proxy{Id: "p1", Protocol: "http", Host: "127.0.0.1", Port: 8080}
@@ -126,41 +133,41 @@ var (
 func TestService_Bootstrap(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
-		lbRepo      *mockLBRepo
-		poolRepo    *mockPoolRepo
-		proxyRepo   *mockProxyRepo
+		cp          *mockControlPlane
 		expectedErr string
 	}{
 		{
-			name:      "successful bootstrap",
-			lbRepo:    &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:  &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo: &mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
+			name: "successful bootstrap",
+			cp: &mockControlPlane{
+				lbs:     []*domain.LoadBalancer{testLB},
+				pools:   map[string]*domain.Pool{"pool-1": testPool},
+				proxies: []*domain.Proxy{testProxy},
+			},
 		},
 		{
 			name:        "lbRepo error",
-			lbRepo:      &mockLBRepo{err: errors.New("db error")},
-			poolRepo:    &mockPoolRepo{},
-			proxyRepo:   &mockProxyRepo{},
+			cp:          &mockControlPlane{lbErr: errors.New("db error")},
 			expectedErr: "loading balancers: db error",
 		},
 		{
-			name:        "poolRepo error",
-			lbRepo:      &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:    &mockPoolRepo{err: errors.New("db error")},
-			proxyRepo:   &mockProxyRepo{},
+			name: "poolRepo error",
+			cp: &mockControlPlane{
+				lbs:     []*domain.LoadBalancer{testLB},
+				poolErr: errors.New("db error"),
+			},
 			expectedErr: "loading pool: db error",
 		},
 		{
-			name:        "pool resolves to empty proxy list",
-			lbRepo:      &mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-			poolRepo:    &mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-			proxyRepo:   &mockProxyRepo{},
+			name: "pool resolves to empty proxy list",
+			cp: &mockControlPlane{
+				lbs:   []*domain.LoadBalancer{testLB},
+				pools: map[string]*domain.Pool{"pool-1": testPool},
+			},
 			expectedErr: `balancer "lb-1": no proxy`,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.lbRepo, tt.poolRepo, tt.proxyRepo)
+			svc := NewService(tt.cp)
 			err := svc.Bootstrap(context.Background())
 
 			if tt.expectedErr != "" {
@@ -170,7 +177,6 @@ func TestService_Bootstrap(t *testing.T) {
 
 			require.NoError(t, err)
 
-			// check registry after bootstrap
 			instance, err := svc.Get(testLB.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, instance)
@@ -179,11 +185,11 @@ func TestService_Bootstrap(t *testing.T) {
 }
 
 func TestService_Get(t *testing.T) {
-	svc := NewService(
-		&mockLBRepo{lbs: []*domain.LoadBalancer{testLB}},
-		&mockPoolRepo{pools: map[string]*domain.Pool{"pool-1": testPool}},
-		&mockProxyRepo{proxies: []*domain.Proxy{testProxy}},
-	)
+	svc := NewService(&mockControlPlane{
+		lbs:     []*domain.LoadBalancer{testLB},
+		pools:   map[string]*domain.Pool{"pool-1": testPool},
+		proxies: []*domain.Proxy{testProxy},
+	})
 	require.NoError(t, svc.Bootstrap(context.Background()))
 
 	t.Run("existing id", func(t *testing.T) {

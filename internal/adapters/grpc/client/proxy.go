@@ -56,6 +56,38 @@ func (c *Client) DeleteProxy(ctx context.Context, name string) error {
 	return err
 }
 
+func (c *Client) GetProxiesByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error) {
+	req := &controlplanev1.GetProxiesByIdsRequest{Ids: ids}
+
+	resp, err := c.proxy.GetProxiesByIds(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make([]*domain.Proxy, 0, len(resp.Proxies))
+	for _, p := range resp.Proxies {
+		results = append(results, proxyFromProto(p))
+	}
+
+	return results, nil
+}
+
+func (c *Client) FindProxiesByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error) {
+	req := &controlplanev1.FindProxiesByLabelsRequest{Labels: labels}
+
+	resp, err := c.proxy.FindProxiesByLabels(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make([]*domain.Proxy, 0, len(resp.Proxies))
+	for _, p := range resp.Proxies {
+		results = append(results, proxyFromProto(p))
+	}
+
+	return results, nil
+}
+
 func proxySpecToProto(spec proxyv1.ProxySpecV1) *controlplanev1.ProxySpecV1 {
 	pb := &controlplanev1.ProxySpecV1{
 		Url:      spec.URL,

@@ -11,28 +11,18 @@ import (
 )
 
 type Application struct {
-	entryPointRepo ports.EntryPointRepositoryPort
-	flowRepo       ports.FlowRepositoryPort
-	routerRepo     ports.RouterRepositoryPort
-
 	cache           *ResourceCache
+	controlPlane    ports.ControlPlaneReader
 	balancerService *balancer.Service
 }
 
 func NewApplication(
-	epRepo ports.EntryPointRepositoryPort,
-	fRepo ports.FlowRepositoryPort,
-	rRepo ports.RouterRepositoryPort,
-	lbRepo ports.LoadBalancerRepositoryPort,
-	pRepo ports.PoolRepositoryPort,
-	prRepo ports.ProxyRepositoryPort,
+	cp ports.ControlPlaneReader,
 ) *Application {
 	return &Application{
-		entryPointRepo:  epRepo,
-		flowRepo:        fRepo,
-		routerRepo:      rRepo,
 		cache:           NewResourceCache(),
-		balancerService: balancer.NewService(lbRepo, pRepo, prRepo),
+		balancerService: balancer.NewService(cp),
+		controlPlane:    cp,
 	}
 }
 
@@ -64,7 +54,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	var routers []*domain.Router
 
 	g.Go(func() error {
-		res, err := a.entryPointRepo.GetAll(gctx)
+		res, err := a.controlPlane.ListEntrypoints(gctx)
 		if err != nil {
 			return err
 		}
@@ -74,7 +64,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		res, err := a.flowRepo.GetAll(gctx)
+		res, err := a.controlPlane.ListFlows(gctx)
 		if err != nil {
 			return err
 		}
@@ -84,7 +74,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		res, err := a.routerRepo.GetAll(gctx)
+		res, err := a.controlPlane.ListRouters(gctx)
 		if err != nil {
 			return err
 		}

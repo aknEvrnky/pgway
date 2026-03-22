@@ -11,6 +11,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/badger"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -37,21 +38,16 @@ func main() {
 
 	defer db.Close()
 
-	entryPointRepository := badgerrepo.NewEntrypointRepository(db)
-	flowRepository := badgerrepo.NewFlowRepository(db)
-	routerRepository := badgerrepo.NewRouterRepository(db)
-	lbRepository := badgerrepo.NewBalancerRepository(db)
-	poolRepository := badgerrepo.NewPoolRepository(db)
-	proxyRepository := badgerrepo.NewProxyRepository(db)
-
-	app := api.NewApplication(
-		entryPointRepository,
-		flowRepository,
-		routerRepository,
-		lbRepository,
-		poolRepository,
-		proxyRepository,
+	controlPlaneReader := controlplane.NewService(
+		badgerrepo.NewProxyRepository(db),
+		badgerrepo.NewPoolRepository(db),
+		badgerrepo.NewBalancerRepository(db),
+		badgerrepo.NewRouterRepository(db),
+		badgerrepo.NewFlowRepository(db),
+		badgerrepo.NewEntrypointRepository(db),
 	)
+
+	app := api.NewApplication(controlPlaneReader)
 	ctx := context.Background()
 
 	err = app.Bootstrap(ctx)

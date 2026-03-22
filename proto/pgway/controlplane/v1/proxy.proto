@@ -55,9 +55,27 @@ message DeleteProxyRequest {
 
 message DeleteProxyResponse {}
 
+message GetProxiesByIdsRequest {
+  repeated string ids = 1;
+}
+
+message GetProxiesByIdsResponse {
+  repeated Proxy proxies = 1;
+}
+
+message FindProxiesByLabelsRequest {
+  map<string, string> labels = 1;
+}
+
+message FindProxiesByLabelsResponse {
+  repeated Proxy proxies = 1;
+}
+
 service ProxyService {
   rpc ApplyProxyV1(ApplyProxyV1Request) returns (ApplyProxyV1Response);
   rpc GetProxy(GetProxyRequest) returns (GetProxyResponse);
   rpc ListProxies(ListProxiesRequest) returns (ListProxiesResponse);
   rpc DeleteProxy(DeleteProxyRequest) returns (DeleteProxyResponse);
+  rpc GetProxiesByIds(GetProxiesByIdsRequest) returns (GetProxiesByIdsResponse);
+  rpc FindProxiesByLabels(FindProxiesByLabelsRequest) returns (FindProxiesByLabelsResponse);
 }

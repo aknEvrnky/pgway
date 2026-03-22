@@ -107,7 +107,7 @@ func (x *Flow) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use FlowId.ProtoReflect.Descriptor instead.
+// Deprecated: Use Flow.ProtoReflect.Descriptor instead.
 func (*Flow) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_flow_proto_rawDescGZIP(), []int{1}
 }
@@ -529,7 +529,7 @@ func file_pgway_controlplane_v1_flow_proto_rawDescGZIP() []byte {
 var file_pgway_controlplane_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_pgway_controlplane_v1_flow_proto_goTypes = []any{
 	(*FlowSpecV1)(nil),          // 0: pgway.controlplane.v1.FlowSpecV1
-	(*Flow)(nil),                // 1: pgway.controlplane.v1.FlowId
+	(*Flow)(nil),                // 1: pgway.controlplane.v1.Flow
 	(*ApplyFlowV1Request)(nil),  // 2: pgway.controlplane.v1.ApplyFlowV1Request
 	(*ApplyFlowV1Response)(nil), // 3: pgway.controlplane.v1.ApplyFlowV1Response
 	(*GetFlowRequest)(nil),      // 4: pgway.controlplane.v1.GetFlowRequest
@@ -543,9 +543,9 @@ var file_pgway_controlplane_v1_flow_proto_goTypes = []any{
 var file_pgway_controlplane_v1_flow_proto_depIdxs = []int32{
 	10, // 0: pgway.controlplane.v1.ApplyFlowV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
 	0,  // 1: pgway.controlplane.v1.ApplyFlowV1Request.spec:type_name -> pgway.controlplane.v1.FlowSpecV1
-	1,  // 2: pgway.controlplane.v1.ApplyFlowV1Response.flow:type_name -> pgway.controlplane.v1.FlowId
-	1,  // 3: pgway.controlplane.v1.GetFlowResponse.flow:type_name -> pgway.controlplane.v1.FlowId
-	1,  // 4: pgway.controlplane.v1.ListFlowsResponse.flows:type_name -> pgway.controlplane.v1.FlowId
+	1,  // 2: pgway.controlplane.v1.ApplyFlowV1Response.flow:type_name -> pgway.controlplane.v1.Flow
+	1,  // 3: pgway.controlplane.v1.GetFlowResponse.flow:type_name -> pgway.controlplane.v1.Flow
+	1,  // 4: pgway.controlplane.v1.ListFlowsResponse.flows:type_name -> pgway.controlplane.v1.Flow
 	2,  // 5: pgway.controlplane.v1.FlowService.ApplyFlowV1:input_type -> pgway.controlplane.v1.ApplyFlowV1Request
 	4,  // 6: pgway.controlplane.v1.FlowService.GetFlow:input_type -> pgway.controlplane.v1.GetFlowRequest
 	6,  // 7: pgway.controlplane.v1.FlowService.ListFlows:input_type -> pgway.controlplane.v1.ListFlowsRequest
