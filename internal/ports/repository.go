@@ -19,6 +19,8 @@ type FlowRepositoryPort interface {
 type RouterRepositoryPort interface {
 	GetAll(ctx context.Context) ([]*domain.Router, error)
 	Find(ctx context.Context, id string) (*domain.Router, error)
+	Save(ctx context.Context, router *domain.Router) error
+	Delete(ctx context.Context, id string) error
 }
 
 type LoadBalancerRepositoryPort interface {

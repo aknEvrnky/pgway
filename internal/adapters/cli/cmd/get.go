@@ -18,6 +18,7 @@ func newGetCmd(cp ports.ControlPlane) *cobra.Command {
 	cmd.AddCommand(newGetProxyCmd(cp))
 	cmd.AddCommand(newGetPoolCmd(cp))
 	cmd.AddCommand(newGetBalancerCmd(cp))
+	cmd.AddCommand(newGetRouterCmd(cp))
 
 	return cmd
 }
@@ -116,6 +117,39 @@ func newGetBalancerCmd(cp ports.ControlPlane) *cobra.Command {
 
 			if len(balancers) == 0 {
 				fmt.Println("no load balancer found")
+				return nil
+			}
+
+			return enc.Encode(balancers)
+		},
+	}
+}
+
+func newGetRouterCmd(cp ports.ControlPlane) *cobra.Command {
+	return &cobra.Command{
+		Use:     "router [name]",
+		Short:   "Get router or list all routers",
+		Example: "  pgctl get router\n  pgctl get router my-router",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+
+			if len(args) > 0 {
+				pool, err := cp.GetRouter(ctx, args[0])
+				if err != nil {
+					return err
+				}
+				return enc.Encode(pool)
+			}
+
+			balancers, err := cp.ListRouters(ctx)
+			if err != nil {
+				return err
+			}
+
+			if len(balancers) == 0 {
+				fmt.Println("no router found")
 				return nil
 			}
 

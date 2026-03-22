@@ -9,6 +9,7 @@ import (
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
+	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,6 +29,8 @@ func (d *Dispatcher) Apply(ctx context.Context, raw schema.RawResource) error {
 		return d.applyPoolV1(ctx, raw)
 	case "LoadBalancer/v1":
 		return d.applyBalancerV1(ctx, raw)
+	case "Router/v1":
+		return d.applyRouterV1(ctx, raw)
 	default:
 		return fmt.Errorf("unknown resource: %s", raw.Key())
 	}
@@ -84,5 +87,20 @@ func (d *Dispatcher) applyBalancerV1(ctx context.Context, raw schema.RawResource
 	}
 
 	fmt.Printf("balancer/%s applied\n", pool.Id)
+	return nil
+}
+
+func (d *Dispatcher) applyRouterV1(ctx context.Context, raw schema.RawResource) error {
+	var spec routerv1.RouterSpecV1
+	if err := yaml.Unmarshal(raw.SpecRaw, &spec); err != nil {
+		return fmt.Errorf("decode router spec: %w", err)
+	}
+
+	pool, err := d.controlPlane.ApplyRouterV1(ctx, raw.Metadata, spec)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("router/%s applied\n", pool.Id)
 	return nil
 }

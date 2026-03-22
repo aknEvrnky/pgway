@@ -13,7 +13,6 @@ import (
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	epRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/entrypoint"
 	flowRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/flow"
-	routerRepo "github.com/aknEvrnky/pgway/internal/adapters/repository/config/router"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/badger"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -46,21 +45,16 @@ func main() {
 		zap.L().Fatal("init entrypoints", zap.Error(err))
 	}
 
-	routerRepository, err := routerRepo.NewConfigRepository(cfg)
-
-	if err != nil {
-		zap.L().Fatal("init routers", zap.Error(err))
-	}
-
 	flowRepository, err := flowRepo.NewConfigRepository(cfg)
 
 	if err != nil {
 		zap.L().Fatal("init flows", zap.Error(err))
 	}
 
-	proxyRepo := badgerrepo.NewProxyRepository(db)
-	poolRepository := badgerrepo.NewPoolRepository(db)
+	routerRepository := badgerrepo.NewRouterRepository(db)
 	lbRepository := badgerrepo.NewBalancerRepository(db)
+	poolRepository := badgerrepo.NewPoolRepository(db)
+	proxyRepository := badgerrepo.NewProxyRepository(db)
 
 	app := api.NewApplication(
 		entryPointRepository,
@@ -68,7 +62,7 @@ func main() {
 		routerRepository,
 		lbRepository,
 		poolRepository,
-		proxyRepo,
+		proxyRepository,
 	)
 	ctx := context.Background()
 

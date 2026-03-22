@@ -5,16 +5,18 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
-	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 
+	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
+	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
 )
 
 type ControlPlane interface {
 	ProxyControlPlane
 	PoolControlPlane
 	BalancerControlPlane
+	RouterControlPlane
 }
 
 type ProxyControlPlane interface {
@@ -36,4 +38,11 @@ type BalancerControlPlane interface {
 	GetBalancer(ctx context.Context, name string) (*domain.LoadBalancer, error)
 	ListBalancers(ctx context.Context) ([]*domain.LoadBalancer, error)
 	DeleteBalancer(ctx context.Context, name string) error
+}
+
+type RouterControlPlane interface {
+	ApplyRouterV1(ctx context.Context, meta schema.Metadata, spec routerv1.RouterSpecV1) (*domain.Router, error)
+	GetRouter(ctx context.Context, name string) (*domain.Router, error)
+	ListRouters(ctx context.Context) ([]*domain.Router, error)
+	DeleteRouter(ctx context.Context, name string) error
 }
