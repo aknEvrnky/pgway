@@ -7,6 +7,7 @@ import (
 type Config struct {
 	BadgerPath     string `mapstructure:"badger_path"`
 	GrpcListenAddr string `mapstructure:"grpc_listen_addr"`
+	RestListenAddr string `mapstructure:"rest_listen_addr"`
 }
 
 var c *Config
@@ -23,6 +24,7 @@ func Load(path string) error {
 
 	viper.SetDefault("badger_path", "/var/pgway/lib")
 	viper.SetDefault("grpc_listen_addr", "9090")
+	viper.SetDefault("rest_listen_addr", ":8081")
 
 	if err := viper.ReadInConfig(); err != nil {
 		return err

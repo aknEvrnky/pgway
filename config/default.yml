@@ -1,2 +1,3 @@
 badger_path: /var/pgway/lib
 grpc_listen_addr: ":9090"
+rest_listen_addr: ":8081"

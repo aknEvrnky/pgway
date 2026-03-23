@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
+	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
@@ -59,6 +62,9 @@ func main() {
 		zap.L().Fatal("listen", zap.Error(err), zap.String("grpc_listen_addr", cfg.GrpcListenAddr))
 	}
 
+	// REST adapter
+	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
+
 	// graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -71,7 +77,20 @@ func main() {
 		}
 	}()
 
+	go func() {
+		if err := restAdapter.Run(context.Background()); err != nil {
+			zap.L().Fatal("rest serve", zap.Error(err))
+		}
+	}()
+
 	<-sigCh
 	zap.L().Info("shutting down control plane")
 	grpcServer.GracefulStop()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+		zap.L().Error("rest shutdown", zap.Error(err))
+	}
 }

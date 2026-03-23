@@ -13,6 +13,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
+	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -76,11 +77,14 @@ func main() {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
+	// REST adapter
+	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
+
 	// Start
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runErr := make(chan error, 2)
+	runErr := make(chan error, 3)
 
 	go func() {
 		zap.L().Info("grpc started", zap.String("addr", cfg.GrpcListenAddr))
@@ -90,6 +94,10 @@ func main() {
 	go func() {
 		zap.L().Info("gateway started")
 		runErr <- httpAdapter.Run(sigCtx)
+	}()
+
+	go func() {
+		runErr <- restAdapter.Run(sigCtx)
 	}()
 
 	select {
@@ -107,5 +115,9 @@ func main() {
 
 	if err := httpAdapter.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("http shutdown", zap.Error(err))
+	}
+
+	if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+		zap.L().Error("rest shutdown", zap.Error(err))
 	}
 }
