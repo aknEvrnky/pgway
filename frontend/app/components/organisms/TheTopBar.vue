@@ -1,9 +1,13 @@
 <script setup lang="ts">
 const { isDark, toggle } = useDarkMode()
+const { width } = useSidebar()
 </script>
 
 <template>
-  <header class="glass-panel sticky top-0 z-40 flex justify-between items-center h-16 px-8 ml-64 w-[calc(100%-16rem)] border-b border-white/5 text-sm font-medium">
+  <header
+    class="glass-panel sticky top-0 z-40 flex justify-between items-center h-16 px-8 border-b border-white/5 text-sm font-medium transition-all duration-300"
+    :style="{ marginLeft: width, width: `calc(100% - ${width})` }"
+  >
     <!-- Breadcrumbs -->
     <div class="flex items-center gap-4">
       <span class="text-slate-500">Infrastructure</span>
