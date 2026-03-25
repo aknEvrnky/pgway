@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	badgerdb "github.com/dgraph-io/badger/v4"
@@ -33,7 +32,6 @@ func (r *FlowRepository) marshal(flow *domain.Flow) ([]byte, error) {
 	return json.Marshal(StoredResource[domain.Flow]{
 		StorageVersion: flowStorageVersion,
 		Kind:           flowKind,
-		UpdatedAt:      time.Now(),
 		Spec:           *flow,
 	})
 }

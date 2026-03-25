@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -78,6 +79,8 @@ type Flow struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	RouterId      string                 `protobuf:"bytes,2,opt,name=router_id,json=routerId,proto3" json:"router_id,omitempty"`
 	BalancerId    string                 `protobuf:"bytes,3,opt,name=balancer_id,json=balancerId,proto3" json:"balancer_id,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -131,6 +134,20 @@ func (x *Flow) GetBalancerId() string {
 		return x.BalancerId
 	}
 	return ""
+}
+
+func (x *Flow) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Flow) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
 }
 
 type ApplyFlowV1Request struct {
@@ -481,17 +498,21 @@ var File_pgway_controlplane_v1_flow_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_flow_proto_rawDesc = "" +
 	"\n" +
-	" pgway/controlplane/v1/flow.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"J\n" +
+	" pgway/controlplane/v1/flow.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"J\n" +
 	"\n" +
 	"FlowSpecV1\x12\x1b\n" +
 	"\trouter_id\x18\x01 \x01(\tR\brouterId\x12\x1f\n" +
 	"\vbalancer_id\x18\x02 \x01(\tR\n" +
-	"balancerId\"T\n" +
+	"balancerId\"\xca\x01\n" +
 	"\x04Flow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\trouter_id\x18\x02 \x01(\tR\brouterId\x12\x1f\n" +
 	"\vbalancer_id\x18\x03 \x01(\tR\n" +
-	"balancerId\"\x88\x01\n" +
+	"balancerId\x129\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x88\x01\n" +
 	"\x12ApplyFlowV1Request\x12;\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x1f.pgway.controlplane.v1.MetadataR\bmetadata\x125\n" +
 	"\x04spec\x18\x02 \x01(\v2!.pgway.controlplane.v1.FlowSpecV1R\x04spec\"F\n" +
@@ -528,37 +549,40 @@ func file_pgway_controlplane_v1_flow_proto_rawDescGZIP() []byte {
 
 var file_pgway_controlplane_v1_flow_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_pgway_controlplane_v1_flow_proto_goTypes = []any{
-	(*FlowSpecV1)(nil),          // 0: pgway.controlplane.v1.FlowSpecV1
-	(*Flow)(nil),                // 1: pgway.controlplane.v1.Flow
-	(*ApplyFlowV1Request)(nil),  // 2: pgway.controlplane.v1.ApplyFlowV1Request
-	(*ApplyFlowV1Response)(nil), // 3: pgway.controlplane.v1.ApplyFlowV1Response
-	(*GetFlowRequest)(nil),      // 4: pgway.controlplane.v1.GetFlowRequest
-	(*GetFlowResponse)(nil),     // 5: pgway.controlplane.v1.GetFlowResponse
-	(*ListFlowsRequest)(nil),    // 6: pgway.controlplane.v1.ListFlowsRequest
-	(*ListFlowsResponse)(nil),   // 7: pgway.controlplane.v1.ListFlowsResponse
-	(*DeleteFlowRequest)(nil),   // 8: pgway.controlplane.v1.DeleteFlowRequest
-	(*DeleteFlowResponse)(nil),  // 9: pgway.controlplane.v1.DeleteFlowResponse
-	(*Metadata)(nil),            // 10: pgway.controlplane.v1.Metadata
+	(*FlowSpecV1)(nil),            // 0: pgway.controlplane.v1.FlowSpecV1
+	(*Flow)(nil),                  // 1: pgway.controlplane.v1.Flow
+	(*ApplyFlowV1Request)(nil),    // 2: pgway.controlplane.v1.ApplyFlowV1Request
+	(*ApplyFlowV1Response)(nil),   // 3: pgway.controlplane.v1.ApplyFlowV1Response
+	(*GetFlowRequest)(nil),        // 4: pgway.controlplane.v1.GetFlowRequest
+	(*GetFlowResponse)(nil),       // 5: pgway.controlplane.v1.GetFlowResponse
+	(*ListFlowsRequest)(nil),      // 6: pgway.controlplane.v1.ListFlowsRequest
+	(*ListFlowsResponse)(nil),     // 7: pgway.controlplane.v1.ListFlowsResponse
+	(*DeleteFlowRequest)(nil),     // 8: pgway.controlplane.v1.DeleteFlowRequest
+	(*DeleteFlowResponse)(nil),    // 9: pgway.controlplane.v1.DeleteFlowResponse
+	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
+	(*Metadata)(nil),              // 11: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_flow_proto_depIdxs = []int32{
-	10, // 0: pgway.controlplane.v1.ApplyFlowV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 1: pgway.controlplane.v1.ApplyFlowV1Request.spec:type_name -> pgway.controlplane.v1.FlowSpecV1
-	1,  // 2: pgway.controlplane.v1.ApplyFlowV1Response.flow:type_name -> pgway.controlplane.v1.Flow
-	1,  // 3: pgway.controlplane.v1.GetFlowResponse.flow:type_name -> pgway.controlplane.v1.Flow
-	1,  // 4: pgway.controlplane.v1.ListFlowsResponse.flows:type_name -> pgway.controlplane.v1.Flow
-	2,  // 5: pgway.controlplane.v1.FlowService.ApplyFlowV1:input_type -> pgway.controlplane.v1.ApplyFlowV1Request
-	4,  // 6: pgway.controlplane.v1.FlowService.GetFlow:input_type -> pgway.controlplane.v1.GetFlowRequest
-	6,  // 7: pgway.controlplane.v1.FlowService.ListFlows:input_type -> pgway.controlplane.v1.ListFlowsRequest
-	8,  // 8: pgway.controlplane.v1.FlowService.DeleteFlow:input_type -> pgway.controlplane.v1.DeleteFlowRequest
-	3,  // 9: pgway.controlplane.v1.FlowService.ApplyFlowV1:output_type -> pgway.controlplane.v1.ApplyFlowV1Response
-	5,  // 10: pgway.controlplane.v1.FlowService.GetFlow:output_type -> pgway.controlplane.v1.GetFlowResponse
-	7,  // 11: pgway.controlplane.v1.FlowService.ListFlows:output_type -> pgway.controlplane.v1.ListFlowsResponse
-	9,  // 12: pgway.controlplane.v1.FlowService.DeleteFlow:output_type -> pgway.controlplane.v1.DeleteFlowResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	10, // 0: pgway.controlplane.v1.Flow.created_at:type_name -> google.protobuf.Timestamp
+	10, // 1: pgway.controlplane.v1.Flow.updated_at:type_name -> google.protobuf.Timestamp
+	11, // 2: pgway.controlplane.v1.ApplyFlowV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 3: pgway.controlplane.v1.ApplyFlowV1Request.spec:type_name -> pgway.controlplane.v1.FlowSpecV1
+	1,  // 4: pgway.controlplane.v1.ApplyFlowV1Response.flow:type_name -> pgway.controlplane.v1.Flow
+	1,  // 5: pgway.controlplane.v1.GetFlowResponse.flow:type_name -> pgway.controlplane.v1.Flow
+	1,  // 6: pgway.controlplane.v1.ListFlowsResponse.flows:type_name -> pgway.controlplane.v1.Flow
+	2,  // 7: pgway.controlplane.v1.FlowService.ApplyFlowV1:input_type -> pgway.controlplane.v1.ApplyFlowV1Request
+	4,  // 8: pgway.controlplane.v1.FlowService.GetFlow:input_type -> pgway.controlplane.v1.GetFlowRequest
+	6,  // 9: pgway.controlplane.v1.FlowService.ListFlows:input_type -> pgway.controlplane.v1.ListFlowsRequest
+	8,  // 10: pgway.controlplane.v1.FlowService.DeleteFlow:input_type -> pgway.controlplane.v1.DeleteFlowRequest
+	3,  // 11: pgway.controlplane.v1.FlowService.ApplyFlowV1:output_type -> pgway.controlplane.v1.ApplyFlowV1Response
+	5,  // 12: pgway.controlplane.v1.FlowService.GetFlow:output_type -> pgway.controlplane.v1.GetFlowResponse
+	7,  // 13: pgway.controlplane.v1.FlowService.ListFlows:output_type -> pgway.controlplane.v1.ListFlowsResponse
+	9,  // 14: pgway.controlplane.v1.FlowService.DeleteFlow:output_type -> pgway.controlplane.v1.DeleteFlowResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_flow_proto_init() }

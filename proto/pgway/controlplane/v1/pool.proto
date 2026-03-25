@@ -3,6 +3,7 @@ package pgway.controlplane.v1;
 option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
 
 import "pgway/controlplane/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 message PoolSpecV1 {
   string title = 1;
@@ -22,6 +23,8 @@ message Pool {
   map<string, string> labels = 4;
   repeated string proxy_ids = 5;
   SelectorSpec selector = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 message ApplyPoolV1Request {

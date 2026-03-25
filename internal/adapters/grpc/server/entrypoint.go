@@ -8,6 +8,7 @@ import (
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyEntrypointV1(ctx context.Context, req *controlplanev1.ApplyEntrypointV1Request) (*controlplanev1.ApplyEntrypointV1Response, error) {
@@ -92,11 +93,13 @@ func entrypointToProto(ep *domain.Entrypoint) *controlplanev1.Entrypoint {
 	}
 
 	return &controlplanev1.Entrypoint{
-		Id:       ep.Id,
-		Title:    ep.Title,
-		Protocol: string(ep.Protocol),
-		Host:     ep.Host,
-		Port:     uint32(ep.Port),
-		FlowId:   ep.FlowId,
+		Id:        ep.Id,
+		Title:     ep.Title,
+		Protocol:  string(ep.Protocol),
+		Host:      ep.Host,
+		Port:      uint32(ep.Port),
+		FlowId:    ep.FlowId,
+		CreatedAt: timestamppb.New(ep.CreatedAt),
+		UpdatedAt: timestamppb.New(ep.UpdatedAt),
 	}
 }

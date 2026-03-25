@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -87,6 +88,8 @@ type LoadBalancer struct {
 	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 	PoolId        string                 `protobuf:"bytes,4,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -147,6 +150,20 @@ func (x *LoadBalancer) GetPoolId() string {
 		return x.PoolId
 	}
 	return ""
+}
+
+func (x *LoadBalancer) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *LoadBalancer) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
 }
 
 type ApplyBalancerV1Request struct {
@@ -497,16 +514,20 @@ var File_pgway_controlplane_v1_balancer_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_balancer_proto_rawDesc = "" +
 	"\n" +
-	"$pgway/controlplane/v1/balancer.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"S\n" +
+	"$pgway/controlplane/v1/balancer.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"S\n" +
 	"\x0eBalancerSpecV1\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x17\n" +
-	"\apool_id\x18\x03 \x01(\tR\x06poolId\"a\n" +
+	"\apool_id\x18\x03 \x01(\tR\x06poolId\"\xd7\x01\n" +
 	"\fLoadBalancer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\tR\x04type\x12\x17\n" +
-	"\apool_id\x18\x04 \x01(\tR\x06poolId\"\x90\x01\n" +
+	"\apool_id\x18\x04 \x01(\tR\x06poolId\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x90\x01\n" +
 	"\x16ApplyBalancerV1Request\x12;\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x1f.pgway.controlplane.v1.MetadataR\bmetadata\x129\n" +
 	"\x04spec\x18\x02 \x01(\v2%.pgway.controlplane.v1.BalancerSpecV1R\x04spec\"Z\n" +
@@ -552,27 +573,30 @@ var file_pgway_controlplane_v1_balancer_proto_goTypes = []any{
 	(*ListBalancersResponse)(nil),   // 7: pgway.controlplane.v1.ListBalancersResponse
 	(*DeleteBalancerRequest)(nil),   // 8: pgway.controlplane.v1.DeleteBalancerRequest
 	(*DeleteBalancerResponse)(nil),  // 9: pgway.controlplane.v1.DeleteBalancerResponse
-	(*Metadata)(nil),                // 10: pgway.controlplane.v1.Metadata
+	(*timestamppb.Timestamp)(nil),   // 10: google.protobuf.Timestamp
+	(*Metadata)(nil),                // 11: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_balancer_proto_depIdxs = []int32{
-	10, // 0: pgway.controlplane.v1.ApplyBalancerV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 1: pgway.controlplane.v1.ApplyBalancerV1Request.spec:type_name -> pgway.controlplane.v1.BalancerSpecV1
-	1,  // 2: pgway.controlplane.v1.ApplyBalancerV1Response.balancer:type_name -> pgway.controlplane.v1.LoadBalancer
-	1,  // 3: pgway.controlplane.v1.GetBalancerResponse.balancer:type_name -> pgway.controlplane.v1.LoadBalancer
-	1,  // 4: pgway.controlplane.v1.ListBalancersResponse.balancers:type_name -> pgway.controlplane.v1.LoadBalancer
-	2,  // 5: pgway.controlplane.v1.BalancerService.ApplyBalancerV1:input_type -> pgway.controlplane.v1.ApplyBalancerV1Request
-	4,  // 6: pgway.controlplane.v1.BalancerService.GetBalancer:input_type -> pgway.controlplane.v1.GetBalancerRequest
-	6,  // 7: pgway.controlplane.v1.BalancerService.ListBalancers:input_type -> pgway.controlplane.v1.ListBalancersRequest
-	8,  // 8: pgway.controlplane.v1.BalancerService.DeleteBalancer:input_type -> pgway.controlplane.v1.DeleteBalancerRequest
-	3,  // 9: pgway.controlplane.v1.BalancerService.ApplyBalancerV1:output_type -> pgway.controlplane.v1.ApplyBalancerV1Response
-	5,  // 10: pgway.controlplane.v1.BalancerService.GetBalancer:output_type -> pgway.controlplane.v1.GetBalancerResponse
-	7,  // 11: pgway.controlplane.v1.BalancerService.ListBalancers:output_type -> pgway.controlplane.v1.ListBalancersResponse
-	9,  // 12: pgway.controlplane.v1.BalancerService.DeleteBalancer:output_type -> pgway.controlplane.v1.DeleteBalancerResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	10, // 0: pgway.controlplane.v1.LoadBalancer.created_at:type_name -> google.protobuf.Timestamp
+	10, // 1: pgway.controlplane.v1.LoadBalancer.updated_at:type_name -> google.protobuf.Timestamp
+	11, // 2: pgway.controlplane.v1.ApplyBalancerV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 3: pgway.controlplane.v1.ApplyBalancerV1Request.spec:type_name -> pgway.controlplane.v1.BalancerSpecV1
+	1,  // 4: pgway.controlplane.v1.ApplyBalancerV1Response.balancer:type_name -> pgway.controlplane.v1.LoadBalancer
+	1,  // 5: pgway.controlplane.v1.GetBalancerResponse.balancer:type_name -> pgway.controlplane.v1.LoadBalancer
+	1,  // 6: pgway.controlplane.v1.ListBalancersResponse.balancers:type_name -> pgway.controlplane.v1.LoadBalancer
+	2,  // 7: pgway.controlplane.v1.BalancerService.ApplyBalancerV1:input_type -> pgway.controlplane.v1.ApplyBalancerV1Request
+	4,  // 8: pgway.controlplane.v1.BalancerService.GetBalancer:input_type -> pgway.controlplane.v1.GetBalancerRequest
+	6,  // 9: pgway.controlplane.v1.BalancerService.ListBalancers:input_type -> pgway.controlplane.v1.ListBalancersRequest
+	8,  // 10: pgway.controlplane.v1.BalancerService.DeleteBalancer:input_type -> pgway.controlplane.v1.DeleteBalancerRequest
+	3,  // 11: pgway.controlplane.v1.BalancerService.ApplyBalancerV1:output_type -> pgway.controlplane.v1.ApplyBalancerV1Response
+	5,  // 12: pgway.controlplane.v1.BalancerService.GetBalancer:output_type -> pgway.controlplane.v1.GetBalancerResponse
+	7,  // 13: pgway.controlplane.v1.BalancerService.ListBalancers:output_type -> pgway.controlplane.v1.ListBalancersResponse
+	9,  // 14: pgway.controlplane.v1.BalancerService.DeleteBalancer:output_type -> pgway.controlplane.v1.DeleteBalancerResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_balancer_proto_init() }

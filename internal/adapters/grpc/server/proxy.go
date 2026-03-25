@@ -8,6 +8,7 @@ import (
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyProxyV1(ctx context.Context, req *controlplanev1.ApplyProxyV1Request) (*controlplanev1.ApplyProxyV1Response, error) {
@@ -163,6 +164,8 @@ func proxyToProto(proxy *domain.Proxy) *controlplanev1.Proxy {
 				Pass: proxy.Auth.Pass,
 			}
 		}(),
-		Labels: proxy.Labels,
+		Labels:    proxy.Labels,
+		CreatedAt: timestamppb.New(proxy.CreatedAt),
+		UpdatedAt: timestamppb.New(proxy.UpdatedAt),
 	}
 }

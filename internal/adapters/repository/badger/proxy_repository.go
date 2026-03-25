@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	badgerdb "github.com/dgraph-io/badger/v4"
@@ -33,7 +32,6 @@ func (r *ProxyRepository) marshal(proxy *domain.Proxy) ([]byte, error) {
 	return json.Marshal(StoredResource[domain.Proxy]{
 		StorageVersion: proxyStorageVersion,
 		Kind:           proxyKind,
-		UpdatedAt:      time.Now(),
 		Spec:           *proxy,
 	})
 }

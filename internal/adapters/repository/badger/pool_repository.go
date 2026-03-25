@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	badgerdb "github.com/dgraph-io/badger/v4"
@@ -33,7 +32,6 @@ func (r *PoolRepository) marshal(pool *domain.Pool) ([]byte, error) {
 	return json.Marshal(StoredResource[domain.Pool]{
 		StorageVersion: poolStorageVersion,
 		Kind:           poolKind,
-		UpdatedAt:      time.Now(),
 		Spec:           *pool,
 	})
 }

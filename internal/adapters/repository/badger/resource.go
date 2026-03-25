@@ -1,15 +1,10 @@
 package badger
 
-import (
-	"encoding/json"
-	"time"
-)
+import "encoding/json"
 
 type StoredResource[T any] struct {
 	StorageVersion string            `json:"storage_version"`
 	Kind           string            `json:"kind"`
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
 	Labels         map[string]string `json:"labels"`
 	Spec           T                 `json:"spec"`
 }

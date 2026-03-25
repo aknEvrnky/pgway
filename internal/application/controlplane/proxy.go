@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -34,7 +35,16 @@ func (s *Service) ApplyProxyV1(ctx context.Context, meta schema.Metadata, spec p
 		return nil, fmt.Errorf("proxy validation: %w", err)
 	}
 
-	// 5 - persist
+	// 5 - set timestamps
+	now := time.Now()
+	if existing, err := s.proxyRepo.Find(ctx, proxy.Id); err == nil {
+		proxy.CreatedAt = existing.CreatedAt
+	} else {
+		proxy.CreatedAt = now
+	}
+	proxy.UpdatedAt = now
+
+	// 6 - persist
 	if err := s.proxyRepo.Save(ctx, proxy); err != nil {
 		return nil, fmt.Errorf("persisting proxy: %w", err)
 	}

@@ -3,6 +3,7 @@ package domain
 import "fmt"
 
 type Entrypoint struct {
+	Timestamps
 	Id       string   `json:"id"`
 	Title    string   `json:"title"`
 	Protocol Protocol `json:"protocol"`

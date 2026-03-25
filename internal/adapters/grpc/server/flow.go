@@ -8,6 +8,7 @@ import (
 	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyFlowV1(ctx context.Context, req *controlplanev1.ApplyFlowV1Request) (*controlplanev1.ApplyFlowV1Response, error) {
@@ -87,5 +88,7 @@ func flowToProto(flow *domain.Flow) *controlplanev1.Flow {
 		Id:         flow.Id,
 		RouterId:   flow.RouterId,
 		BalancerId: flow.BalancerId,
+		CreatedAt:  timestamppb.New(flow.CreatedAt),
+		UpdatedAt:  timestamppb.New(flow.UpdatedAt),
 	}
 }

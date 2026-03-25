@@ -3,6 +3,7 @@ package pgway.controlplane.v1;
 option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
 
 import "pgway/controlplane/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 message ProxySpecV1 {
   string url = 1;
@@ -24,6 +25,8 @@ message Proxy {
   uint32 port = 4;
   AuthSpec auth = 5;
   map<string, string> labels = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 message ApplyProxyV1Request {

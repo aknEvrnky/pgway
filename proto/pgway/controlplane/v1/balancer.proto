@@ -3,6 +3,7 @@ package pgway.controlplane.v1;
 option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
 
 import "pgway/controlplane/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 message BalancerSpecV1 {
   string title = 1;
@@ -15,6 +16,8 @@ message LoadBalancer {
   string title = 2;
   string type = 3;
   string pool_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
 }
 
 message ApplyBalancerV1Request {
