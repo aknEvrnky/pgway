@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -275,6 +276,8 @@ type Router struct {
 	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Rules         []*RouterRule          `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -333,6 +336,20 @@ func (x *Router) GetDescription() string {
 func (x *Router) GetRules() []*RouterRule {
 	if x != nil {
 		return x.Rules
+	}
+	return nil
+}
+
+func (x *Router) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Router) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
 	}
 	return nil
 }
@@ -873,7 +890,7 @@ var File_pgway_controlplane_v1_router_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_router_proto_rawDesc = "" +
 	"\n" +
-	"\"pgway/controlplane/v1/router.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"}\n" +
+	"\"pgway/controlplane/v1/router.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"}\n" +
 	"\fRouterSpecV1\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x125\n" +
@@ -890,12 +907,16 @@ const file_pgway_controlplane_v1_router_proto_rawDesc = "" +
 	"\x03not\x18\x05 \x01(\v2$.pgway.controlplane.v1.ConditionSpecR\x03not\"9\n" +
 	"\rConditionSpec\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x89\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xff\x01\n" +
 	"\x06Router\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x127\n" +
-	"\x05rules\x18\x04 \x03(\v2!.pgway.controlplane.v1.RouterRuleR\x05rules\"n\n" +
+	"\x05rules\x18\x04 \x03(\v2!.pgway.controlplane.v1.RouterRuleR\x05rules\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"n\n" +
 	"\n" +
 	"RouterRule\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
@@ -961,7 +982,8 @@ var file_pgway_controlplane_v1_router_proto_goTypes = []any{
 	(*ListRoutersResponse)(nil),   // 13: pgway.controlplane.v1.ListRoutersResponse
 	(*DeleteRouterRequest)(nil),   // 14: pgway.controlplane.v1.DeleteRouterRequest
 	(*DeleteRouterResponse)(nil),  // 15: pgway.controlplane.v1.DeleteRouterResponse
-	(*Metadata)(nil),              // 16: pgway.controlplane.v1.Metadata
+	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
+	(*Metadata)(nil),              // 17: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_router_proto_depIdxs = []int32{
 	1,  // 0: pgway.controlplane.v1.RouterSpecV1.rules:type_name -> pgway.controlplane.v1.RuleSpec
@@ -970,28 +992,30 @@ var file_pgway_controlplane_v1_router_proto_depIdxs = []int32{
 	3,  // 3: pgway.controlplane.v1.MatchSpec.any:type_name -> pgway.controlplane.v1.ConditionSpec
 	3,  // 4: pgway.controlplane.v1.MatchSpec.not:type_name -> pgway.controlplane.v1.ConditionSpec
 	5,  // 5: pgway.controlplane.v1.Router.rules:type_name -> pgway.controlplane.v1.RouterRule
-	6,  // 6: pgway.controlplane.v1.RouterRule.match:type_name -> pgway.controlplane.v1.RouterMatch
-	7,  // 7: pgway.controlplane.v1.RouterMatch.all:type_name -> pgway.controlplane.v1.RouterCondition
-	7,  // 8: pgway.controlplane.v1.RouterMatch.any:type_name -> pgway.controlplane.v1.RouterCondition
-	7,  // 9: pgway.controlplane.v1.RouterMatch.not:type_name -> pgway.controlplane.v1.RouterCondition
-	16, // 10: pgway.controlplane.v1.ApplyRouterV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 11: pgway.controlplane.v1.ApplyRouterV1Request.spec:type_name -> pgway.controlplane.v1.RouterSpecV1
-	4,  // 12: pgway.controlplane.v1.ApplyRouterV1Response.router:type_name -> pgway.controlplane.v1.Router
-	4,  // 13: pgway.controlplane.v1.GetRouterResponse.router:type_name -> pgway.controlplane.v1.Router
-	4,  // 14: pgway.controlplane.v1.ListRoutersResponse.routers:type_name -> pgway.controlplane.v1.Router
-	8,  // 15: pgway.controlplane.v1.RouterService.ApplyRouterV1:input_type -> pgway.controlplane.v1.ApplyRouterV1Request
-	10, // 16: pgway.controlplane.v1.RouterService.GetRouter:input_type -> pgway.controlplane.v1.GetRouterRequest
-	12, // 17: pgway.controlplane.v1.RouterService.ListRouters:input_type -> pgway.controlplane.v1.ListRoutersRequest
-	14, // 18: pgway.controlplane.v1.RouterService.DeleteRouter:input_type -> pgway.controlplane.v1.DeleteRouterRequest
-	9,  // 19: pgway.controlplane.v1.RouterService.ApplyRouterV1:output_type -> pgway.controlplane.v1.ApplyRouterV1Response
-	11, // 20: pgway.controlplane.v1.RouterService.GetRouter:output_type -> pgway.controlplane.v1.GetRouterResponse
-	13, // 21: pgway.controlplane.v1.RouterService.ListRouters:output_type -> pgway.controlplane.v1.ListRoutersResponse
-	15, // 22: pgway.controlplane.v1.RouterService.DeleteRouter:output_type -> pgway.controlplane.v1.DeleteRouterResponse
-	19, // [19:23] is the sub-list for method output_type
-	15, // [15:19] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	16, // 6: pgway.controlplane.v1.Router.created_at:type_name -> google.protobuf.Timestamp
+	16, // 7: pgway.controlplane.v1.Router.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 8: pgway.controlplane.v1.RouterRule.match:type_name -> pgway.controlplane.v1.RouterMatch
+	7,  // 9: pgway.controlplane.v1.RouterMatch.all:type_name -> pgway.controlplane.v1.RouterCondition
+	7,  // 10: pgway.controlplane.v1.RouterMatch.any:type_name -> pgway.controlplane.v1.RouterCondition
+	7,  // 11: pgway.controlplane.v1.RouterMatch.not:type_name -> pgway.controlplane.v1.RouterCondition
+	17, // 12: pgway.controlplane.v1.ApplyRouterV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 13: pgway.controlplane.v1.ApplyRouterV1Request.spec:type_name -> pgway.controlplane.v1.RouterSpecV1
+	4,  // 14: pgway.controlplane.v1.ApplyRouterV1Response.router:type_name -> pgway.controlplane.v1.Router
+	4,  // 15: pgway.controlplane.v1.GetRouterResponse.router:type_name -> pgway.controlplane.v1.Router
+	4,  // 16: pgway.controlplane.v1.ListRoutersResponse.routers:type_name -> pgway.controlplane.v1.Router
+	8,  // 17: pgway.controlplane.v1.RouterService.ApplyRouterV1:input_type -> pgway.controlplane.v1.ApplyRouterV1Request
+	10, // 18: pgway.controlplane.v1.RouterService.GetRouter:input_type -> pgway.controlplane.v1.GetRouterRequest
+	12, // 19: pgway.controlplane.v1.RouterService.ListRouters:input_type -> pgway.controlplane.v1.ListRoutersRequest
+	14, // 20: pgway.controlplane.v1.RouterService.DeleteRouter:input_type -> pgway.controlplane.v1.DeleteRouterRequest
+	9,  // 21: pgway.controlplane.v1.RouterService.ApplyRouterV1:output_type -> pgway.controlplane.v1.ApplyRouterV1Response
+	11, // 22: pgway.controlplane.v1.RouterService.GetRouter:output_type -> pgway.controlplane.v1.GetRouterResponse
+	13, // 23: pgway.controlplane.v1.RouterService.ListRouters:output_type -> pgway.controlplane.v1.ListRoutersResponse
+	15, // 24: pgway.controlplane.v1.RouterService.DeleteRouter:output_type -> pgway.controlplane.v1.DeleteRouterResponse
+	21, // [21:25] is the sub-list for method output_type
+	17, // [17:21] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_router_proto_init() }

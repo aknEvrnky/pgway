@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -105,6 +106,8 @@ type Entrypoint struct {
 	Host          string                 `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
 	Port          uint32                 `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
 	FlowId        string                 `protobuf:"bytes,6,opt,name=flow_id,json=flowId,proto3" json:"flow_id,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,6 +182,20 @@ func (x *Entrypoint) GetFlowId() string {
 		return x.FlowId
 	}
 	return ""
+}
+
+func (x *Entrypoint) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Entrypoint) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
 }
 
 type ApplyEntrypointV1Request struct {
@@ -529,13 +546,13 @@ var File_pgway_controlplane_v1_entrypoint_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_entrypoint_proto_rawDesc = "" +
 	"\n" +
-	"&pgway/controlplane/v1/entrypoint.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"\x85\x01\n" +
+	"&pgway/controlplane/v1/entrypoint.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x01\n" +
 	"\x10EntrypointSpecV1\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04host\x18\x03 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x04 \x01(\rR\x04port\x12\x17\n" +
-	"\aflow_id\x18\x05 \x01(\tR\x06flowId\"\x8f\x01\n" +
+	"\aflow_id\x18\x05 \x01(\tR\x06flowId\"\x85\x02\n" +
 	"\n" +
 	"Entrypoint\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
@@ -543,7 +560,11 @@ const file_pgway_controlplane_v1_entrypoint_proto_rawDesc = "" +
 	"\bprotocol\x18\x03 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04host\x18\x04 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x05 \x01(\rR\x04port\x12\x17\n" +
-	"\aflow_id\x18\x06 \x01(\tR\x06flowId\"\x94\x01\n" +
+	"\aflow_id\x18\x06 \x01(\tR\x06flowId\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x94\x01\n" +
 	"\x18ApplyEntrypointV1Request\x12;\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x1f.pgway.controlplane.v1.MetadataR\bmetadata\x12;\n" +
 	"\x04spec\x18\x02 \x01(\v2'.pgway.controlplane.v1.EntrypointSpecV1R\x04spec\"^\n" +
@@ -593,27 +614,30 @@ var file_pgway_controlplane_v1_entrypoint_proto_goTypes = []any{
 	(*ListEntrypointsResponse)(nil),   // 7: pgway.controlplane.v1.ListEntrypointsResponse
 	(*DeleteEntrypointRequest)(nil),   // 8: pgway.controlplane.v1.DeleteEntrypointRequest
 	(*DeleteEntrypointResponse)(nil),  // 9: pgway.controlplane.v1.DeleteEntrypointResponse
-	(*Metadata)(nil),                  // 10: pgway.controlplane.v1.Metadata
+	(*timestamppb.Timestamp)(nil),     // 10: google.protobuf.Timestamp
+	(*Metadata)(nil),                  // 11: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_entrypoint_proto_depIdxs = []int32{
-	10, // 0: pgway.controlplane.v1.ApplyEntrypointV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 1: pgway.controlplane.v1.ApplyEntrypointV1Request.spec:type_name -> pgway.controlplane.v1.EntrypointSpecV1
-	1,  // 2: pgway.controlplane.v1.ApplyEntrypointV1Response.entrypoint:type_name -> pgway.controlplane.v1.Entrypoint
-	1,  // 3: pgway.controlplane.v1.GetEntrypointResponse.entrypoint:type_name -> pgway.controlplane.v1.Entrypoint
-	1,  // 4: pgway.controlplane.v1.ListEntrypointsResponse.entrypoints:type_name -> pgway.controlplane.v1.Entrypoint
-	2,  // 5: pgway.controlplane.v1.EntrypointService.ApplyEntrypointV1:input_type -> pgway.controlplane.v1.ApplyEntrypointV1Request
-	4,  // 6: pgway.controlplane.v1.EntrypointService.GetEntrypoint:input_type -> pgway.controlplane.v1.GetEntrypointRequest
-	6,  // 7: pgway.controlplane.v1.EntrypointService.ListEntrypoints:input_type -> pgway.controlplane.v1.ListEntrypointsRequest
-	8,  // 8: pgway.controlplane.v1.EntrypointService.DeleteEntrypoint:input_type -> pgway.controlplane.v1.DeleteEntrypointRequest
-	3,  // 9: pgway.controlplane.v1.EntrypointService.ApplyEntrypointV1:output_type -> pgway.controlplane.v1.ApplyEntrypointV1Response
-	5,  // 10: pgway.controlplane.v1.EntrypointService.GetEntrypoint:output_type -> pgway.controlplane.v1.GetEntrypointResponse
-	7,  // 11: pgway.controlplane.v1.EntrypointService.ListEntrypoints:output_type -> pgway.controlplane.v1.ListEntrypointsResponse
-	9,  // 12: pgway.controlplane.v1.EntrypointService.DeleteEntrypoint:output_type -> pgway.controlplane.v1.DeleteEntrypointResponse
-	9,  // [9:13] is the sub-list for method output_type
-	5,  // [5:9] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	10, // 0: pgway.controlplane.v1.Entrypoint.created_at:type_name -> google.protobuf.Timestamp
+	10, // 1: pgway.controlplane.v1.Entrypoint.updated_at:type_name -> google.protobuf.Timestamp
+	11, // 2: pgway.controlplane.v1.ApplyEntrypointV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 3: pgway.controlplane.v1.ApplyEntrypointV1Request.spec:type_name -> pgway.controlplane.v1.EntrypointSpecV1
+	1,  // 4: pgway.controlplane.v1.ApplyEntrypointV1Response.entrypoint:type_name -> pgway.controlplane.v1.Entrypoint
+	1,  // 5: pgway.controlplane.v1.GetEntrypointResponse.entrypoint:type_name -> pgway.controlplane.v1.Entrypoint
+	1,  // 6: pgway.controlplane.v1.ListEntrypointsResponse.entrypoints:type_name -> pgway.controlplane.v1.Entrypoint
+	2,  // 7: pgway.controlplane.v1.EntrypointService.ApplyEntrypointV1:input_type -> pgway.controlplane.v1.ApplyEntrypointV1Request
+	4,  // 8: pgway.controlplane.v1.EntrypointService.GetEntrypoint:input_type -> pgway.controlplane.v1.GetEntrypointRequest
+	6,  // 9: pgway.controlplane.v1.EntrypointService.ListEntrypoints:input_type -> pgway.controlplane.v1.ListEntrypointsRequest
+	8,  // 10: pgway.controlplane.v1.EntrypointService.DeleteEntrypoint:input_type -> pgway.controlplane.v1.DeleteEntrypointRequest
+	3,  // 11: pgway.controlplane.v1.EntrypointService.ApplyEntrypointV1:output_type -> pgway.controlplane.v1.ApplyEntrypointV1Response
+	5,  // 12: pgway.controlplane.v1.EntrypointService.GetEntrypoint:output_type -> pgway.controlplane.v1.GetEntrypointResponse
+	7,  // 13: pgway.controlplane.v1.EntrypointService.ListEntrypoints:output_type -> pgway.controlplane.v1.ListEntrypointsResponse
+	9,  // 14: pgway.controlplane.v1.EntrypointService.DeleteEntrypoint:output_type -> pgway.controlplane.v1.DeleteEntrypointResponse
+	11, // [11:15] is the sub-list for method output_type
+	7,  // [7:11] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_entrypoint_proto_init() }

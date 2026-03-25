@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -26,6 +27,14 @@ func (s *Service) ApplyFlowV1(ctx context.Context, meta schema.Metadata, spec fl
 		RouterId:   spec.RouterId,
 		BalancerId: spec.BalancerId,
 	}
+
+	now := time.Now()
+	if existing, err := s.flowRepo.Find(ctx, flow.Id); err == nil {
+		flow.CreatedAt = existing.CreatedAt
+	} else {
+		flow.CreatedAt = now
+	}
+	flow.UpdatedAt = now
 
 	if err := s.flowRepo.Save(ctx, flow); err != nil {
 		return nil, fmt.Errorf("save flow: %w", err)

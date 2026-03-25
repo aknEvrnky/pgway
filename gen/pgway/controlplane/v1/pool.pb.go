@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -141,6 +142,8 @@ type Pool struct {
 	Labels        map[string]string      `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	ProxyIds      []string               `protobuf:"bytes,5,rep,name=proxy_ids,json=proxyIds,proto3" json:"proxy_ids,omitempty"`
 	Selector      *SelectorSpec          `protobuf:"bytes,6,opt,name=selector,proto3" json:"selector,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -213,6 +216,20 @@ func (x *Pool) GetProxyIds() []string {
 func (x *Pool) GetSelector() *SelectorSpec {
 	if x != nil {
 		return x.Selector
+	}
+	return nil
+}
+
+func (x *Pool) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Pool) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
 	}
 	return nil
 }
@@ -565,7 +582,7 @@ var File_pgway_controlplane_v1_pool_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_pool_proto_rawDesc = "" +
 	"\n" +
-	" pgway/controlplane/v1/pool.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"\x94\x01\n" +
+	" pgway/controlplane/v1/pool.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n" +
 	"\n" +
 	"PoolSpecV1\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
@@ -577,14 +594,18 @@ const file_pgway_controlplane_v1_pool_proto_rawDesc = "" +
 	"\n" +
 	"AllowEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9a\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x90\x03\n" +
 	"\x04Pool\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\tR\x04type\x12?\n" +
 	"\x06labels\x18\x04 \x03(\v2'.pgway.controlplane.v1.Pool.LabelsEntryR\x06labels\x12\x1b\n" +
 	"\tproxy_ids\x18\x05 \x03(\tR\bproxyIds\x12?\n" +
-	"\bselector\x18\x06 \x01(\v2#.pgway.controlplane.v1.SelectorSpecR\bselector\x1a9\n" +
+	"\bselector\x18\x06 \x01(\v2#.pgway.controlplane.v1.SelectorSpecR\bselector\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x88\x01\n" +
@@ -624,44 +645,47 @@ func file_pgway_controlplane_v1_pool_proto_rawDescGZIP() []byte {
 
 var file_pgway_controlplane_v1_pool_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_pgway_controlplane_v1_pool_proto_goTypes = []any{
-	(*PoolSpecV1)(nil),          // 0: pgway.controlplane.v1.PoolSpecV1
-	(*SelectorSpec)(nil),        // 1: pgway.controlplane.v1.SelectorSpec
-	(*Pool)(nil),                // 2: pgway.controlplane.v1.Pool
-	(*ApplyPoolV1Request)(nil),  // 3: pgway.controlplane.v1.ApplyPoolV1Request
-	(*ApplyPoolV1Response)(nil), // 4: pgway.controlplane.v1.ApplyPoolV1Response
-	(*GetPoolRequest)(nil),      // 5: pgway.controlplane.v1.GetPoolRequest
-	(*GetPoolResponse)(nil),     // 6: pgway.controlplane.v1.GetPoolResponse
-	(*ListPoolsRequest)(nil),    // 7: pgway.controlplane.v1.ListPoolsRequest
-	(*ListPoolsResponse)(nil),   // 8: pgway.controlplane.v1.ListPoolsResponse
-	(*DeletePoolRequest)(nil),   // 9: pgway.controlplane.v1.DeletePoolRequest
-	(*DeletePoolResponse)(nil),  // 10: pgway.controlplane.v1.DeletePoolResponse
-	nil,                         // 11: pgway.controlplane.v1.SelectorSpec.AllowEntry
-	nil,                         // 12: pgway.controlplane.v1.Pool.LabelsEntry
-	(*Metadata)(nil),            // 13: pgway.controlplane.v1.Metadata
+	(*PoolSpecV1)(nil),            // 0: pgway.controlplane.v1.PoolSpecV1
+	(*SelectorSpec)(nil),          // 1: pgway.controlplane.v1.SelectorSpec
+	(*Pool)(nil),                  // 2: pgway.controlplane.v1.Pool
+	(*ApplyPoolV1Request)(nil),    // 3: pgway.controlplane.v1.ApplyPoolV1Request
+	(*ApplyPoolV1Response)(nil),   // 4: pgway.controlplane.v1.ApplyPoolV1Response
+	(*GetPoolRequest)(nil),        // 5: pgway.controlplane.v1.GetPoolRequest
+	(*GetPoolResponse)(nil),       // 6: pgway.controlplane.v1.GetPoolResponse
+	(*ListPoolsRequest)(nil),      // 7: pgway.controlplane.v1.ListPoolsRequest
+	(*ListPoolsResponse)(nil),     // 8: pgway.controlplane.v1.ListPoolsResponse
+	(*DeletePoolRequest)(nil),     // 9: pgway.controlplane.v1.DeletePoolRequest
+	(*DeletePoolResponse)(nil),    // 10: pgway.controlplane.v1.DeletePoolResponse
+	nil,                           // 11: pgway.controlplane.v1.SelectorSpec.AllowEntry
+	nil,                           // 12: pgway.controlplane.v1.Pool.LabelsEntry
+	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(*Metadata)(nil),              // 14: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_pool_proto_depIdxs = []int32{
 	1,  // 0: pgway.controlplane.v1.PoolSpecV1.selector:type_name -> pgway.controlplane.v1.SelectorSpec
 	11, // 1: pgway.controlplane.v1.SelectorSpec.allow:type_name -> pgway.controlplane.v1.SelectorSpec.AllowEntry
 	12, // 2: pgway.controlplane.v1.Pool.labels:type_name -> pgway.controlplane.v1.Pool.LabelsEntry
 	1,  // 3: pgway.controlplane.v1.Pool.selector:type_name -> pgway.controlplane.v1.SelectorSpec
-	13, // 4: pgway.controlplane.v1.ApplyPoolV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 5: pgway.controlplane.v1.ApplyPoolV1Request.spec:type_name -> pgway.controlplane.v1.PoolSpecV1
-	2,  // 6: pgway.controlplane.v1.ApplyPoolV1Response.pool:type_name -> pgway.controlplane.v1.Pool
-	2,  // 7: pgway.controlplane.v1.GetPoolResponse.pool:type_name -> pgway.controlplane.v1.Pool
-	2,  // 8: pgway.controlplane.v1.ListPoolsResponse.pools:type_name -> pgway.controlplane.v1.Pool
-	3,  // 9: pgway.controlplane.v1.PoolService.ApplyPoolV1:input_type -> pgway.controlplane.v1.ApplyPoolV1Request
-	5,  // 10: pgway.controlplane.v1.PoolService.GetPool:input_type -> pgway.controlplane.v1.GetPoolRequest
-	7,  // 11: pgway.controlplane.v1.PoolService.ListPools:input_type -> pgway.controlplane.v1.ListPoolsRequest
-	9,  // 12: pgway.controlplane.v1.PoolService.DeletePool:input_type -> pgway.controlplane.v1.DeletePoolRequest
-	4,  // 13: pgway.controlplane.v1.PoolService.ApplyPoolV1:output_type -> pgway.controlplane.v1.ApplyPoolV1Response
-	6,  // 14: pgway.controlplane.v1.PoolService.GetPool:output_type -> pgway.controlplane.v1.GetPoolResponse
-	8,  // 15: pgway.controlplane.v1.PoolService.ListPools:output_type -> pgway.controlplane.v1.ListPoolsResponse
-	10, // 16: pgway.controlplane.v1.PoolService.DeletePool:output_type -> pgway.controlplane.v1.DeletePoolResponse
-	13, // [13:17] is the sub-list for method output_type
-	9,  // [9:13] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	13, // 4: pgway.controlplane.v1.Pool.created_at:type_name -> google.protobuf.Timestamp
+	13, // 5: pgway.controlplane.v1.Pool.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 6: pgway.controlplane.v1.ApplyPoolV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 7: pgway.controlplane.v1.ApplyPoolV1Request.spec:type_name -> pgway.controlplane.v1.PoolSpecV1
+	2,  // 8: pgway.controlplane.v1.ApplyPoolV1Response.pool:type_name -> pgway.controlplane.v1.Pool
+	2,  // 9: pgway.controlplane.v1.GetPoolResponse.pool:type_name -> pgway.controlplane.v1.Pool
+	2,  // 10: pgway.controlplane.v1.ListPoolsResponse.pools:type_name -> pgway.controlplane.v1.Pool
+	3,  // 11: pgway.controlplane.v1.PoolService.ApplyPoolV1:input_type -> pgway.controlplane.v1.ApplyPoolV1Request
+	5,  // 12: pgway.controlplane.v1.PoolService.GetPool:input_type -> pgway.controlplane.v1.GetPoolRequest
+	7,  // 13: pgway.controlplane.v1.PoolService.ListPools:input_type -> pgway.controlplane.v1.ListPoolsRequest
+	9,  // 14: pgway.controlplane.v1.PoolService.DeletePool:input_type -> pgway.controlplane.v1.DeletePoolRequest
+	4,  // 15: pgway.controlplane.v1.PoolService.ApplyPoolV1:output_type -> pgway.controlplane.v1.ApplyPoolV1Response
+	6,  // 16: pgway.controlplane.v1.PoolService.GetPool:output_type -> pgway.controlplane.v1.GetPoolResponse
+	8,  // 17: pgway.controlplane.v1.PoolService.ListPools:output_type -> pgway.controlplane.v1.ListPoolsResponse
+	10, // 18: pgway.controlplane.v1.PoolService.DeletePool:output_type -> pgway.controlplane.v1.DeletePoolResponse
+	15, // [15:19] is the sub-list for method output_type
+	11, // [11:15] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_pool_proto_init() }

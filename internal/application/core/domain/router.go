@@ -57,6 +57,7 @@ type RouterRule struct {
 }
 
 type Router struct {
+	Timestamps
 	Id          string        `json:"id"`
 	Title       string        `json:"title"`
 	Description string        `json:"description,omitempty"`

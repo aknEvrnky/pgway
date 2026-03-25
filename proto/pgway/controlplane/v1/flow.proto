@@ -3,6 +3,7 @@ package pgway.controlplane.v1;
 option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
 
 import "pgway/controlplane/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 message FlowSpecV1 {
   string router_id = 1;
@@ -13,6 +14,8 @@ message Flow {
   string id = 1;
   string router_id = 2;
   string balancer_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
 }
 
 message ApplyFlowV1Request {

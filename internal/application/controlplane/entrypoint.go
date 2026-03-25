@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -33,6 +34,14 @@ func (s *Service) ApplyEntrypointV1(ctx context.Context, meta schema.Metadata, s
 	if err := ep.Validate(); err != nil {
 		return nil, fmt.Errorf("domain validation: %w", err)
 	}
+
+	now := time.Now()
+	if existing, err := s.epRepo.Find(ctx, ep.Id); err == nil {
+		ep.CreatedAt = existing.CreatedAt
+	} else {
+		ep.CreatedAt = now
+	}
+	ep.UpdatedAt = now
 
 	if err := s.epRepo.Save(ctx, ep); err != nil {
 		return nil, fmt.Errorf("save entrypoint: %w", err)

@@ -8,6 +8,7 @@ import (
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyPoolV1(ctx context.Context, req *controlplanev1.ApplyPoolV1Request) (*controlplanev1.ApplyPoolV1Response, error) {
@@ -96,12 +97,14 @@ func poolToProto(pool *domain.Pool) *controlplanev1.Pool {
 	}
 
 	return &controlplanev1.Pool{
-		Id:       pool.Id,
-		Title:    pool.Title,
-		Type:     string(pool.Type),
-		Labels:   pool.Labels,
-		ProxyIds: pool.ProxyIds,
-		Selector: selectorToProto(pool.Selector),
+		Id:        pool.Id,
+		Title:     pool.Title,
+		Type:      string(pool.Type),
+		Labels:    pool.Labels,
+		ProxyIds:  pool.ProxyIds,
+		Selector:  selectorToProto(pool.Selector),
+		CreatedAt: timestamppb.New(pool.CreatedAt),
+		UpdatedAt: timestamppb.New(pool.UpdatedAt),
 	}
 
 }

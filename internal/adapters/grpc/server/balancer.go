@@ -8,6 +8,7 @@ import (
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyBalancerV1(ctx context.Context, req *controlplanev1.ApplyBalancerV1Request) (*controlplanev1.ApplyBalancerV1Response, error) {
@@ -90,9 +91,11 @@ func balancerToProto(bl *domain.LoadBalancer) *controlplanev1.LoadBalancer {
 	}
 
 	return &controlplanev1.LoadBalancer{
-		Id:     bl.Id,
-		Title:  bl.Title,
-		Type:   string(bl.Type),
-		PoolId: bl.PoolId,
+		Id:        bl.Id,
+		Title:     bl.Title,
+		Type:      string(bl.Type),
+		PoolId:    bl.PoolId,
+		CreatedAt: timestamppb.New(bl.CreatedAt),
+		UpdatedAt: timestamppb.New(bl.UpdatedAt),
 	}
 }

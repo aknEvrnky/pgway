@@ -3,6 +3,7 @@ package pgway.controlplane.v1;
 option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
 
 import "pgway/controlplane/v1/common.proto";
+import "google/protobuf/timestamp.proto";
 
 message EntrypointSpecV1 {
   string title = 1;
@@ -19,6 +20,8 @@ message Entrypoint {
   string host = 4;
   uint32 port = 5;
   string flow_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
 }
 
 message ApplyEntrypointV1Request {

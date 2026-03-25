@@ -9,6 +9,7 @@ import (
 )
 
 type Proxy struct {
+	Timestamps
 	Id       string            `json:"id"`
 	Protocol Protocol          `json:"protocol"`
 	Host     string            `json:"host"`

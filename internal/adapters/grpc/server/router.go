@@ -8,6 +8,7 @@ import (
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ControlPlaneServer) ApplyRouterV1(ctx context.Context, req *controlplanev1.ApplyRouterV1Request) (*controlplanev1.ApplyRouterV1Response, error) {
@@ -160,6 +161,8 @@ func routerToProto(router *domain.Router) *controlplanev1.Router {
 		Title:       router.Title,
 		Description: router.Description,
 		Rules:       rules,
+		CreatedAt:   timestamppb.New(router.CreatedAt),
+		UpdatedAt:   timestamppb.New(router.UpdatedAt),
 	}
 }
 

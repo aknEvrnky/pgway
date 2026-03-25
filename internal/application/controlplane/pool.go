@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -26,6 +27,14 @@ func (s *Service) ApplyPoolV1(ctx context.Context, meta schema.Metadata, spec po
 	if err := pool.Validate(); err != nil {
 		return nil, fmt.Errorf("domain validation: %w", err)
 	}
+
+	now := time.Now()
+	if existing, err := s.poolRepo.Find(ctx, pool.Id); err == nil {
+		pool.CreatedAt = existing.CreatedAt
+	} else {
+		pool.CreatedAt = now
+	}
+	pool.UpdatedAt = now
 
 	if err := s.poolRepo.Save(ctx, pool); err != nil {
 		return nil, fmt.Errorf("save pool: %w", err)

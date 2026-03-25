@@ -17,6 +17,7 @@ func (b BalancerType) IsValid() bool {
 }
 
 type LoadBalancer struct {
+	Timestamps
 	Id     string       `json:"id"`
 	Title  string       `json:"title"`
 	Type   BalancerType `json:"type"`

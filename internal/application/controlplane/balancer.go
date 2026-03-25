@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -31,6 +32,14 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 	if !lb.Type.IsValid() {
 		return nil, fmt.Errorf("domain validation: invalid balancer type %q", lb.Type)
 	}
+
+	now := time.Now()
+	if existing, err := s.lbRepo.Find(ctx, lb.Id); err == nil {
+		lb.CreatedAt = existing.CreatedAt
+	} else {
+		lb.CreatedAt = now
+	}
+	lb.UpdatedAt = now
 
 	if err := s.lbRepo.Save(ctx, lb); err != nil {
 		return nil, fmt.Errorf("save balancer: %w", err)

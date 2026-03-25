@@ -9,6 +9,7 @@ package controlplanev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -157,6 +158,8 @@ type Proxy struct {
 	Port          uint32                 `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
 	Auth          *AuthSpec              `protobuf:"bytes,5,opt,name=auth,proto3" json:"auth,omitempty"`
 	Labels        map[string]string      `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -229,6 +232,20 @@ func (x *Proxy) GetAuth() *AuthSpec {
 func (x *Proxy) GetLabels() map[string]string {
 	if x != nil {
 		return x.Labels
+	}
+	return nil
+}
+
+func (x *Proxy) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Proxy) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
 	}
 	return nil
 }
@@ -757,7 +774,7 @@ var File_pgway_controlplane_v1_proxy_proto protoreflect.FileDescriptor
 
 const file_pgway_controlplane_v1_proxy_proto_rawDesc = "" +
 	"\n" +
-	"!pgway/controlplane/v1/proxy.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\"\x98\x01\n" +
+	"!pgway/controlplane/v1/proxy.proto\x12\x15pgway.controlplane.v1\x1a\"pgway/controlplane/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x98\x01\n" +
 	"\vProxySpecV1\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12\x12\n" +
@@ -766,14 +783,18 @@ const file_pgway_controlplane_v1_proxy_proto_rawDesc = "" +
 	"\x04auth\x18\x05 \x01(\v2\x1f.pgway.controlplane.v1.AuthSpecR\x04auth\"2\n" +
 	"\bAuthSpec\x12\x12\n" +
 	"\x04user\x18\x01 \x01(\tR\x04user\x12\x12\n" +
-	"\x04pass\x18\x02 \x01(\tR\x04pass\"\x8d\x02\n" +
+	"\x04pass\x18\x02 \x01(\tR\x04pass\"\x83\x03\n" +
 	"\x05Proxy\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12\x12\n" +
 	"\x04host\x18\x03 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x04 \x01(\rR\x04port\x123\n" +
 	"\x04auth\x18\x05 \x01(\v2\x1f.pgway.controlplane.v1.AuthSpecR\x04auth\x12@\n" +
-	"\x06labels\x18\x06 \x03(\v2(.pgway.controlplane.v1.Proxy.LabelsEntryR\x06labels\x1a9\n" +
+	"\x06labels\x18\x06 \x03(\v2(.pgway.controlplane.v1.Proxy.LabelsEntryR\x06labels\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8a\x01\n" +
@@ -842,37 +863,40 @@ var file_pgway_controlplane_v1_proxy_proto_goTypes = []any{
 	(*FindProxiesByLabelsResponse)(nil), // 14: pgway.controlplane.v1.FindProxiesByLabelsResponse
 	nil,                                 // 15: pgway.controlplane.v1.Proxy.LabelsEntry
 	nil,                                 // 16: pgway.controlplane.v1.FindProxiesByLabelsRequest.LabelsEntry
-	(*Metadata)(nil),                    // 17: pgway.controlplane.v1.Metadata
+	(*timestamppb.Timestamp)(nil),       // 17: google.protobuf.Timestamp
+	(*Metadata)(nil),                    // 18: pgway.controlplane.v1.Metadata
 }
 var file_pgway_controlplane_v1_proxy_proto_depIdxs = []int32{
 	1,  // 0: pgway.controlplane.v1.ProxySpecV1.auth:type_name -> pgway.controlplane.v1.AuthSpec
 	1,  // 1: pgway.controlplane.v1.Proxy.auth:type_name -> pgway.controlplane.v1.AuthSpec
 	15, // 2: pgway.controlplane.v1.Proxy.labels:type_name -> pgway.controlplane.v1.Proxy.LabelsEntry
-	17, // 3: pgway.controlplane.v1.ApplyProxyV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
-	0,  // 4: pgway.controlplane.v1.ApplyProxyV1Request.spec:type_name -> pgway.controlplane.v1.ProxySpecV1
-	2,  // 5: pgway.controlplane.v1.ApplyProxyV1Response.proxy:type_name -> pgway.controlplane.v1.Proxy
-	2,  // 6: pgway.controlplane.v1.GetProxyResponse.proxy:type_name -> pgway.controlplane.v1.Proxy
-	2,  // 7: pgway.controlplane.v1.ListProxiesResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
-	2,  // 8: pgway.controlplane.v1.GetProxiesByIdsResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
-	16, // 9: pgway.controlplane.v1.FindProxiesByLabelsRequest.labels:type_name -> pgway.controlplane.v1.FindProxiesByLabelsRequest.LabelsEntry
-	2,  // 10: pgway.controlplane.v1.FindProxiesByLabelsResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
-	3,  // 11: pgway.controlplane.v1.ProxyService.ApplyProxyV1:input_type -> pgway.controlplane.v1.ApplyProxyV1Request
-	5,  // 12: pgway.controlplane.v1.ProxyService.GetProxy:input_type -> pgway.controlplane.v1.GetProxyRequest
-	7,  // 13: pgway.controlplane.v1.ProxyService.ListProxies:input_type -> pgway.controlplane.v1.ListProxiesRequest
-	9,  // 14: pgway.controlplane.v1.ProxyService.DeleteProxy:input_type -> pgway.controlplane.v1.DeleteProxyRequest
-	11, // 15: pgway.controlplane.v1.ProxyService.GetProxiesByIds:input_type -> pgway.controlplane.v1.GetProxiesByIdsRequest
-	13, // 16: pgway.controlplane.v1.ProxyService.FindProxiesByLabels:input_type -> pgway.controlplane.v1.FindProxiesByLabelsRequest
-	4,  // 17: pgway.controlplane.v1.ProxyService.ApplyProxyV1:output_type -> pgway.controlplane.v1.ApplyProxyV1Response
-	6,  // 18: pgway.controlplane.v1.ProxyService.GetProxy:output_type -> pgway.controlplane.v1.GetProxyResponse
-	8,  // 19: pgway.controlplane.v1.ProxyService.ListProxies:output_type -> pgway.controlplane.v1.ListProxiesResponse
-	10, // 20: pgway.controlplane.v1.ProxyService.DeleteProxy:output_type -> pgway.controlplane.v1.DeleteProxyResponse
-	12, // 21: pgway.controlplane.v1.ProxyService.GetProxiesByIds:output_type -> pgway.controlplane.v1.GetProxiesByIdsResponse
-	14, // 22: pgway.controlplane.v1.ProxyService.FindProxiesByLabels:output_type -> pgway.controlplane.v1.FindProxiesByLabelsResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	17, // 3: pgway.controlplane.v1.Proxy.created_at:type_name -> google.protobuf.Timestamp
+	17, // 4: pgway.controlplane.v1.Proxy.updated_at:type_name -> google.protobuf.Timestamp
+	18, // 5: pgway.controlplane.v1.ApplyProxyV1Request.metadata:type_name -> pgway.controlplane.v1.Metadata
+	0,  // 6: pgway.controlplane.v1.ApplyProxyV1Request.spec:type_name -> pgway.controlplane.v1.ProxySpecV1
+	2,  // 7: pgway.controlplane.v1.ApplyProxyV1Response.proxy:type_name -> pgway.controlplane.v1.Proxy
+	2,  // 8: pgway.controlplane.v1.GetProxyResponse.proxy:type_name -> pgway.controlplane.v1.Proxy
+	2,  // 9: pgway.controlplane.v1.ListProxiesResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
+	2,  // 10: pgway.controlplane.v1.GetProxiesByIdsResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
+	16, // 11: pgway.controlplane.v1.FindProxiesByLabelsRequest.labels:type_name -> pgway.controlplane.v1.FindProxiesByLabelsRequest.LabelsEntry
+	2,  // 12: pgway.controlplane.v1.FindProxiesByLabelsResponse.proxies:type_name -> pgway.controlplane.v1.Proxy
+	3,  // 13: pgway.controlplane.v1.ProxyService.ApplyProxyV1:input_type -> pgway.controlplane.v1.ApplyProxyV1Request
+	5,  // 14: pgway.controlplane.v1.ProxyService.GetProxy:input_type -> pgway.controlplane.v1.GetProxyRequest
+	7,  // 15: pgway.controlplane.v1.ProxyService.ListProxies:input_type -> pgway.controlplane.v1.ListProxiesRequest
+	9,  // 16: pgway.controlplane.v1.ProxyService.DeleteProxy:input_type -> pgway.controlplane.v1.DeleteProxyRequest
+	11, // 17: pgway.controlplane.v1.ProxyService.GetProxiesByIds:input_type -> pgway.controlplane.v1.GetProxiesByIdsRequest
+	13, // 18: pgway.controlplane.v1.ProxyService.FindProxiesByLabels:input_type -> pgway.controlplane.v1.FindProxiesByLabelsRequest
+	4,  // 19: pgway.controlplane.v1.ProxyService.ApplyProxyV1:output_type -> pgway.controlplane.v1.ApplyProxyV1Response
+	6,  // 20: pgway.controlplane.v1.ProxyService.GetProxy:output_type -> pgway.controlplane.v1.GetProxyResponse
+	8,  // 21: pgway.controlplane.v1.ProxyService.ListProxies:output_type -> pgway.controlplane.v1.ListProxiesResponse
+	10, // 22: pgway.controlplane.v1.ProxyService.DeleteProxy:output_type -> pgway.controlplane.v1.DeleteProxyResponse
+	12, // 23: pgway.controlplane.v1.ProxyService.GetProxiesByIds:output_type -> pgway.controlplane.v1.GetProxiesByIdsResponse
+	14, // 24: pgway.controlplane.v1.ProxyService.FindProxiesByLabels:output_type -> pgway.controlplane.v1.FindProxiesByLabelsResponse
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_pgway_controlplane_v1_proxy_proto_init() }

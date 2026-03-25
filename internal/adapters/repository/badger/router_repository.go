@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	badgerdb "github.com/dgraph-io/badger/v4"
@@ -33,7 +32,6 @@ func (r *RouterRepository) marshal(router *domain.Router) ([]byte, error) {
 	return json.Marshal(StoredResource[domain.Router]{
 		StorageVersion: routerStorageVersion,
 		Kind:           routerKind,
-		UpdatedAt:      time.Now(),
 		Spec:           *router,
 	})
 }

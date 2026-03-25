@@ -18,6 +18,7 @@ type LabelSelector struct {
 }
 
 type Pool struct {
+	Timestamps
 	Id     string            `json:"id"`
 	Title  string            `json:"title"`
 	Type   PoolType          `json:"type"`
