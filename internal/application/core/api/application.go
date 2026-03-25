@@ -27,7 +27,7 @@ func NewApplication(
 }
 
 func (a *Application) Bootstrap(ctx context.Context) error {
-	// warm up cahce
+	// warm up cache
 	if err := a.warmupCache(ctx); err != nil {
 		return err
 	}

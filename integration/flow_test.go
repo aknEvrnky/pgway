@@ -21,6 +21,7 @@ import (
 )
 
 func TestFlow_BootstrapAndExecute(t *testing.T) {
+	t.Parallel()
 	store := badgerutil.NewBadgerStore(t)
 	svc := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
 	ctx := context.Background()
@@ -34,7 +35,7 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. Pool (references proxy)
-	_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
+	pool, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
 		Title:    "test-pool",
 		Type:     "static",
 		ProxyIds: []string{proxy.Id},
@@ -45,7 +46,7 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 	lb, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-1"}, balancerv1.BalancerSpecV1{
 		Title:  "test-lb",
 		Type:   "round-robin",
-		PoolId: "pool-1",
+		PoolId: pool.Id,
 	})
 	require.NoError(t, err)
 
@@ -71,6 +72,7 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 	require.NoError(t, err)
 
 	// Execute: route a request through the entrypoint's flow
+	// req is passed to ExecuteFlow; routing is driven by entrypointId directly (no router in this flow)
 	req := httptest.NewRequest(http.MethodConnect, "http://example.com:80", nil)
 	req.Host = ep.ListenAddr()
 
