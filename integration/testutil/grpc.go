@@ -22,6 +22,7 @@ func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane) *grpc.ClientConn {
 	t.Helper()
 
 	lis := bufconn.Listen(bufSize)
+	t.Cleanup(func() { lis.Close() }) // registered first → runs last (LIFO)
 
 	s := grpc.NewServer()
 	cpServer := grpcserver.NewControlPlaneServer(cp)
@@ -34,7 +35,7 @@ func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane) *grpc.ClientConn {
 
 	go s.Serve(lis) //nolint:errcheck
 
-	t.Cleanup(s.Stop)
+	t.Cleanup(s.Stop) // registered after lis.Close → runs first (LIFO)
 
 	conn, err := grpc.NewClient(
 		"passthrough:///bufnet",
