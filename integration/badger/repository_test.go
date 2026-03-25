@@ -31,11 +31,18 @@ func TestProxyRepository(t *testing.T) {
 			p1 := testutil.NewTestProxy()
 			p2 := testutil.NewTestProxy()
 			p2.Id = "p2"
-			require.NoError(t, store.Proxies.Save(context.Background(), p1))
-			require.NoError(t, store.Proxies.Save(context.Background(), p2))
-			all, err := store.Proxies.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.Proxies.Save(ctx, p1))
+			require.NoError(t, store.Proxies.Save(ctx, p2))
+			got, err := store.Proxies.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, p := range got {
+				ids[p.Id] = true
+			}
+			assert.True(t, ids["p1"], "p1 should be in results")
+			assert.True(t, ids["p2"], "p2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -50,9 +57,11 @@ func TestProxyRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			proxy := testutil.NewTestProxy()
-			require.NoError(t, store.Proxies.Save(context.Background(), proxy))
-			err := store.Proxies.Delete(context.Background(), proxy.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.Proxies.Save(ctx, proxy))
+			require.NoError(t, store.Proxies.Delete(ctx, proxy.Id))
+			_, err := store.Proxies.Find(ctx, proxy.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -68,7 +77,6 @@ func TestProxyRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
@@ -96,11 +104,18 @@ func TestPoolRepository(t *testing.T) {
 			p1 := testutil.NewTestPool()
 			p2 := testutil.NewTestPool()
 			p2.Id = "pool-2"
-			require.NoError(t, store.Pools.Save(context.Background(), p1))
-			require.NoError(t, store.Pools.Save(context.Background(), p2))
-			all, err := store.Pools.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.Pools.Save(ctx, p1))
+			require.NoError(t, store.Pools.Save(ctx, p2))
+			got, err := store.Pools.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, p := range got {
+				ids[p.Id] = true
+			}
+			assert.True(t, ids["pool-1"], "pool-1 should be in results")
+			assert.True(t, ids["pool-2"], "pool-2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -115,9 +130,11 @@ func TestPoolRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			pool := testutil.NewTestPool()
-			require.NoError(t, store.Pools.Save(context.Background(), pool))
-			err := store.Pools.Delete(context.Background(), pool.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.Pools.Save(ctx, pool))
+			require.NoError(t, store.Pools.Delete(ctx, pool.Id))
+			_, err := store.Pools.Find(ctx, pool.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -133,7 +150,6 @@ func TestPoolRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
@@ -161,11 +177,18 @@ func TestBalancerRepository(t *testing.T) {
 			lb1 := testutil.NewTestLB()
 			lb2 := testutil.NewTestLB()
 			lb2.Id = "lb-2"
-			require.NoError(t, store.LBs.Save(context.Background(), lb1))
-			require.NoError(t, store.LBs.Save(context.Background(), lb2))
-			all, err := store.LBs.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.LBs.Save(ctx, lb1))
+			require.NoError(t, store.LBs.Save(ctx, lb2))
+			got, err := store.LBs.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, lb := range got {
+				ids[lb.Id] = true
+			}
+			assert.True(t, ids["lb-1"], "lb-1 should be in results")
+			assert.True(t, ids["lb-2"], "lb-2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -180,9 +203,11 @@ func TestBalancerRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			lb := testutil.NewTestLB()
-			require.NoError(t, store.LBs.Save(context.Background(), lb))
-			err := store.LBs.Delete(context.Background(), lb.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.LBs.Save(ctx, lb))
+			require.NoError(t, store.LBs.Delete(ctx, lb.Id))
+			_, err := store.LBs.Find(ctx, lb.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -198,7 +223,6 @@ func TestBalancerRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
@@ -226,11 +250,18 @@ func TestRouterRepository(t *testing.T) {
 			r1 := testutil.NewTestRouter()
 			r2 := testutil.NewTestRouter()
 			r2.Id = "router-2"
-			require.NoError(t, store.Routers.Save(context.Background(), r1))
-			require.NoError(t, store.Routers.Save(context.Background(), r2))
-			all, err := store.Routers.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.Routers.Save(ctx, r1))
+			require.NoError(t, store.Routers.Save(ctx, r2))
+			got, err := store.Routers.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, r := range got {
+				ids[r.Id] = true
+			}
+			assert.True(t, ids["router-1"], "router-1 should be in results")
+			assert.True(t, ids["router-2"], "router-2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -245,9 +276,11 @@ func TestRouterRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			router := testutil.NewTestRouter()
-			require.NoError(t, store.Routers.Save(context.Background(), router))
-			err := store.Routers.Delete(context.Background(), router.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.Routers.Save(ctx, router))
+			require.NoError(t, store.Routers.Delete(ctx, router.Id))
+			_, err := store.Routers.Find(ctx, router.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -263,7 +296,6 @@ func TestRouterRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
@@ -291,11 +323,18 @@ func TestFlowRepository(t *testing.T) {
 			f1 := testutil.NewTestFlow()
 			f2 := testutil.NewTestFlow()
 			f2.Id = "flow-2"
-			require.NoError(t, store.Flows.Save(context.Background(), f1))
-			require.NoError(t, store.Flows.Save(context.Background(), f2))
-			all, err := store.Flows.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.Flows.Save(ctx, f1))
+			require.NoError(t, store.Flows.Save(ctx, f2))
+			got, err := store.Flows.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, f := range got {
+				ids[f.Id] = true
+			}
+			assert.True(t, ids["flow-1"], "flow-1 should be in results")
+			assert.True(t, ids["flow-2"], "flow-2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -310,9 +349,11 @@ func TestFlowRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			flow := testutil.NewTestFlow()
-			require.NoError(t, store.Flows.Save(context.Background(), flow))
-			err := store.Flows.Delete(context.Background(), flow.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.Flows.Save(ctx, flow))
+			require.NoError(t, store.Flows.Delete(ctx, flow.Id))
+			_, err := store.Flows.Find(ctx, flow.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -328,7 +369,6 @@ func TestFlowRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
@@ -356,11 +396,18 @@ func TestEntrypointRepository(t *testing.T) {
 			ep1 := testutil.NewTestEntrypoint()
 			ep2 := testutil.NewTestEntrypoint()
 			ep2.Id = "ep-2"
-			require.NoError(t, store.EPs.Save(context.Background(), ep1))
-			require.NoError(t, store.EPs.Save(context.Background(), ep2))
-			all, err := store.EPs.GetAll(context.Background())
+			ctx := context.Background()
+			require.NoError(t, store.EPs.Save(ctx, ep1))
+			require.NoError(t, store.EPs.Save(ctx, ep2))
+			got, err := store.EPs.GetAll(ctx)
 			require.NoError(t, err)
-			assert.Len(t, all, 2)
+			require.Len(t, got, 2)
+			ids := map[string]bool{}
+			for _, ep := range got {
+				ids[ep.Id] = true
+			}
+			assert.True(t, ids["ep-1"], "ep-1 should be in results")
+			assert.True(t, ids["ep-2"], "ep-2 should be in results")
 		}},
 		{"Save overwrite", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -375,9 +422,11 @@ func TestEntrypointRepository(t *testing.T) {
 		{"Delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
 			ep := testutil.NewTestEntrypoint()
-			require.NoError(t, store.EPs.Save(context.Background(), ep))
-			err := store.EPs.Delete(context.Background(), ep.Id)
-			assert.NoError(t, err)
+			ctx := context.Background()
+			require.NoError(t, store.EPs.Save(ctx, ep))
+			require.NoError(t, store.EPs.Delete(ctx, ep.Id))
+			_, err := store.EPs.Find(ctx, ep.Id)
+			assert.ErrorContains(t, err, "not found")
 		}},
 		{"Find after delete", func(t *testing.T) {
 			store := badgerutil.NewBadgerStore(t)
@@ -393,7 +442,6 @@ func TestEntrypointRepository(t *testing.T) {
 			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tt.run(t)
