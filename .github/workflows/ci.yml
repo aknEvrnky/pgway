@@ -1,12 +1,79 @@
 name: CI
-on: [push, pull_request]
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2
+
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - name: Install protoc plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+      - name: Verify proto generation
+        run: make proto
+      - name: Check for uncommitted changes
+        run: git diff --exit-code gen/
+
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
-          go-version: '1.26'
-      - run: go vet ./...
-      - run: go test -race ./...
+          go-version-file: go.mod
+      - name: Vet
+        run: go vet ./...
+      - name: Unit tests with coverage
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./internal/... ./cmd/...
+      - name: Integration tests
+        run: go test -race ./integration/...
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          fail_ci_if_error: false
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Build all binaries
+        run: |
+          go build ./cmd/pgway
+          go build ./cmd/pgway-cp
+          go build ./cmd/pgway-dp
+          go build ./cmd/pgctl
