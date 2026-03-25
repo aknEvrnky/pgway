@@ -5,6 +5,6 @@ linters:
   disable:
     - depguard
 
-issues:
+run:
   exclude-dirs:
     - gen
