@@ -110,13 +110,14 @@ func (r *BalancerRepository) Save(ctx context.Context, lb *domain.LoadBalancer) 
 }
 
 func (r *BalancerRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(balancerKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("balancer %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(balancerKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("balancer %q not found", id)
-	}
-
-	return err
 }

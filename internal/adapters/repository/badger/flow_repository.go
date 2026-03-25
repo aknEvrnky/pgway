@@ -110,13 +110,14 @@ func (r *FlowRepository) Save(ctx context.Context, flow *domain.Flow) error {
 }
 
 func (r *FlowRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(flowKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("flow %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(flowKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("flow %q not found", id)
-	}
-
-	return err
 }

@@ -113,13 +113,14 @@ func (r *PoolRepository) Save(ctx context.Context, pool *domain.Pool) error {
 }
 
 func (r *PoolRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(poolKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("pool %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(poolKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("pool %q not found", id)
-	}
-
-	return err
 }
