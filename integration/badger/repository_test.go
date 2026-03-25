@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	"github.com/aknEvrnky/pgway/integration/testutil"
+	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 )
 
 func TestProxyRepository(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
@@ -16,7 +17,6 @@ import (
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 )
 
 // newSvc is a helper that sets up a fresh BadgerDB store and a ControlPlane service.

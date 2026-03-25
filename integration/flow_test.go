@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -17,7 +18,6 @@ import (
 	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 )
 
 func TestFlow_BootstrapAndExecute(t *testing.T) {

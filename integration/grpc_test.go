@@ -11,9 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	"github.com/aknEvrnky/pgway/integration/testutil"
+	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 )
 
 func newGrpcEnv(t *testing.T) *grpc.ClientConn {
