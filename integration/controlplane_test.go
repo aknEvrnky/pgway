@@ -71,7 +71,7 @@ func TestControlPlane_Proxy(t *testing.T) {
 			result, err := svc.ApplyProxyV1(ctx, meta, proxySpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyProxyV1(ctx, meta, proxySpec)
 			require.NoError(t, err)
@@ -122,14 +122,14 @@ func TestControlPlane_Proxy(t *testing.T) {
 			require.NoError(t, svc.DeleteProxy(ctx, "test-proxy"))
 
 			_, err = svc.GetProxy(ctx, "test-proxy")
-			assert.Error(t, err, "get after delete should return error")
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent proxy returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeleteProxy(ctx, "ghost-proxy")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -171,8 +171,8 @@ func TestControlPlane_Pool(t *testing.T) {
 			before := time.Now()
 			result, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "test-pool"}, poolSpec)
 			require.NoError(t, err)
-			assert.True(t, !result.CreatedAt.Before(before))
-			assert.True(t, !result.UpdatedAt.Before(before))
+			assert.True(t, !result.CreatedAt.Before(before), "CreatedAt should be >= before")
+			assert.True(t, !result.UpdatedAt.Before(before), "UpdatedAt should be >= before")
 		}},
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc := newSvc(t)
@@ -182,12 +182,12 @@ func TestControlPlane_Pool(t *testing.T) {
 			result, err := svc.ApplyPoolV1(ctx, meta, poolSpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyPoolV1(ctx, meta, poolSpec)
 			require.NoError(t, err)
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
-			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt))
+			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 		}},
 		{"GetPool returns persisted pool", func(t *testing.T) {
 			svc := newSvc(t)
@@ -230,14 +230,14 @@ func TestControlPlane_Pool(t *testing.T) {
 			require.NoError(t, svc.DeletePool(ctx, "test-pool"))
 
 			_, err = svc.GetPool(ctx, "test-pool")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent pool returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeletePool(ctx, "ghost-pool")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -279,8 +279,8 @@ func TestControlPlane_Balancer(t *testing.T) {
 			before := time.Now()
 			result, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "test-lb"}, lbSpec)
 			require.NoError(t, err)
-			assert.True(t, !result.CreatedAt.Before(before))
-			assert.True(t, !result.UpdatedAt.Before(before))
+			assert.True(t, !result.CreatedAt.Before(before), "CreatedAt should be >= before")
+			assert.True(t, !result.UpdatedAt.Before(before), "UpdatedAt should be >= before")
 		}},
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc := newSvc(t)
@@ -290,12 +290,12 @@ func TestControlPlane_Balancer(t *testing.T) {
 			result, err := svc.ApplyBalancerV1(ctx, meta, lbSpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyBalancerV1(ctx, meta, lbSpec)
 			require.NoError(t, err)
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
-			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt))
+			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 		}},
 		{"GetBalancer returns persisted balancer", func(t *testing.T) {
 			svc := newSvc(t)
@@ -338,14 +338,14 @@ func TestControlPlane_Balancer(t *testing.T) {
 			require.NoError(t, svc.DeleteBalancer(ctx, "test-lb"))
 
 			_, err = svc.GetBalancer(ctx, "test-lb")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent balancer returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeleteBalancer(ctx, "ghost-lb")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -393,8 +393,8 @@ func TestControlPlane_Router(t *testing.T) {
 			before := time.Now()
 			result, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: "test-router"}, routerSpec)
 			require.NoError(t, err)
-			assert.True(t, !result.CreatedAt.Before(before))
-			assert.True(t, !result.UpdatedAt.Before(before))
+			assert.True(t, !result.CreatedAt.Before(before), "CreatedAt should be >= before")
+			assert.True(t, !result.UpdatedAt.Before(before), "UpdatedAt should be >= before")
 		}},
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc := newSvc(t)
@@ -404,12 +404,12 @@ func TestControlPlane_Router(t *testing.T) {
 			result, err := svc.ApplyRouterV1(ctx, meta, routerSpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyRouterV1(ctx, meta, routerSpec)
 			require.NoError(t, err)
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
-			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt))
+			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 		}},
 		{"GetRouter returns persisted router", func(t *testing.T) {
 			svc := newSvc(t)
@@ -453,14 +453,14 @@ func TestControlPlane_Router(t *testing.T) {
 			require.NoError(t, svc.DeleteRouter(ctx, "test-router"))
 
 			_, err = svc.GetRouter(ctx, "test-router")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent router returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeleteRouter(ctx, "ghost-router")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -500,8 +500,8 @@ func TestControlPlane_Flow(t *testing.T) {
 			before := time.Now()
 			result, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "test-flow"}, flowSpec)
 			require.NoError(t, err)
-			assert.True(t, !result.CreatedAt.Before(before))
-			assert.True(t, !result.UpdatedAt.Before(before))
+			assert.True(t, !result.CreatedAt.Before(before), "CreatedAt should be >= before")
+			assert.True(t, !result.UpdatedAt.Before(before), "UpdatedAt should be >= before")
 		}},
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc := newSvc(t)
@@ -511,12 +511,12 @@ func TestControlPlane_Flow(t *testing.T) {
 			result, err := svc.ApplyFlowV1(ctx, meta, flowSpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyFlowV1(ctx, meta, flowSpec)
 			require.NoError(t, err)
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
-			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt))
+			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 		}},
 		{"GetFlow returns persisted flow", func(t *testing.T) {
 			svc := newSvc(t)
@@ -559,14 +559,14 @@ func TestControlPlane_Flow(t *testing.T) {
 			require.NoError(t, svc.DeleteFlow(ctx, "test-flow"))
 
 			_, err = svc.GetFlow(ctx, "test-flow")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent flow returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeleteFlow(ctx, "ghost-flow")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -610,8 +610,8 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			before := time.Now()
 			result, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "test-ep"}, epSpec)
 			require.NoError(t, err)
-			assert.True(t, !result.CreatedAt.Before(before))
-			assert.True(t, !result.UpdatedAt.Before(before))
+			assert.True(t, !result.CreatedAt.Before(before), "CreatedAt should be >= before")
+			assert.True(t, !result.UpdatedAt.Before(before), "UpdatedAt should be >= before")
 		}},
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc := newSvc(t)
@@ -621,12 +621,12 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			result, err := svc.ApplyEntrypointV1(ctx, meta, epSpec)
 			require.NoError(t, err)
 
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond) // ensure UpdatedAt advances; 1ms sufficient on Linux/macOS
 
 			result2, err := svc.ApplyEntrypointV1(ctx, meta, epSpec)
 			require.NoError(t, err)
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
-			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt))
+			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 		}},
 		{"GetEntrypoint returns persisted entrypoint", func(t *testing.T) {
 			svc := newSvc(t)
@@ -671,14 +671,14 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			require.NoError(t, svc.DeleteEntrypoint(ctx, "test-ep"))
 
 			_, err = svc.GetEntrypoint(ctx, "test-ep")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 		}},
 		{"Delete non-existent entrypoint returns error", func(t *testing.T) {
 			svc := newSvc(t)
 			ctx := context.Background()
 
 			err := svc.DeleteEntrypoint(ctx, "ghost-ep")
-			assert.Error(t, err)
+			assert.ErrorContains(t, err, "not found")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
