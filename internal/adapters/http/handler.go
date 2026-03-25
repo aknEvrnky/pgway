@@ -81,8 +81,17 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	}
 	defer src.Close()
 
-	go io.Copy(dst, src)
-	io.Copy(src, dst)
+	errc := make(chan error, 1)
+	go func() {
+		_, err := io.Copy(dst, src)
+		errc <- err
+	}()
+	if _, err := io.Copy(src, dst); err != nil {
+		zap.L().Debug("tunnel copy src→dst", zap.Error(err))
+	}
+	if err := <-errc; err != nil {
+		zap.L().Debug("tunnel copy dst→src", zap.Error(err))
+	}
 }
 
 // HTTP — direkt forward
@@ -101,7 +110,9 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	h.removeHopHeaders(resp.Header)
 	h.copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		zap.L().Error("copy response body", zap.Error(err))
+	}
 }
 
 func (h *Handler) removeHopHeaders(header http.Header) {

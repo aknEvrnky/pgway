@@ -171,12 +171,6 @@ var (
 	testLB     = &domain.LoadBalancer{Id: "lb-1", Type: domain.BalancerTypeRoundRobin, PoolId: "pool-1"}
 	testEP     = &domain.Entrypoint{Id: "ep-1", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 8080, FlowId: "flow-1"}
 	testFlow   = &domain.Flow{Id: "flow-1", BalancerId: "lb-1"}
-	testRouter = &domain.Router{
-		Id: "router-1",
-		Rules: []*domain.RouterRule{
-			{Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb-1"},
-		},
-	}
 )
 
 func newApp(cp *mockControlPlane) *Application {
