@@ -6,3 +6,5 @@ config.yml
 
 build/
 var/
+
+.worktrees/
