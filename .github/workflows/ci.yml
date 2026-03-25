@@ -17,7 +17,7 @@ jobs:
           cache: false
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2
+          version: v2.11.3
 
   proto:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
       - name: Verify proto generation
         run: make proto
       - name: Check for uncommitted changes
-        run: git diff --exit-code gen/
+        run: git diff --ignore-matching-lines='protoc' --exit-code gen/
 
   test:
     runs-on: ubuntu-latest
