@@ -110,13 +110,14 @@ func (r *EntrypointRepository) Save(ctx context.Context, ep *domain.Entrypoint) 
 }
 
 func (r *EntrypointRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(entrypointKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("entrypoint %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(entrypointKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("entrypoint %q not found", id)
-	}
-
-	return err
 }

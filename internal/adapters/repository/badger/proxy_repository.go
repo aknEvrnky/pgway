@@ -113,15 +113,16 @@ func (r *ProxyRepository) Save(ctx context.Context, proxy *domain.Proxy) error {
 }
 
 func (r *ProxyRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(proxyKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("proxy %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(proxyKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("proxy %q not found", id)
-	}
-
-	return err
 }
 
 func (r *ProxyRepository) GetByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error) {

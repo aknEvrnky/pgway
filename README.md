@@ -125,6 +125,19 @@ spec:
 - **Flow** — connects a router or balancer to an entrypoint
 - **Entrypoint** — listener that accepts client connections
 
+## Testing
+
+```bash
+# Unit tests
+go test ./internal/...
+
+# Integration tests (BadgerDB, gRPC, full pipeline)
+go test ./integration/...
+
+# All tests
+go test ./...
+```
+
 ## License
 
 MIT

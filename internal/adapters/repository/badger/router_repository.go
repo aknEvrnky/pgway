@@ -110,13 +110,14 @@ func (r *RouterRepository) Save(ctx context.Context, router *domain.Router) erro
 }
 
 func (r *RouterRepository) Delete(ctx context.Context, id string) error {
-	err := r.db.Update(func(txn *badgerdb.Txn) error {
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(routerKey(id))
+		if errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return fmt.Errorf("router %q not found", id)
+		}
+		if err != nil {
+			return err
+		}
 		return txn.Delete(routerKey(id))
 	})
-
-	if errors.Is(err, badgerdb.ErrKeyNotFound) {
-		return fmt.Errorf("router %q not found", id)
-	}
-
-	return err
 }
