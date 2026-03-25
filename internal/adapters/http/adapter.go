@@ -58,6 +58,11 @@ func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.Pro
 }
 
 func (a *Adapter) Run(ctx context.Context) error {
+	if len(a.servers) == 0 {
+		<-ctx.Done()
+		return nil
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	for _, server := range a.servers {
