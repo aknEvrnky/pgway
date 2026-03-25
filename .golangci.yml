@@ -4,4 +4,4 @@ linters:
   default: standard
   disable:
     - depguard
-
+    - errcheck

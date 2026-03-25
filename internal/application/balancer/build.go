@@ -8,8 +8,8 @@ import (
 )
 
 func Build(lb *domain.LoadBalancer, p *domain.Pool) (LoadBalancer, error) {
-	switch {
-	case lb.Type == domain.BalancerTypeRoundRobin:
+	switch lb.Type {
+	case domain.BalancerTypeRoundRobin:
 		return algorithm.NewRoundRobin(p)
 	default:
 		return nil, fmt.Errorf("unknown balancer type %q", lb.Type)

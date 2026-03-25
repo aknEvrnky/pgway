@@ -1,3 +1,5 @@
+[![CI](https://github.com/aknEvrnky/pgway/actions/workflows/ci.yml/badge.svg)](https://github.com/aknEvrnky/pgway/actions/workflows/ci.yml)
+
 # pgway
 
 A proxy gateway that manages HTTP/SOCKS5 upstream proxies through a centralized entry point.

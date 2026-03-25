@@ -63,7 +63,7 @@ func (a *Adapter) Run(ctx context.Context) error {
 		return nil
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, _ := errgroup.WithContext(ctx)
 
 	for _, server := range a.servers {
 		g.Go(func() error {

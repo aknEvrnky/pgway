@@ -77,19 +77,19 @@ func (a *Adapter) dialHTTPProxy(ctx context.Context, p *domain.Proxy, target str
 	}
 
 	if err := req.Write(conn); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("write CONNECT request: %w", err)
 	}
 
 	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("read CONNECT response: %w", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("proxy CONNECT failed: %s", resp.Status)
 	}
 
