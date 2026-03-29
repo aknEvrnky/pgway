@@ -34,18 +34,25 @@ func (c *Client) GetBalancer(ctx context.Context, name string) (*domain.LoadBala
 	return balancerFromProto(resp.Balancer), nil
 }
 
-func (c *Client) ListBalancers(ctx context.Context) ([]*domain.LoadBalancer, error) {
-	resp, err := c.balancer.ListBalancers(ctx, &controlplanev1.ListBalancersRequest{})
+func (c *Client) ListBalancers(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.LoadBalancer], error) {
+	resp, err := c.balancer.ListBalancers(ctx, &controlplanev1.ListBalancersRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.LoadBalancer]{}, err
 	}
 
-	balancers := make([]*domain.LoadBalancer, 0, len(resp.Balancers))
+	items := make([]*domain.LoadBalancer, 0, len(resp.Balancers))
 	for _, b := range resp.Balancers {
-		balancers = append(balancers, balancerFromProto(b))
+		items = append(items, balancerFromProto(b))
 	}
 
-	return balancers, nil
+	return domain.ListResult[domain.LoadBalancer]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeleteBalancer(ctx context.Context, name string) error {

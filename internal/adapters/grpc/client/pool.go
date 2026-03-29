@@ -30,18 +30,25 @@ func (c *Client) GetPool(ctx context.Context, name string) (*domain.Pool, error)
 	return poolFromProto(resp.Pool), nil
 }
 
-func (c *Client) ListPools(ctx context.Context) ([]*domain.Pool, error) {
-	resp, err := c.pool.ListPools(ctx, &controlplanev1.ListPoolsRequest{})
+func (c *Client) ListPools(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Pool], error) {
+	resp, err := c.pool.ListPools(ctx, &controlplanev1.ListPoolsRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.Pool]{}, err
 	}
 
-	pools := make([]*domain.Pool, 0, len(resp.Pools))
+	items := make([]*domain.Pool, 0, len(resp.Pools))
 	for _, p := range resp.Pools {
-		pools = append(pools, poolFromProto(p))
+		items = append(items, poolFromProto(p))
 	}
 
-	return pools, nil
+	return domain.ListResult[domain.Pool]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeletePool(ctx context.Context, name string) error {

@@ -54,32 +54,32 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	var routers []*domain.Router
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListEntrypoints(gctx)
+		res, err := a.controlPlane.ListEntrypoints(gctx, domain.ListParams{})
 		if err != nil {
 			return err
 		}
 
-		entrypoints = res
+		entrypoints = res.Items
 		return nil
 	})
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListFlows(gctx)
+		res, err := a.controlPlane.ListFlows(gctx, domain.ListParams{})
 		if err != nil {
 			return err
 		}
 
-		flows = res
+		flows = res.Items
 		return nil
 	})
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListRouters(gctx)
+		res, err := a.controlPlane.ListRouters(gctx, domain.ListParams{})
 		if err != nil {
 			return err
 		}
 
-		routers = res
+		routers = res.Items
 		return nil
 	})
 

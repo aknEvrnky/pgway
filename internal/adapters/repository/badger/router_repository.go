@@ -44,33 +44,14 @@ func (r *RouterRepository) unmarshal(data []byte) (*domain.Router, error) {
 	return &stored.Spec, nil
 }
 
-func (r *RouterRepository) GetAll(ctx context.Context) ([]*domain.Router, error) {
-	var routers []*domain.Router
-
+func (r *RouterRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error) {
+	var result domain.ListResult[domain.Router]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(routerPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				router, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-				routers = append(routers, router)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, routerPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return routers, err
+	return result, err
 }
 
 func (r *RouterRepository) Find(ctx context.Context, id string) (*domain.Router, error) {

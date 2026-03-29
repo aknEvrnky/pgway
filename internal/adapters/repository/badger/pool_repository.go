@@ -44,35 +44,14 @@ func (r *PoolRepository) unmarshal(data []byte) (*domain.Pool, error) {
 	return &stored.Spec, nil
 }
 
-func (r *PoolRepository) GetAll(ctx context.Context) ([]*domain.Pool, error) {
-	var pools []*domain.Pool
-
+func (r *PoolRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Pool], error) {
+	var result domain.ListResult[domain.Pool]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(poolPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				pool, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-
-				pools = append(pools, pool)
-				return nil
-			})
-
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, poolPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return pools, err
+	return result, err
 }
 
 func (r *PoolRepository) Find(ctx context.Context, id string) (*domain.Pool, error) {

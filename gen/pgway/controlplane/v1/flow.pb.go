@@ -336,6 +336,8 @@ func (x *GetFlowResponse) GetFlow() *Flow {
 
 type ListFlowsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -370,9 +372,25 @@ func (*ListFlowsRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_flow_proto_rawDescGZIP(), []int{6}
 }
 
+func (x *ListFlowsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListFlowsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListFlowsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Flows         []*Flow                `protobuf:"bytes,1,rep,name=flows,proto3" json:"flows,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -412,6 +430,20 @@ func (x *ListFlowsResponse) GetFlows() []*Flow {
 		return x.Flows
 	}
 	return nil
+}
+
+func (x *ListFlowsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListFlowsResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeleteFlowRequest struct {
@@ -521,10 +553,16 @@ const file_pgway_controlplane_v1_flow_proto_rawDesc = "" +
 	"\x0eGetFlowRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"B\n" +
 	"\x0fGetFlowResponse\x12/\n" +
-	"\x04flow\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.FlowR\x04flow\"\x12\n" +
-	"\x10ListFlowsRequest\"F\n" +
+	"\x04flow\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.FlowR\x04flow\"N\n" +
+	"\x10ListFlowsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\x8f\x01\n" +
 	"\x11ListFlowsResponse\x121\n" +
-	"\x05flows\x18\x01 \x03(\v2\x1b.pgway.controlplane.v1.FlowR\x05flows\"'\n" +
+	"\x05flows\x18\x01 \x03(\v2\x1b.pgway.controlplane.v1.FlowR\x05flows\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\"'\n" +
 	"\x11DeleteFlowRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x14\n" +
 	"\x12DeleteFlowResponse2\x90\x03\n" +

@@ -352,6 +352,8 @@ func (x *GetBalancerResponse) GetBalancer() *LoadBalancer {
 
 type ListBalancersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -386,9 +388,25 @@ func (*ListBalancersRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_balancer_proto_rawDescGZIP(), []int{6}
 }
 
+func (x *ListBalancersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListBalancersRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListBalancersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Balancers     []*LoadBalancer        `protobuf:"bytes,1,rep,name=balancers,proto3" json:"balancers,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -428,6 +446,20 @@ func (x *ListBalancersResponse) GetBalancers() []*LoadBalancer {
 		return x.Balancers
 	}
 	return nil
+}
+
+func (x *ListBalancersResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListBalancersResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeleteBalancerRequest struct {
@@ -536,10 +568,16 @@ const file_pgway_controlplane_v1_balancer_proto_rawDesc = "" +
 	"\x12GetBalancerRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"V\n" +
 	"\x13GetBalancerResponse\x12?\n" +
-	"\bbalancer\x18\x01 \x01(\v2#.pgway.controlplane.v1.LoadBalancerR\bbalancer\"\x16\n" +
-	"\x14ListBalancersRequest\"Z\n" +
+	"\bbalancer\x18\x01 \x01(\v2#.pgway.controlplane.v1.LoadBalancerR\bbalancer\"R\n" +
+	"\x14ListBalancersRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\xa3\x01\n" +
 	"\x15ListBalancersResponse\x12A\n" +
-	"\tbalancers\x18\x01 \x03(\v2#.pgway.controlplane.v1.LoadBalancerR\tbalancers\"+\n" +
+	"\tbalancers\x18\x01 \x03(\v2#.pgway.controlplane.v1.LoadBalancerR\tbalancers\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\"+\n" +
 	"\x15DeleteBalancerRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x18\n" +
 	"\x16DeleteBalancerResponse2\xc4\x03\n" +

@@ -34,20 +34,25 @@ func (c *Client) GetProxy(ctx context.Context, name string) (*domain.Proxy, erro
 	return proxyFromProto(resp.Proxy), nil
 }
 
-func (c *Client) ListProxies(ctx context.Context) ([]*domain.Proxy, error) {
-	req := &controlplanev1.ListProxiesRequest{}
-
-	resp, err := c.proxy.ListProxies(ctx, req)
+func (c *Client) ListProxies(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+	resp, err := c.proxy.ListProxies(ctx, &controlplanev1.ListProxiesRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.Proxy]{}, err
 	}
 
-	var results = make([]*domain.Proxy, 0, len(resp.Proxies))
+	items := make([]*domain.Proxy, 0, len(resp.Proxies))
 	for _, p := range resp.Proxies {
-		results = append(results, proxyFromProto(p))
+		items = append(items, proxyFromProto(p))
 	}
 
-	return results, nil
+	return domain.ListResult[domain.Proxy]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeleteProxy(ctx context.Context, name string) error {

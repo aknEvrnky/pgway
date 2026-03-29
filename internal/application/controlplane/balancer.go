@@ -56,8 +56,11 @@ func (s *Service) GetBalancer(ctx context.Context, name string) (*domain.LoadBal
 	return s.lbRepo.Find(ctx, name)
 }
 
-func (s *Service) ListBalancers(ctx context.Context) ([]*domain.LoadBalancer, error) {
-	return s.lbRepo.GetAll(ctx)
+func (s *Service) ListBalancers(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.LoadBalancer], error) {
+	if params.PageSize > domain.DefaultMaxPageSize {
+		params.PageSize = domain.DefaultMaxPageSize
+	}
+	return s.lbRepo.List(ctx, params)
 }
 
 func (s *Service) DeleteBalancer(ctx context.Context, name string) error {

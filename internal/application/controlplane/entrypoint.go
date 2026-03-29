@@ -58,8 +58,11 @@ func (s *Service) GetEntrypoint(ctx context.Context, name string) (*domain.Entry
 	return s.epRepo.Find(ctx, name)
 }
 
-func (s *Service) ListEntrypoints(ctx context.Context) ([]*domain.Entrypoint, error) {
-	return s.epRepo.GetAll(ctx)
+func (s *Service) ListEntrypoints(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+	if params.PageSize > domain.DefaultMaxPageSize {
+		params.PageSize = domain.DefaultMaxPageSize
+	}
+	return s.epRepo.List(ctx, params)
 }
 
 func (s *Service) DeleteEntrypoint(ctx context.Context, name string) error {

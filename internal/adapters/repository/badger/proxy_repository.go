@@ -44,35 +44,14 @@ func (r *ProxyRepository) unmarshal(data []byte) (*domain.Proxy, error) {
 	return &stored.Spec, nil
 }
 
-func (r *ProxyRepository) GetAll(ctx context.Context) ([]*domain.Proxy, error) {
-	var proxies []*domain.Proxy
-
+func (r *ProxyRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+	var result domain.ListResult[domain.Proxy]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(proxyPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				proxy, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-
-				proxies = append(proxies, proxy)
-				return nil
-			})
-
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, proxyPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return proxies, err
+	return result, err
 }
 
 func (r *ProxyRepository) Find(ctx context.Context, id string) (*domain.Proxy, error) {
@@ -157,13 +136,13 @@ func (r *ProxyRepository) GetByIds(ctx context.Context, ids []string) ([]*domain
 }
 
 func (r *ProxyRepository) FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error) {
-	all, err := r.GetAll(ctx)
+	result, err := r.List(ctx, domain.ListParams{})
 	if err != nil {
 		return nil, err
 	}
 
 	var matched []*domain.Proxy
-	for _, p := range all {
+	for _, p := range result.Items {
 		if matchesLabels(p.Labels, labels) {
 			matched = append(matched, p)
 		}

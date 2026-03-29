@@ -45,18 +45,30 @@ func (s *ControlPlaneServer) GetBalancer(ctx context.Context, req *controlplanev
 }
 
 func (s *ControlPlaneServer) ListBalancers(ctx context.Context, req *controlplanev1.ListBalancersRequest) (*controlplanev1.ListBalancersResponse, error) {
-	balancers, err := s.cp.ListBalancers(ctx)
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
+
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListBalancers(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list balancers: %v", err)
 	}
 
-	var results = make([]*controlplanev1.LoadBalancer, 0, len(balancers))
-	for _, bl := range balancers {
-		results = append(results, balancerToProto(bl))
+	balancers := make([]*controlplanev1.LoadBalancer, 0, len(result.Items))
+	for _, bl := range result.Items {
+		balancers = append(balancers, balancerToProto(bl))
 	}
 
 	return &controlplanev1.ListBalancersResponse{
-		Balancers: results,
+		Balancers:     balancers,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
 	}, nil
 }
 

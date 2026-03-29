@@ -43,18 +43,31 @@ func (s *ControlPlaneServer) GetPool(ctx context.Context, req *controlplanev1.Ge
 }
 
 func (s *ControlPlaneServer) ListPools(ctx context.Context, req *controlplanev1.ListPoolsRequest) (*controlplanev1.ListPoolsResponse, error) {
-	pools, err := s.cp.ListPools(ctx)
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
 
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListPools(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list pools: %v", err)
 	}
 
-	var results = make([]*controlplanev1.Pool, 0, len(pools))
-	for _, p := range pools {
-		results = append(results, poolToProto(p))
+	pools := make([]*controlplanev1.Pool, 0, len(result.Items))
+	for _, p := range result.Items {
+		pools = append(pools, poolToProto(p))
 	}
 
-	return &controlplanev1.ListPoolsResponse{Pools: results}, nil
+	return &controlplanev1.ListPoolsResponse{
+		Pools:         pools,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
+	}, nil
 }
 
 func (s *ControlPlaneServer) DeletePool(ctx context.Context, req *controlplanev1.DeletePoolRequest) (*controlplanev1.DeletePoolResponse, error) {

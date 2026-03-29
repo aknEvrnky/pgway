@@ -436,6 +436,8 @@ func (x *GetProxyResponse) GetProxy() *Proxy {
 
 type ListProxiesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -470,9 +472,25 @@ func (*ListProxiesRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_proxy_proto_rawDescGZIP(), []int{7}
 }
 
+func (x *ListProxiesRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListProxiesRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListProxiesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Proxies       []*Proxy               `protobuf:"bytes,1,rep,name=proxies,proto3" json:"proxies,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -512,6 +530,20 @@ func (x *ListProxiesResponse) GetProxies() []*Proxy {
 		return x.Proxies
 	}
 	return nil
+}
+
+func (x *ListProxiesResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListProxiesResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeleteProxyRequest struct {
@@ -806,10 +838,16 @@ const file_pgway_controlplane_v1_proxy_proto_rawDesc = "" +
 	"\x0fGetProxyRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"F\n" +
 	"\x10GetProxyResponse\x122\n" +
-	"\x05proxy\x18\x01 \x01(\v2\x1c.pgway.controlplane.v1.ProxyR\x05proxy\"\x14\n" +
-	"\x12ListProxiesRequest\"M\n" +
+	"\x05proxy\x18\x01 \x01(\v2\x1c.pgway.controlplane.v1.ProxyR\x05proxy\"P\n" +
+	"\x12ListProxiesRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\x96\x01\n" +
 	"\x13ListProxiesResponse\x126\n" +
-	"\aproxies\x18\x01 \x03(\v2\x1c.pgway.controlplane.v1.ProxyR\aproxies\"(\n" +
+	"\aproxies\x18\x01 \x03(\v2\x1c.pgway.controlplane.v1.ProxyR\aproxies\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\"(\n" +
 	"\x12DeleteProxyRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x15\n" +
 	"\x13DeleteProxyResponse\"*\n" +

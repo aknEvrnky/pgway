@@ -43,17 +43,31 @@ func (s *ControlPlaneServer) GetFlow(ctx context.Context, req *controlplanev1.Ge
 }
 
 func (s *ControlPlaneServer) ListFlows(ctx context.Context, req *controlplanev1.ListFlowsRequest) (*controlplanev1.ListFlowsResponse, error) {
-	flows, err := s.cp.ListFlows(ctx)
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
+
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListFlows(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list flows: %v", err)
 	}
 
-	results := make([]*controlplanev1.Flow, 0, len(flows))
-	for _, f := range flows {
-		results = append(results, flowToProto(f))
+	flows := make([]*controlplanev1.Flow, 0, len(result.Items))
+	for _, f := range result.Items {
+		flows = append(flows, flowToProto(f))
 	}
 
-	return &controlplanev1.ListFlowsResponse{Flows: results}, nil
+	return &controlplanev1.ListFlowsResponse{
+		Flows:         flows,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
+	}, nil
 }
 
 func (s *ControlPlaneServer) DeleteFlow(ctx context.Context, req *controlplanev1.DeleteFlowRequest) (*controlplanev1.DeleteFlowResponse, error) {

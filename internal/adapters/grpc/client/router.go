@@ -30,18 +30,25 @@ func (c *Client) GetRouter(ctx context.Context, name string) (*domain.Router, er
 	return routerFromProto(resp.Router), nil
 }
 
-func (c *Client) ListRouters(ctx context.Context) ([]*domain.Router, error) {
-	resp, err := c.router.ListRouters(ctx, &controlplanev1.ListRoutersRequest{})
+func (c *Client) ListRouters(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error) {
+	resp, err := c.router.ListRouters(ctx, &controlplanev1.ListRoutersRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.Router]{}, err
 	}
 
-	routers := make([]*domain.Router, 0, len(resp.Routers))
+	items := make([]*domain.Router, 0, len(resp.Routers))
 	for _, r := range resp.Routers {
-		routers = append(routers, routerFromProto(r))
+		items = append(items, routerFromProto(r))
 	}
 
-	return routers, nil
+	return domain.ListResult[domain.Router]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeleteRouter(ctx context.Context, name string) error {
