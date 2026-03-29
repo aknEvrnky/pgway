@@ -54,7 +54,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	var routers []*domain.Router
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListEntrypoints(gctx, domain.ListParams{})
+		res, err := a.controlPlane.ListEntrypoints(gctx, domain.ListParams{}, domain.EntrypointFilter{})
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListFlows(gctx, domain.ListParams{})
+		res, err := a.controlPlane.ListFlows(gctx, domain.ListParams{}, domain.FlowFilter{})
 		if err != nil {
 			return err
 		}
@@ -74,7 +74,7 @@ func (a *Application) warmupCache(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		res, err := a.controlPlane.ListRouters(gctx, domain.ListParams{})
+		res, err := a.controlPlane.ListRouters(gctx, domain.ListParams{}, domain.RouterFilter{})
 		if err != nil {
 			return err
 		}

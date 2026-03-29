@@ -44,14 +44,24 @@ func (r *RouterRepository) unmarshal(data []byte) (*domain.Router, error) {
 	return &stored.Spec, nil
 }
 
-func (r *RouterRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error) {
+func (r *RouterRepository) List(ctx context.Context, params domain.ListParams, filter domain.RouterFilter) (domain.ListResult[domain.Router], error) {
+	predicate := buildRouterPredicate(filter)
 	var result domain.ListResult[domain.Router]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		var err error
-		result, err = listWithCursor(txn, routerPrefix, params, r.unmarshal)
+		result, err = listWithCursor(txn, routerPrefix, params, r.unmarshal, predicate)
 		return err
 	})
 	return result, err
+}
+
+func buildRouterPredicate(f domain.RouterFilter) func(*domain.Router) bool {
+	if f.Search == "" {
+		return nil
+	}
+	return func(r *domain.Router) bool {
+		return containsFold(r.Id, f.Search) || containsFold(r.Title, f.Search)
+	}
 }
 
 func (r *RouterRepository) Find(ctx context.Context, id string) (*domain.Router, error) {

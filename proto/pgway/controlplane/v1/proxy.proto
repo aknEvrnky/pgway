@@ -49,6 +49,9 @@ message GetProxyResponse {
 message ListProxiesRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
+  string protocol = 4;
+  map<string, string> labels = 5;
 }
 
 message ListProxiesResponse {

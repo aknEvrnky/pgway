@@ -30,10 +30,11 @@ func (c *Client) GetRouter(ctx context.Context, name string) (*domain.Router, er
 	return routerFromProto(resp.Router), nil
 }
 
-func (c *Client) ListRouters(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error) {
+func (c *Client) ListRouters(ctx context.Context, params domain.ListParams, filter domain.RouterFilter) (domain.ListResult[domain.Router], error) {
 	resp, err := c.router.ListRouters(ctx, &controlplanev1.ListRoutersRequest{
 		PageSize:  int32(params.PageSize),
 		PageToken: params.Cursor,
+		Search:    filter.Search,
 	})
 	if err != nil {
 		return domain.ListResult[domain.Router]{}, err

@@ -34,10 +34,13 @@ func (c *Client) GetBalancer(ctx context.Context, name string) (*domain.LoadBala
 	return balancerFromProto(resp.Balancer), nil
 }
 
-func (c *Client) ListBalancers(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.LoadBalancer], error) {
+func (c *Client) ListBalancers(ctx context.Context, params domain.ListParams, filter domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
 	resp, err := c.balancer.ListBalancers(ctx, &controlplanev1.ListBalancersRequest{
 		PageSize:  int32(params.PageSize),
 		PageToken: params.Cursor,
+		Search:    filter.Search,
+		Type:      filter.Type,
+		PoolId:    filter.PoolId,
 	})
 	if err != nil {
 		return domain.ListResult[domain.LoadBalancer]{}, err

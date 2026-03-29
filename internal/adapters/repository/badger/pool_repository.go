@@ -44,14 +44,30 @@ func (r *PoolRepository) unmarshal(data []byte) (*domain.Pool, error) {
 	return &stored.Spec, nil
 }
 
-func (r *PoolRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Pool], error) {
+func (r *PoolRepository) List(ctx context.Context, params domain.ListParams, filter domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
+	predicate := buildPoolPredicate(filter)
 	var result domain.ListResult[domain.Pool]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		var err error
-		result, err = listWithCursor(txn, poolPrefix, params, r.unmarshal)
+		result, err = listWithCursor(txn, poolPrefix, params, r.unmarshal, predicate)
 		return err
 	})
 	return result, err
+}
+
+func buildPoolPredicate(f domain.PoolFilter) func(*domain.Pool) bool {
+	if f.Search == "" && f.Type == "" {
+		return nil
+	}
+	return func(p *domain.Pool) bool {
+		if f.Search != "" && !containsFold(p.Id, f.Search) && !containsFold(p.Title, f.Search) {
+			return false
+		}
+		if f.Type != "" && string(p.Type) != f.Type {
+			return false
+		}
+		return true
+	}
 }
 
 func (r *PoolRepository) Find(ctx context.Context, id string) (*domain.Pool, error) {

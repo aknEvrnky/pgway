@@ -44,6 +44,9 @@ message GetEntrypointResponse {
 message ListEntrypointsRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
+  string protocol = 4;
+  string host = 5;
 }
 
 message ListEntrypointsResponse {

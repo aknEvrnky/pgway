@@ -10,7 +10,7 @@ import (
 )
 
 func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
-	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{})
+	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{}, domain.ProxyFilter{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

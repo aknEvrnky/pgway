@@ -28,7 +28,7 @@ func NewService(
 // Bootstrap is a function that gets all load balancers
 // and necessary pools and registers
 func (s *Service) Bootstrap(ctx context.Context) error {
-	result, err := s.cp.ListBalancers(ctx, domain.ListParams{})
+	result, err := s.cp.ListBalancers(ctx, domain.ListParams{}, domain.BalancerFilter{})
 
 	if err != nil {
 		return fmt.Errorf("loading balancers: %w", err)

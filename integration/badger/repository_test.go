@@ -36,7 +36,7 @@ func TestProxyRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.Proxies.Save(ctx, p1))
 			require.NoError(t, store.Proxies.Save(ctx, p2))
-			result, err := store.Proxies.List(ctx, domain.ListParams{})
+			result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -109,7 +109,7 @@ func TestPoolRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.Pools.Save(ctx, p1))
 			require.NoError(t, store.Pools.Save(ctx, p2))
-			result, err := store.Pools.List(ctx, domain.ListParams{})
+			result, err := store.Pools.List(ctx, domain.ListParams{}, domain.PoolFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -182,7 +182,7 @@ func TestBalancerRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.LBs.Save(ctx, lb1))
 			require.NoError(t, store.LBs.Save(ctx, lb2))
-			result, err := store.LBs.List(ctx, domain.ListParams{})
+			result, err := store.LBs.List(ctx, domain.ListParams{}, domain.BalancerFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -255,7 +255,7 @@ func TestRouterRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.Routers.Save(ctx, r1))
 			require.NoError(t, store.Routers.Save(ctx, r2))
-			result, err := store.Routers.List(ctx, domain.ListParams{})
+			result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -328,7 +328,7 @@ func TestFlowRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.Flows.Save(ctx, f1))
 			require.NoError(t, store.Flows.Save(ctx, f2))
-			result, err := store.Flows.List(ctx, domain.ListParams{})
+			result, err := store.Flows.List(ctx, domain.ListParams{}, domain.FlowFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -401,7 +401,7 @@ func TestEntrypointRepository(t *testing.T) {
 			ctx := context.Background()
 			require.NoError(t, store.EPs.Save(ctx, ep1))
 			require.NoError(t, store.EPs.Save(ctx, ep2))
-			result, err := store.EPs.List(ctx, domain.ListParams{})
+			result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -465,7 +465,7 @@ func TestProxyListPagination(t *testing.T) {
 	}
 
 	t.Run("no params returns all", func(t *testing.T) {
-		result, err := store.Proxies.List(ctx, domain.ListParams{})
+		result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{})
 		require.NoError(t, err)
 		assert.Len(t, result.Items, 5)
 		assert.Equal(t, 5, result.TotalCount)
@@ -473,7 +473,7 @@ func TestProxyListPagination(t *testing.T) {
 	})
 
 	t.Run("page_size=2 returns first page", func(t *testing.T) {
-		result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2})
+		result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2}, domain.ProxyFilter{})
 		require.NoError(t, err)
 		assert.Len(t, result.Items, 2)
 		assert.Equal(t, 5, result.TotalCount)
@@ -485,7 +485,7 @@ func TestProxyListPagination(t *testing.T) {
 		cursor := ""
 
 		for {
-			result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2, Cursor: cursor})
+			result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2, Cursor: cursor}, domain.ProxyFilter{})
 			require.NoError(t, err)
 			assert.Equal(t, 5, result.TotalCount)
 			allItems = append(allItems, result.Items...)
@@ -508,7 +508,7 @@ func TestProxyListPagination(t *testing.T) {
 
 	t.Run("empty database", func(t *testing.T) {
 		emptyStore := badgerutil.NewBadgerStore(t)
-		result, err := emptyStore.Proxies.List(ctx, domain.ListParams{PageSize: 10})
+		result, err := emptyStore.Proxies.List(ctx, domain.ListParams{PageSize: 10}, domain.ProxyFilter{})
 		require.NoError(t, err)
 		assert.Len(t, result.Items, 0)
 		assert.Equal(t, 0, result.TotalCount)
@@ -516,10 +516,514 @@ func TestProxyListPagination(t *testing.T) {
 	})
 
 	t.Run("page_size larger than total", func(t *testing.T) {
-		result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 100})
+		result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 100}, domain.ProxyFilter{})
 		require.NoError(t, err)
 		assert.Len(t, result.Items, 5)
 		assert.Equal(t, 5, result.TotalCount)
 		assert.Empty(t, result.NextCursor)
+	})
+}
+
+func TestProxyFilterAndSearch(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filter by protocol", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		p1 := testutil.NewTestProxy()
+		p1.Id = "p-http"
+		p1.Protocol = "http"
+
+		p2 := testutil.NewTestProxy()
+		p2.Id = "p-socks5"
+		p2.Protocol = "socks5"
+
+		require.NoError(t, store.Proxies.Save(ctx, p1))
+		require.NoError(t, store.Proxies.Save(ctx, p2))
+
+		result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{Protocol: "http"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "p-http", result.Items[0].Id)
+	})
+
+	t.Run("filter by labels", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		p1 := testutil.NewTestProxy()
+		p1.Id = "p-labeled"
+		p1.Labels = map[string]string{"env": "prod"}
+
+		p2 := testutil.NewTestProxy()
+		p2.Id = "p-other"
+		p2.Labels = map[string]string{"env": "staging"}
+
+		require.NoError(t, store.Proxies.Save(ctx, p1))
+		require.NoError(t, store.Proxies.Save(ctx, p2))
+
+		result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{Labels: map[string]string{"env": "prod"}})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "p-labeled", result.Items[0].Id)
+	})
+
+	t.Run("search by host", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		p1 := testutil.NewTestProxy()
+		p1.Id = "p-example"
+		p1.Host = "example.com"
+
+		p2 := testutil.NewTestProxy()
+		p2.Id = "p-other"
+		p2.Host = "other.com"
+
+		require.NoError(t, store.Proxies.Save(ctx, p1))
+		require.NoError(t, store.Proxies.Save(ctx, p2))
+
+		result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{Search: "example"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "p-example", result.Items[0].Id)
+	})
+
+	t.Run("search is case insensitive", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		p1 := testutil.NewTestProxy()
+		p1.Id = "p-example"
+		p1.Host = "example.com"
+
+		p2 := testutil.NewTestProxy()
+		p2.Id = "p-other"
+		p2.Host = "other.com"
+
+		require.NoError(t, store.Proxies.Save(ctx, p1))
+		require.NoError(t, store.Proxies.Save(ctx, p2))
+
+		result, err := store.Proxies.List(ctx, domain.ListParams{}, domain.ProxyFilter{Search: "EXAMPLE"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "p-example", result.Items[0].Id)
+	})
+
+	t.Run("combined filter and pagination", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		// Save 3 http proxies and 2 socks5 proxies
+		for i := 1; i <= 3; i++ {
+			p := testutil.NewTestProxy()
+			p.Id = fmt.Sprintf("http-%d", i)
+			p.Protocol = "http"
+			require.NoError(t, store.Proxies.Save(ctx, p))
+		}
+		for i := 1; i <= 2; i++ {
+			p := testutil.NewTestProxy()
+			p.Id = fmt.Sprintf("socks5-%d", i)
+			p.Protocol = "socks5"
+			require.NoError(t, store.Proxies.Save(ctx, p))
+		}
+
+		// First page: filter http with page_size=2
+		result, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2}, domain.ProxyFilter{Protocol: "http"})
+		require.NoError(t, err)
+		assert.Len(t, result.Items, 2)
+		assert.Equal(t, 3, result.TotalCount)
+		assert.NotEmpty(t, result.NextCursor)
+
+		// All items should be http
+		for _, p := range result.Items {
+			assert.Equal(t, domain.Protocol("http"), p.Protocol)
+		}
+
+		// Second page
+		result2, err := store.Proxies.List(ctx, domain.ListParams{PageSize: 2, Cursor: result.NextCursor}, domain.ProxyFilter{Protocol: "http"})
+		require.NoError(t, err)
+		assert.Len(t, result2.Items, 1)
+		assert.Equal(t, 3, result2.TotalCount)
+		assert.Empty(t, result2.NextCursor)
+		assert.Equal(t, domain.Protocol("http"), result2.Items[0].Protocol)
+	})
+}
+
+func TestPoolFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filter by type", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		pool1 := testutil.NewTestPool()
+		pool1.Id = "pool-static"
+		pool1.Type = domain.PoolTypeStatic
+
+		pool2 := testutil.NewTestPool()
+		pool2.Id = "pool-dynamic"
+		pool2.Type = domain.PoolTypeDynamic
+
+		require.NoError(t, store.Pools.Save(ctx, pool1))
+		require.NoError(t, store.Pools.Save(ctx, pool2))
+
+		result, err := store.Pools.List(ctx, domain.ListParams{}, domain.PoolFilter{Type: "static"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "pool-static", result.Items[0].Id)
+	})
+
+	t.Run("search by title", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		pool1 := testutil.NewTestPool()
+		pool1.Id = "pool-alpha"
+		pool1.Title = "alpha-pool"
+
+		pool2 := testutil.NewTestPool()
+		pool2.Id = "pool-beta"
+		pool2.Title = "beta-pool"
+
+		require.NoError(t, store.Pools.Save(ctx, pool1))
+		require.NoError(t, store.Pools.Save(ctx, pool2))
+
+		result, err := store.Pools.List(ctx, domain.ListParams{}, domain.PoolFilter{Search: "alpha"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "pool-alpha", result.Items[0].Id)
+	})
+}
+
+func TestBalancerFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filter by pool_id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		lb1 := testutil.NewTestLB()
+		lb1.Id = "lb-a"
+		lb1.PoolId = "pool-1"
+
+		lb2 := testutil.NewTestLB()
+		lb2.Id = "lb-b"
+		lb2.PoolId = "pool-2"
+
+		require.NoError(t, store.LBs.Save(ctx, lb1))
+		require.NoError(t, store.LBs.Save(ctx, lb2))
+
+		result, err := store.LBs.List(ctx, domain.ListParams{}, domain.BalancerFilter{PoolId: "pool-1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "lb-a", result.Items[0].Id)
+	})
+
+	t.Run("filter by type", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		lb1 := testutil.NewTestLB()
+		lb1.Id = "lb-rr"
+		lb1.Type = domain.BalancerTypeRoundRobin
+
+		lb2 := testutil.NewTestLB()
+		lb2.Id = "lb-w"
+		lb2.Type = domain.BalancerTypeWeighted
+
+		require.NoError(t, store.LBs.Save(ctx, lb1))
+		require.NoError(t, store.LBs.Save(ctx, lb2))
+
+		result, err := store.LBs.List(ctx, domain.ListParams{}, domain.BalancerFilter{Type: "round-robin"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "lb-rr", result.Items[0].Id)
+	})
+}
+
+func TestRouterFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("search by id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		r1 := testutil.NewTestRouter()
+		r1.Id = "api-router"
+		r1.Title = "API Router"
+
+		r2 := testutil.NewTestRouter()
+		r2.Id = "web-router"
+		r2.Title = "Web Router"
+
+		require.NoError(t, store.Routers.Save(ctx, r1))
+		require.NoError(t, store.Routers.Save(ctx, r2))
+
+		result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{Search: "api"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "api-router", result.Items[0].Id)
+	})
+
+	t.Run("search by title", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		r1 := testutil.NewTestRouter()
+		r1.Id = "r1"
+		r1.Title = "Production Router"
+
+		r2 := testutil.NewTestRouter()
+		r2.Id = "r2"
+		r2.Title = "Staging Router"
+
+		require.NoError(t, store.Routers.Save(ctx, r1))
+		require.NoError(t, store.Routers.Save(ctx, r2))
+
+		result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{Search: "production"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "r1", result.Items[0].Id)
+	})
+
+	t.Run("search is case insensitive", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		r1 := testutil.NewTestRouter()
+		r1.Id = "r1"
+		r1.Title = "MyRouter"
+
+		require.NoError(t, store.Routers.Save(ctx, r1))
+
+		result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{Search: "MYROUTER"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+	})
+
+	t.Run("empty filter returns all", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		r1 := testutil.NewTestRouter()
+		r1.Id = "r1"
+		r2 := testutil.NewTestRouter()
+		r2.Id = "r2"
+
+		require.NoError(t, store.Routers.Save(ctx, r1))
+		require.NoError(t, store.Routers.Save(ctx, r2))
+
+		result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{})
+		require.NoError(t, err)
+		assert.Len(t, result.Items, 2)
+		assert.Equal(t, 2, result.TotalCount)
+	})
+}
+
+func TestFlowFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filter by router_id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		f1 := testutil.NewTestFlow()
+		f1.Id = "flow-a"
+		f1.RouterId = "router-1"
+
+		f2 := testutil.NewTestFlow()
+		f2.Id = "flow-b"
+		f2.RouterId = "router-2"
+
+		require.NoError(t, store.Flows.Save(ctx, f1))
+		require.NoError(t, store.Flows.Save(ctx, f2))
+
+		result, err := store.Flows.List(ctx, domain.ListParams{}, domain.FlowFilter{RouterId: "router-1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "flow-a", result.Items[0].Id)
+	})
+
+	t.Run("filter by balancer_id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		f1 := testutil.NewTestFlow()
+		f1.Id = "flow-a"
+		f1.BalancerId = "lb-1"
+
+		f2 := testutil.NewTestFlow()
+		f2.Id = "flow-b"
+		f2.BalancerId = "lb-2"
+
+		require.NoError(t, store.Flows.Save(ctx, f1))
+		require.NoError(t, store.Flows.Save(ctx, f2))
+
+		result, err := store.Flows.List(ctx, domain.ListParams{}, domain.FlowFilter{BalancerId: "lb-1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "flow-a", result.Items[0].Id)
+	})
+
+	t.Run("search by id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		f1 := testutil.NewTestFlow()
+		f1.Id = "api-flow"
+
+		f2 := testutil.NewTestFlow()
+		f2.Id = "web-flow"
+
+		require.NoError(t, store.Flows.Save(ctx, f1))
+		require.NoError(t, store.Flows.Save(ctx, f2))
+
+		result, err := store.Flows.List(ctx, domain.ListParams{}, domain.FlowFilter{Search: "api"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "api-flow", result.Items[0].Id)
+	})
+
+	t.Run("combined filter and pagination", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		for i := 1; i <= 3; i++ {
+			f := testutil.NewTestFlow()
+			f.Id = fmt.Sprintf("flow-r1-%d", i)
+			f.RouterId = "router-1"
+			require.NoError(t, store.Flows.Save(ctx, f))
+		}
+		for i := 1; i <= 2; i++ {
+			f := testutil.NewTestFlow()
+			f.Id = fmt.Sprintf("flow-r2-%d", i)
+			f.RouterId = "router-2"
+			require.NoError(t, store.Flows.Save(ctx, f))
+		}
+
+		result, err := store.Flows.List(ctx, domain.ListParams{PageSize: 2}, domain.FlowFilter{RouterId: "router-1"})
+		require.NoError(t, err)
+		assert.Len(t, result.Items, 2)
+		assert.Equal(t, 3, result.TotalCount)
+		assert.NotEmpty(t, result.NextCursor)
+
+		result2, err := store.Flows.List(ctx, domain.ListParams{PageSize: 2, Cursor: result.NextCursor}, domain.FlowFilter{RouterId: "router-1"})
+		require.NoError(t, err)
+		assert.Len(t, result2.Items, 1)
+		assert.Equal(t, 3, result2.TotalCount)
+		assert.Empty(t, result2.NextCursor)
+	})
+}
+
+func TestEntrypointFilter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filter by protocol", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep-http"
+		ep1.Protocol = domain.ProtocolHTTP
+
+		ep2 := testutil.NewTestEntrypoint()
+		ep2.Id = "ep-socks"
+		ep2.Protocol = "socks5"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+		require.NoError(t, store.EPs.Save(ctx, ep2))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{Protocol: "http"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "ep-http", result.Items[0].Id)
+	})
+
+	t.Run("filter by host substring", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep-local"
+		ep1.Host = "localhost"
+
+		ep2 := testutil.NewTestEntrypoint()
+		ep2.Id = "ep-remote"
+		ep2.Host = "10.0.0.1"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+		require.NoError(t, store.EPs.Save(ctx, ep2))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{Host: "local"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "ep-local", result.Items[0].Id)
+	})
+
+	t.Run("search by title", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep1"
+		ep1.Title = "Production Gateway"
+
+		ep2 := testutil.NewTestEntrypoint()
+		ep2.Id = "ep2"
+		ep2.Title = "Staging Gateway"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+		require.NoError(t, store.EPs.Save(ctx, ep2))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{Search: "production"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "ep1", result.Items[0].Id)
+	})
+
+	t.Run("search is case insensitive", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep1"
+		ep1.Title = "MyGateway"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{Search: "MYGATEWAY"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+	})
+
+	t.Run("combined protocol and host filter", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep1"
+		ep1.Protocol = domain.ProtocolHTTP
+		ep1.Host = "localhost"
+
+		ep2 := testutil.NewTestEntrypoint()
+		ep2.Id = "ep2"
+		ep2.Protocol = domain.ProtocolHTTP
+		ep2.Host = "10.0.0.1"
+
+		ep3 := testutil.NewTestEntrypoint()
+		ep3.Id = "ep3"
+		ep3.Protocol = "socks5"
+		ep3.Host = "localhost"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+		require.NoError(t, store.EPs.Save(ctx, ep2))
+		require.NoError(t, store.EPs.Save(ctx, ep3))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{Protocol: "http", Host: "local"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "ep1", result.Items[0].Id)
 	})
 }

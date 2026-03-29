@@ -47,6 +47,8 @@ message GetPoolResponse {
 message ListPoolsRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
+  string type = 4;
 }
 
 message ListPoolsResponse {

@@ -40,6 +40,9 @@ message GetBalancerResponse {
 message ListBalancersRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
+  string type = 4;
+  string pool_id = 5;
 }
 
 message ListBalancersResponse {

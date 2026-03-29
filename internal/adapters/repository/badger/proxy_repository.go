@@ -44,14 +44,33 @@ func (r *ProxyRepository) unmarshal(data []byte) (*domain.Proxy, error) {
 	return &stored.Spec, nil
 }
 
-func (r *ProxyRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+func (r *ProxyRepository) List(ctx context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
+	predicate := buildProxyPredicate(filter)
 	var result domain.ListResult[domain.Proxy]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		var err error
-		result, err = listWithCursor(txn, proxyPrefix, params, r.unmarshal)
+		result, err = listWithCursor(txn, proxyPrefix, params, r.unmarshal, predicate)
 		return err
 	})
 	return result, err
+}
+
+func buildProxyPredicate(f domain.ProxyFilter) func(*domain.Proxy) bool {
+	if f.Search == "" && f.Protocol == "" && len(f.Labels) == 0 {
+		return nil
+	}
+	return func(p *domain.Proxy) bool {
+		if f.Search != "" && !containsFold(p.Id, f.Search) && !containsFold(p.Host, f.Search) {
+			return false
+		}
+		if f.Protocol != "" && string(p.Protocol) != f.Protocol {
+			return false
+		}
+		if len(f.Labels) > 0 && !matchesLabels(p.Labels, f.Labels) {
+			return false
+		}
+		return true
+	}
 }
 
 func (r *ProxyRepository) Find(ctx context.Context, id string) (*domain.Proxy, error) {
@@ -136,25 +155,9 @@ func (r *ProxyRepository) GetByIds(ctx context.Context, ids []string) ([]*domain
 }
 
 func (r *ProxyRepository) FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error) {
-	result, err := r.List(ctx, domain.ListParams{})
+	result, err := r.List(ctx, domain.ListParams{}, domain.ProxyFilter{Labels: labels})
 	if err != nil {
 		return nil, err
 	}
-
-	var matched []*domain.Proxy
-	for _, p := range result.Items {
-		if matchesLabels(p.Labels, labels) {
-			matched = append(matched, p)
-		}
-	}
-	return matched, nil
-}
-
-func matchesLabels(proxyLabels, selector map[string]string) bool {
-	for k, v := range selector {
-		if proxyLabels[k] != v {
-			return false
-		}
-	}
-	return true
+	return result.Items, nil
 }

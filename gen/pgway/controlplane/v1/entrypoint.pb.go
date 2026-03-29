@@ -386,6 +386,9 @@ type ListEntrypointsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
+	Protocol      string                 `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	Host          string                 `protobuf:"bytes,5,opt,name=host,proto3" json:"host,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -430,6 +433,27 @@ func (x *ListEntrypointsRequest) GetPageSize() int32 {
 func (x *ListEntrypointsRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListEntrypointsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListEntrypointsRequest) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *ListEntrypointsRequest) GetHost() string {
+	if x != nil {
+		return x.Host
 	}
 	return ""
 }
@@ -609,11 +633,14 @@ const file_pgway_controlplane_v1_entrypoint_proto_rawDesc = "" +
 	"\x15GetEntrypointResponse\x12A\n" +
 	"\n" +
 	"entrypoint\x18\x01 \x01(\v2!.pgway.controlplane.v1.EntrypointR\n" +
-	"entrypoint\"T\n" +
+	"entrypoint\"\x9c\x01\n" +
 	"\x16ListEntrypointsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"\xa7\x01\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06search\x18\x03 \x01(\tR\x06search\x12\x1a\n" +
+	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12\x12\n" +
+	"\x04host\x18\x05 \x01(\tR\x04host\"\xa7\x01\n" +
 	"\x17ListEntrypointsResponse\x12C\n" +
 	"\ventrypoints\x18\x01 \x03(\v2!.pgway.controlplane.v1.EntrypointR\ventrypoints\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +

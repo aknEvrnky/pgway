@@ -56,7 +56,13 @@ func (s *ControlPlaneServer) ListProxies(ctx context.Context, req *controlplanev
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListProxies(ctx, params)
+	filter := domain.ProxyFilter{
+		Search:   req.GetSearch(),
+		Protocol: req.GetProtocol(),
+		Labels:   req.GetLabels(),
+	}
+
+	result, err := s.cp.ListProxies(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list proxies: %v", err)
 	}

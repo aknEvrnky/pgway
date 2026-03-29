@@ -44,14 +44,33 @@ func (r *EntrypointRepository) unmarshal(data []byte) (*domain.Entrypoint, error
 	return &stored.Spec, nil
 }
 
-func (r *EntrypointRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+func (r *EntrypointRepository) List(ctx context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
+	predicate := buildEntrypointPredicate(filter)
 	var result domain.ListResult[domain.Entrypoint]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		var err error
-		result, err = listWithCursor(txn, entrypointPrefix, params, r.unmarshal)
+		result, err = listWithCursor(txn, entrypointPrefix, params, r.unmarshal, predicate)
 		return err
 	})
 	return result, err
+}
+
+func buildEntrypointPredicate(f domain.EntrypointFilter) func(*domain.Entrypoint) bool {
+	if f.Search == "" && f.Protocol == "" && f.Host == "" {
+		return nil
+	}
+	return func(ep *domain.Entrypoint) bool {
+		if f.Search != "" && !containsFold(ep.Id, f.Search) && !containsFold(ep.Title, f.Search) {
+			return false
+		}
+		if f.Protocol != "" && string(ep.Protocol) != f.Protocol {
+			return false
+		}
+		if f.Host != "" && !containsFold(ep.Host, f.Host) {
+			return false
+		}
+		return true
+	}
 }
 
 func (r *EntrypointRepository) Find(ctx context.Context, id string) (*domain.Entrypoint, error) {

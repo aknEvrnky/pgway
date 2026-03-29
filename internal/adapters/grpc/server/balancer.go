@@ -55,7 +55,13 @@ func (s *ControlPlaneServer) ListBalancers(ctx context.Context, req *controlplan
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListBalancers(ctx, params)
+	filter := domain.BalancerFilter{
+		Search: req.GetSearch(),
+		Type:   req.GetType(),
+		PoolId: req.GetPoolId(),
+	}
+
+	result, err := s.cp.ListBalancers(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list balancers: %v", err)
 	}

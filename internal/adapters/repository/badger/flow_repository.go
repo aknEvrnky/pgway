@@ -44,14 +44,33 @@ func (r *FlowRepository) unmarshal(data []byte) (*domain.Flow, error) {
 	return &stored.Spec, nil
 }
 
-func (r *FlowRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error) {
+func (r *FlowRepository) List(ctx context.Context, params domain.ListParams, filter domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
+	predicate := buildFlowPredicate(filter)
 	var result domain.ListResult[domain.Flow]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		var err error
-		result, err = listWithCursor(txn, flowPrefix, params, r.unmarshal)
+		result, err = listWithCursor(txn, flowPrefix, params, r.unmarshal, predicate)
 		return err
 	})
 	return result, err
+}
+
+func buildFlowPredicate(f domain.FlowFilter) func(*domain.Flow) bool {
+	if f.Search == "" && f.RouterId == "" && f.BalancerId == "" {
+		return nil
+	}
+	return func(flow *domain.Flow) bool {
+		if f.Search != "" && !containsFold(flow.Id, f.Search) {
+			return false
+		}
+		if f.RouterId != "" && flow.RouterId != f.RouterId {
+			return false
+		}
+		if f.BalancerId != "" && flow.BalancerId != f.BalancerId {
+			return false
+		}
+		return true
+	}
 }
 
 func (r *FlowRepository) Find(ctx context.Context, id string) (*domain.Flow, error) {

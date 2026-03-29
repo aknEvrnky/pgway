@@ -78,6 +78,7 @@ message GetRouterResponse {
 message ListRoutersRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
 }
 
 message ListRoutersResponse {
