@@ -46,10 +46,15 @@ message GetProxyResponse {
   Proxy proxy = 1;
 }
 
-message ListProxiesRequest {}
+message ListProxiesRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
 
 message ListProxiesResponse {
   repeated Proxy proxies = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
 }
 
 message DeleteProxyRequest {

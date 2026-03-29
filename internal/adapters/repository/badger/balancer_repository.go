@@ -44,33 +44,14 @@ func (r *BalancerRepository) unmarshal(data []byte) (*domain.LoadBalancer, error
 	return &stored.Spec, nil
 }
 
-func (r *BalancerRepository) GetAll(ctx context.Context) ([]*domain.LoadBalancer, error) {
-	var balancers []*domain.LoadBalancer
-
+func (r *BalancerRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.LoadBalancer], error) {
+	var result domain.ListResult[domain.LoadBalancer]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(balancerPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				lb, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-				balancers = append(balancers, lb)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, balancerPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return balancers, err
+	return result, err
 }
 
 func (r *BalancerRepository) Find(ctx context.Context, id string) (*domain.LoadBalancer, error) {

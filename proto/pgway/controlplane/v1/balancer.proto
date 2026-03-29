@@ -37,10 +37,15 @@ message GetBalancerResponse {
   LoadBalancer balancer = 1;
 }
 
-message ListBalancersRequest {}
+message ListBalancersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
 
 message ListBalancersResponse {
   repeated LoadBalancer balancers = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
 }
 
 message DeleteBalancerRequest {

@@ -41,10 +41,15 @@ message GetEntrypointResponse {
   Entrypoint entrypoint = 1;
 }
 
-message ListEntrypointsRequest {}
+message ListEntrypointsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
 
 message ListEntrypointsResponse {
   repeated Entrypoint entrypoints = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
 }
 
 message DeleteEntrypointRequest {

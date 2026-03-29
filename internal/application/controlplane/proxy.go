@@ -67,13 +67,11 @@ func (s *Service) GetProxy(ctx context.Context, name string) (*domain.Proxy, err
 	return proxy, nil
 }
 
-func (s *Service) ListProxies(ctx context.Context) ([]*domain.Proxy, error) {
-	proxies, err := s.proxyRepo.GetAll(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list proxies: %w", err)
+func (s *Service) ListProxies(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+	if params.PageSize > domain.DefaultMaxPageSize {
+		params.PageSize = domain.DefaultMaxPageSize
 	}
-
-	return proxies, nil
+	return s.proxyRepo.List(ctx, params)
 }
 
 func (s *Service) DeleteProxy(ctx context.Context, name string) error {

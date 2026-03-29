@@ -728,6 +728,8 @@ func (x *GetRouterResponse) GetRouter() *Router {
 
 type ListRoutersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -762,9 +764,25 @@ func (*ListRoutersRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_router_proto_rawDescGZIP(), []int{12}
 }
 
+func (x *ListRoutersRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListRoutersRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListRoutersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Routers       []*Router              `protobuf:"bytes,1,rep,name=routers,proto3" json:"routers,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -804,6 +822,20 @@ func (x *ListRoutersResponse) GetRouters() []*Router {
 		return x.Routers
 	}
 	return nil
+}
+
+func (x *ListRoutersResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListRoutersResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeleteRouterRequest struct {
@@ -939,10 +971,16 @@ const file_pgway_controlplane_v1_router_proto_rawDesc = "" +
 	"\x10GetRouterRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"J\n" +
 	"\x11GetRouterResponse\x125\n" +
-	"\x06router\x18\x01 \x01(\v2\x1d.pgway.controlplane.v1.RouterR\x06router\"\x14\n" +
-	"\x12ListRoutersRequest\"N\n" +
+	"\x06router\x18\x01 \x01(\v2\x1d.pgway.controlplane.v1.RouterR\x06router\"P\n" +
+	"\x12ListRoutersRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\x97\x01\n" +
 	"\x13ListRoutersResponse\x127\n" +
-	"\arouters\x18\x01 \x03(\v2\x1d.pgway.controlplane.v1.RouterR\arouters\")\n" +
+	"\arouters\x18\x01 \x03(\v2\x1d.pgway.controlplane.v1.RouterR\arouters\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\")\n" +
 	"\x13DeleteRouterRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x16\n" +
 	"\x14DeleteRouterResponse2\xaa\x03\n" +

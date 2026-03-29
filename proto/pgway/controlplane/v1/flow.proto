@@ -35,10 +35,15 @@ message GetFlowResponse {
   Flow flow = 1;
 }
 
-message ListFlowsRequest {}
+message ListFlowsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
 
 message ListFlowsResponse {
   repeated Flow flows = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
 }
 
 message DeleteFlowRequest {

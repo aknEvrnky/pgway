@@ -33,18 +33,25 @@ func (c *Client) GetFlow(ctx context.Context, name string) (*domain.Flow, error)
 	return flowFromProto(resp.Flow), nil
 }
 
-func (c *Client) ListFlows(ctx context.Context) ([]*domain.Flow, error) {
-	resp, err := c.flow.ListFlows(ctx, &controlplanev1.ListFlowsRequest{})
+func (c *Client) ListFlows(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error) {
+	resp, err := c.flow.ListFlows(ctx, &controlplanev1.ListFlowsRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.Flow]{}, err
 	}
 
-	flows := make([]*domain.Flow, 0, len(resp.Flows))
+	items := make([]*domain.Flow, 0, len(resp.Flows))
 	for _, f := range resp.Flows {
-		flows = append(flows, flowFromProto(f))
+		items = append(items, flowFromProto(f))
 	}
 
-	return flows, nil
+	return domain.ListResult[domain.Flow]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeleteFlow(ctx context.Context, name string) error {

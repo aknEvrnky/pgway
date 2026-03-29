@@ -46,20 +46,30 @@ func (s *ControlPlaneServer) GetProxy(ctx context.Context, req *controlplanev1.G
 }
 
 func (s *ControlPlaneServer) ListProxies(ctx context.Context, req *controlplanev1.ListProxiesRequest) (*controlplanev1.ListProxiesResponse, error) {
-	proxies, err := s.cp.ListProxies(ctx)
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
 
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListProxies(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list proxies: %v", err)
 	}
 
-	var proxyPbs = make([]*controlplanev1.Proxy, 0, len(proxies))
-
-	for _, p := range proxies {
-		proxyPbs = append(proxyPbs, proxyToProto(p))
+	proxies := make([]*controlplanev1.Proxy, 0, len(result.Items))
+	for _, p := range result.Items {
+		proxies = append(proxies, proxyToProto(p))
 	}
 
 	return &controlplanev1.ListProxiesResponse{
-		Proxies: proxyPbs,
+		Proxies:       proxies,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
 	}, nil
 }
 

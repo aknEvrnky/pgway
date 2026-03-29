@@ -45,19 +45,30 @@ func (s *ControlPlaneServer) GetRouter(ctx context.Context, req *controlplanev1.
 }
 
 func (s *ControlPlaneServer) ListRouters(ctx context.Context, req *controlplanev1.ListRoutersRequest) (*controlplanev1.ListRoutersResponse, error) {
-	routers, err := s.cp.ListRouters(ctx)
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
+
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListRouters(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list routers: %v", err)
 	}
 
-	var results = make([]*controlplanev1.Router, 0, len(routers))
-
-	for _, r := range routers {
-		results = append(results, routerToProto(r))
+	routers := make([]*controlplanev1.Router, 0, len(result.Items))
+	for _, r := range result.Items {
+		routers = append(routers, routerToProto(r))
 	}
 
 	return &controlplanev1.ListRoutersResponse{
-		Routers: results,
+		Routers:       routers,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
 	}, nil
 }
 

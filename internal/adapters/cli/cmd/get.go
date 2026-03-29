@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/spf13/cobra"
 )
@@ -46,17 +47,17 @@ func newGetProxyCmd(cp ports.ControlPlane) *cobra.Command {
 			}
 
 			// List
-			proxies, err := cp.ListProxies(ctx)
+			result, err := cp.ListProxies(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(proxies) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no proxies found")
 				return nil
 			}
 
-			return enc.Encode(proxies)
+			return enc.Encode(result.Items)
 		},
 	}
 }
@@ -79,17 +80,17 @@ func newGetPoolCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			pools, err := cp.ListPools(ctx)
+			result, err := cp.ListPools(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(pools) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no pools found")
 				return nil
 			}
 
-			return enc.Encode(pools)
+			return enc.Encode(result.Items)
 		},
 	}
 }
@@ -112,17 +113,17 @@ func newGetBalancerCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			balancers, err := cp.ListBalancers(ctx)
+			result, err := cp.ListBalancers(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(balancers) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no load balancer found")
 				return nil
 			}
 
-			return enc.Encode(balancers)
+			return enc.Encode(result.Items)
 		},
 	}
 }
@@ -145,17 +146,17 @@ func newGetRouterCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			routers, err := cp.ListRouters(ctx)
+			result, err := cp.ListRouters(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(routers) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no router found")
 				return nil
 			}
 
-			return enc.Encode(routers)
+			return enc.Encode(result.Items)
 		},
 	}
 }
@@ -178,17 +179,17 @@ func newGetFlowCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			flows, err := cp.ListFlows(ctx)
+			result, err := cp.ListFlows(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(flows) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no flow found")
 				return nil
 			}
 
-			return enc.Encode(flows)
+			return enc.Encode(result.Items)
 		},
 	}
 }
@@ -211,17 +212,17 @@ func newGetEntrypointCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			entrypoints, err := cp.ListEntrypoints(ctx)
+			result, err := cp.ListEntrypoints(ctx, domain.ListParams{})
 			if err != nil {
 				return err
 			}
 
-			if len(entrypoints) == 0 {
+			if len(result.Items) == 0 {
 				fmt.Println("no entrypoint found")
 				return nil
 			}
 
-			return enc.Encode(entrypoints)
+			return enc.Encode(result.Items)
 		},
 	}
 }

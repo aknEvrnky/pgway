@@ -420,6 +420,8 @@ func (x *GetPoolResponse) GetPool() *Pool {
 
 type ListPoolsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -454,9 +456,25 @@ func (*ListPoolsRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_pool_proto_rawDescGZIP(), []int{7}
 }
 
+func (x *ListPoolsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListPoolsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListPoolsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Pools         []*Pool                `protobuf:"bytes,1,rep,name=pools,proto3" json:"pools,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -496,6 +514,20 @@ func (x *ListPoolsResponse) GetPools() []*Pool {
 		return x.Pools
 	}
 	return nil
+}
+
+func (x *ListPoolsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListPoolsResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeletePoolRequest struct {
@@ -617,10 +649,16 @@ const file_pgway_controlplane_v1_pool_proto_rawDesc = "" +
 	"\x0eGetPoolRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"B\n" +
 	"\x0fGetPoolResponse\x12/\n" +
-	"\x04pool\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.PoolR\x04pool\"\x12\n" +
-	"\x10ListPoolsRequest\"F\n" +
+	"\x04pool\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.PoolR\x04pool\"N\n" +
+	"\x10ListPoolsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\x8f\x01\n" +
 	"\x11ListPoolsResponse\x121\n" +
-	"\x05pools\x18\x01 \x03(\v2\x1b.pgway.controlplane.v1.PoolR\x05pools\"'\n" +
+	"\x05pools\x18\x01 \x03(\v2\x1b.pgway.controlplane.v1.PoolR\x05pools\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\"'\n" +
 	"\x11DeletePoolRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x14\n" +
 	"\x12DeletePoolResponse2\x90\x03\n" +

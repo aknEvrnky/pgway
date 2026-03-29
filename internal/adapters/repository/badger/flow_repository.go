@@ -44,33 +44,14 @@ func (r *FlowRepository) unmarshal(data []byte) (*domain.Flow, error) {
 	return &stored.Spec, nil
 }
 
-func (r *FlowRepository) GetAll(ctx context.Context) ([]*domain.Flow, error) {
-	var flows []*domain.Flow
-
+func (r *FlowRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error) {
+	var result domain.ListResult[domain.Flow]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(flowPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				flow, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-				flows = append(flows, flow)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, flowPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return flows, err
+	return result, err
 }
 
 func (r *FlowRepository) Find(ctx context.Context, id string) (*domain.Flow, error) {

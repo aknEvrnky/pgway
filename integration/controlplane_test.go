@@ -10,6 +10,7 @@ import (
 
 	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
@@ -101,11 +102,11 @@ func TestControlPlane_Proxy(t *testing.T) {
 			_, err = svc.ApplyProxyV1(ctx, schema.Metadata{Name: "proxy-b"}, proxySpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListProxies(ctx)
+			result, err := svc.ListProxies(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, p := range list {
+			for _, p := range result.Items {
 				ids[p.Id] = true
 			}
 			assert.True(t, ids["proxy-a"])
@@ -210,11 +211,11 @@ func TestControlPlane_Pool(t *testing.T) {
 			_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-b"}, poolSpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListPools(ctx)
+			result, err := svc.ListPools(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, p := range list {
+			for _, p := range result.Items {
 				ids[p.Id] = true
 			}
 			assert.True(t, ids["pool-a"])
@@ -318,11 +319,11 @@ func TestControlPlane_Balancer(t *testing.T) {
 			_, err = svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-b"}, lbSpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListBalancers(ctx)
+			result, err := svc.ListBalancers(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, lb := range list {
+			for _, lb := range result.Items {
 				ids[lb.Id] = true
 			}
 			assert.True(t, ids["lb-a"])
@@ -433,11 +434,11 @@ func TestControlPlane_Router(t *testing.T) {
 			_, err = svc.ApplyRouterV1(ctx, schema.Metadata{Name: "router-b"}, routerSpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListRouters(ctx)
+			result, err := svc.ListRouters(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, r := range list {
+			for _, r := range result.Items {
 				ids[r.Id] = true
 			}
 			assert.True(t, ids["router-a"])
@@ -539,11 +540,11 @@ func TestControlPlane_Flow(t *testing.T) {
 			_, err = svc.ApplyFlowV1(ctx, schema.Metadata{Name: "flow-b"}, flowSpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListFlows(ctx)
+			result, err := svc.ListFlows(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, f := range list {
+			for _, f := range result.Items {
 				ids[f.Id] = true
 			}
 			assert.True(t, ids["flow-a"])
@@ -651,11 +652,11 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			_, err = svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "ep-b"}, epSpec)
 			require.NoError(t, err)
 
-			list, err := svc.ListEntrypoints(ctx)
+			result, err := svc.ListEntrypoints(ctx, domain.ListParams{})
 			require.NoError(t, err)
-			require.Len(t, list, 2)
+			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
-			for _, ep := range list {
+			for _, ep := range result.Items {
 				ids[ep.Id] = true
 			}
 			assert.True(t, ids["ep-a"])

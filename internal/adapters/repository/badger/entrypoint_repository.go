@@ -44,33 +44,14 @@ func (r *EntrypointRepository) unmarshal(data []byte) (*domain.Entrypoint, error
 	return &stored.Spec, nil
 }
 
-func (r *EntrypointRepository) GetAll(ctx context.Context) ([]*domain.Entrypoint, error) {
-	var entrypoints []*domain.Entrypoint
-
+func (r *EntrypointRepository) List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+	var result domain.ListResult[domain.Entrypoint]
 	err := r.db.View(func(txn *badgerdb.Txn) error {
-		opts := badgerdb.DefaultIteratorOptions
-		opts.Prefix = []byte(entrypointPrefix)
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				ep, err := r.unmarshal(val)
-				if err != nil {
-					return err
-				}
-				entrypoints = append(entrypoints, ep)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		var err error
+		result, err = listWithCursor(txn, entrypointPrefix, params, r.unmarshal)
+		return err
 	})
-
-	return entrypoints, err
+	return result, err
 }
 
 func (r *EntrypointRepository) Find(ctx context.Context, id string) (*domain.Entrypoint, error) {

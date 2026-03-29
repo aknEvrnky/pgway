@@ -4,18 +4,19 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 )
 
 func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
-	proxies, err := a.cp.ListProxies(r.Context())
+	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, proxies)
+	writeJSON(w, http.StatusOK, result.Items)
 }
 
 func (a *Adapter) getProxy(w http.ResponseWriter, r *http.Request) {

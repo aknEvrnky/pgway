@@ -36,18 +36,25 @@ func (c *Client) GetEntrypoint(ctx context.Context, name string) (*domain.Entryp
 	return entrypointFromProto(resp.Entrypoint), nil
 }
 
-func (c *Client) ListEntrypoints(ctx context.Context) ([]*domain.Entrypoint, error) {
-	resp, err := c.entrypoint.ListEntrypoints(ctx, &controlplanev1.ListEntrypointsRequest{})
+func (c *Client) ListEntrypoints(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+	resp, err := c.entrypoint.ListEntrypoints(ctx, &controlplanev1.ListEntrypointsRequest{
+		PageSize:  int32(params.PageSize),
+		PageToken: params.Cursor,
+	})
 	if err != nil {
-		return nil, err
+		return domain.ListResult[domain.Entrypoint]{}, err
 	}
 
-	entrypoints := make([]*domain.Entrypoint, 0, len(resp.Entrypoints))
+	items := make([]*domain.Entrypoint, 0, len(resp.Entrypoints))
 	for _, e := range resp.Entrypoints {
-		entrypoints = append(entrypoints, entrypointFromProto(e))
+		items = append(items, entrypointFromProto(e))
 	}
 
-	return entrypoints, nil
+	return domain.ListResult[domain.Entrypoint]{
+		Items:      items,
+		NextCursor: resp.NextPageToken,
+		TotalCount: int(resp.TotalCount),
+	}, nil
 }
 
 func (c *Client) DeleteEntrypoint(ctx context.Context, name string) error {

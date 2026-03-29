@@ -7,42 +7,42 @@ import (
 )
 
 type EntryPointRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.Entrypoint, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error)
 	Find(ctx context.Context, id string) (*domain.Entrypoint, error)
 	Save(ctx context.Context, ep *domain.Entrypoint) error
 	Delete(ctx context.Context, id string) error
 }
 
 type FlowRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.Flow, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error)
 	Find(ctx context.Context, id string) (*domain.Flow, error)
 	Save(ctx context.Context, flow *domain.Flow) error
 	Delete(ctx context.Context, id string) error
 }
 
 type RouterRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.Router, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error)
 	Find(ctx context.Context, id string) (*domain.Router, error)
 	Save(ctx context.Context, router *domain.Router) error
 	Delete(ctx context.Context, id string) error
 }
 
 type LoadBalancerRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.LoadBalancer, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.LoadBalancer], error)
 	Find(ctx context.Context, id string) (*domain.LoadBalancer, error)
 	Save(ctx context.Context, lb *domain.LoadBalancer) error
 	Delete(ctx context.Context, id string) error
 }
 
 type PoolRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.Pool, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Pool], error)
 	Find(ctx context.Context, id string) (*domain.Pool, error)
 	Save(ctx context.Context, pool *domain.Pool) error
 	Delete(ctx context.Context, id string) error
 }
 
 type ProxyRepositoryPort interface {
-	GetAll(ctx context.Context) ([]*domain.Proxy, error)
+	List(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error)
 	Find(ctx context.Context, id string) (*domain.Proxy, error)
 	GetByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error)
 	FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)

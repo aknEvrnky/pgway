@@ -384,6 +384,8 @@ func (x *GetEntrypointResponse) GetEntrypoint() *Entrypoint {
 
 type ListEntrypointsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -418,9 +420,25 @@ func (*ListEntrypointsRequest) Descriptor() ([]byte, []int) {
 	return file_pgway_controlplane_v1_entrypoint_proto_rawDescGZIP(), []int{6}
 }
 
+func (x *ListEntrypointsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListEntrypointsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
 type ListEntrypointsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Entrypoints   []*Entrypoint          `protobuf:"bytes,1,rep,name=entrypoints,proto3" json:"entrypoints,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,3,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -460,6 +478,20 @@ func (x *ListEntrypointsResponse) GetEntrypoints() []*Entrypoint {
 		return x.Entrypoints
 	}
 	return nil
+}
+
+func (x *ListEntrypointsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+func (x *ListEntrypointsResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
 }
 
 type DeleteEntrypointRequest struct {
@@ -577,10 +609,16 @@ const file_pgway_controlplane_v1_entrypoint_proto_rawDesc = "" +
 	"\x15GetEntrypointResponse\x12A\n" +
 	"\n" +
 	"entrypoint\x18\x01 \x01(\v2!.pgway.controlplane.v1.EntrypointR\n" +
-	"entrypoint\"\x18\n" +
-	"\x16ListEntrypointsRequest\"^\n" +
+	"entrypoint\"T\n" +
+	"\x16ListEntrypointsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\"\xa7\x01\n" +
 	"\x17ListEntrypointsResponse\x12C\n" +
-	"\ventrypoints\x18\x01 \x03(\v2!.pgway.controlplane.v1.EntrypointR\ventrypoints\"-\n" +
+	"\ventrypoints\x18\x01 \x03(\v2!.pgway.controlplane.v1.EntrypointR\ventrypoints\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +
+	"\vtotal_count\x18\x03 \x01(\x05R\n" +
+	"totalCount\"-\n" +
 	"\x17DeleteEntrypointRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"\x1a\n" +
 	"\x18DeleteEntrypointResponse2\xde\x03\n" +

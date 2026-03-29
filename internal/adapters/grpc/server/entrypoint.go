@@ -44,19 +44,31 @@ func (s *ControlPlaneServer) GetEntrypoint(ctx context.Context, req *controlplan
 	}, nil
 }
 
-func (s *ControlPlaneServer) ListEntrypoints(ctx context.Context, request *controlplanev1.ListEntrypointsRequest) (*controlplanev1.ListEntrypointsResponse, error) {
-	entrypoints, err := s.cp.ListEntrypoints(ctx)
+func (s *ControlPlaneServer) ListEntrypoints(ctx context.Context, req *controlplanev1.ListEntrypointsRequest) (*controlplanev1.ListEntrypointsResponse, error) {
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
+
+	params := domain.ListParams{
+		PageSize: int(req.GetPageSize()),
+		Cursor:   cursor,
+	}
+
+	result, err := s.cp.ListEntrypoints(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list entrypoints: %v", err)
 	}
 
-	var results = make([]*controlplanev1.Entrypoint, 0, len(entrypoints))
-	for _, ep := range entrypoints {
-		results = append(results, entrypointToProto(ep))
+	entrypoints := make([]*controlplanev1.Entrypoint, 0, len(result.Items))
+	for _, ep := range result.Items {
+		entrypoints = append(entrypoints, entrypointToProto(ep))
 	}
 
 	return &controlplanev1.ListEntrypointsResponse{
-		Entrypoints: results,
+		Entrypoints:   entrypoints,
+		NextPageToken: encodeCursor(result.NextCursor),
+		TotalCount:    int32(result.TotalCount),
 	}, nil
 }
 

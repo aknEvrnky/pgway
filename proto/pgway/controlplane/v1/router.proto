@@ -75,10 +75,15 @@ message GetRouterResponse {
   Router router = 1;
 }
 
-message ListRoutersRequest {}
+message ListRoutersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
 
 message ListRoutersResponse {
   repeated Router routers = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
 }
 
 message DeleteRouterRequest {
