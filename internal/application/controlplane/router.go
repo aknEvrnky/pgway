@@ -51,11 +51,11 @@ func (s *Service) GetRouter(ctx context.Context, name string) (*domain.Router, e
 	return s.routerRepo.Find(ctx, name)
 }
 
-func (s *Service) ListRouters(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Router], error) {
+func (s *Service) ListRouters(ctx context.Context, params domain.ListParams, filter domain.RouterFilter) (domain.ListResult[domain.Router], error) {
 	if params.PageSize > domain.DefaultMaxPageSize {
 		params.PageSize = domain.DefaultMaxPageSize
 	}
-	return s.routerRepo.List(ctx, params)
+	return s.routerRepo.List(ctx, params, filter)
 }
 
 func (s *Service) DeleteRouter(ctx context.Context, name string) error {

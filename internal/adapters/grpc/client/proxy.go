@@ -34,10 +34,13 @@ func (c *Client) GetProxy(ctx context.Context, name string) (*domain.Proxy, erro
 	return proxyFromProto(resp.Proxy), nil
 }
 
-func (c *Client) ListProxies(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+func (c *Client) ListProxies(ctx context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
 	resp, err := c.proxy.ListProxies(ctx, &controlplanev1.ListProxiesRequest{
 		PageSize:  int32(params.PageSize),
 		PageToken: params.Cursor,
+		Search:    filter.Search,
+		Protocol:  filter.Protocol,
+		Labels:    filter.Labels,
 	})
 	if err != nil {
 		return domain.ListResult[domain.Proxy]{}, err

@@ -53,7 +53,12 @@ func (s *ControlPlaneServer) ListPools(ctx context.Context, req *controlplanev1.
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListPools(ctx, params)
+	filter := domain.PoolFilter{
+		Search: req.GetSearch(),
+		Type:   req.GetType(),
+	}
+
+	result, err := s.cp.ListPools(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list pools: %v", err)
 	}

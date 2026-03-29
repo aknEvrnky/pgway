@@ -47,7 +47,7 @@ func newGetProxyCmd(cp ports.ControlPlane) *cobra.Command {
 			}
 
 			// List
-			result, err := cp.ListProxies(ctx, domain.ListParams{})
+			result, err := cp.ListProxies(ctx, domain.ListParams{}, domain.ProxyFilter{})
 			if err != nil {
 				return err
 			}
@@ -80,7 +80,7 @@ func newGetPoolCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			result, err := cp.ListPools(ctx, domain.ListParams{})
+			result, err := cp.ListPools(ctx, domain.ListParams{}, domain.PoolFilter{})
 			if err != nil {
 				return err
 			}
@@ -113,7 +113,7 @@ func newGetBalancerCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			result, err := cp.ListBalancers(ctx, domain.ListParams{})
+			result, err := cp.ListBalancers(ctx, domain.ListParams{}, domain.BalancerFilter{})
 			if err != nil {
 				return err
 			}
@@ -146,7 +146,7 @@ func newGetRouterCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			result, err := cp.ListRouters(ctx, domain.ListParams{})
+			result, err := cp.ListRouters(ctx, domain.ListParams{}, domain.RouterFilter{})
 			if err != nil {
 				return err
 			}
@@ -179,7 +179,7 @@ func newGetFlowCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			result, err := cp.ListFlows(ctx, domain.ListParams{})
+			result, err := cp.ListFlows(ctx, domain.ListParams{}, domain.FlowFilter{})
 			if err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ func newGetEntrypointCmd(cp ports.ControlPlane) *cobra.Command {
 				return enc.Encode(pool)
 			}
 
-			result, err := cp.ListEntrypoints(ctx, domain.ListParams{})
+			result, err := cp.ListEntrypoints(ctx, domain.ListParams{}, domain.EntrypointFilter{})
 			if err != nil {
 				return err
 			}

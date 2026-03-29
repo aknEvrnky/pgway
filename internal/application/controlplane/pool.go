@@ -51,11 +51,11 @@ func (s *Service) GetPool(ctx context.Context, name string) (*domain.Pool, error
 	return s.poolRepo.Find(ctx, name)
 }
 
-func (s *Service) ListPools(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Pool], error) {
+func (s *Service) ListPools(ctx context.Context, params domain.ListParams, filter domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
 	if params.PageSize > domain.DefaultMaxPageSize {
 		params.PageSize = domain.DefaultMaxPageSize
 	}
-	return s.poolRepo.List(ctx, params)
+	return s.poolRepo.List(ctx, params, filter)
 }
 
 func (s *Service) DeletePool(ctx context.Context, name string) error {

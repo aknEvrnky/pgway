@@ -33,7 +33,7 @@ type mockControlPlane struct {
 }
 
 // --- Entrypoints ---
-func (m *mockControlPlane) ListEntrypoints(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+func (m *mockControlPlane) ListEntrypoints(_ context.Context, _ domain.ListParams, _ domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
 	return domain.ListResult[domain.Entrypoint]{Items: m.entrypoints}, m.epErr
 }
 func (m *mockControlPlane) GetEntrypoint(_ context.Context, name string) (*domain.Entrypoint, error) {
@@ -49,7 +49,7 @@ func (m *mockControlPlane) GetEntrypoint(_ context.Context, name string) (*domai
 }
 
 // --- Flows ---
-func (m *mockControlPlane) ListFlows(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.Flow], error) {
+func (m *mockControlPlane) ListFlows(_ context.Context, _ domain.ListParams, _ domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
 	return domain.ListResult[domain.Flow]{Items: m.flows}, m.flowErr
 }
 func (m *mockControlPlane) GetFlow(_ context.Context, name string) (*domain.Flow, error) {
@@ -65,7 +65,7 @@ func (m *mockControlPlane) GetFlow(_ context.Context, name string) (*domain.Flow
 }
 
 // --- Routers ---
-func (m *mockControlPlane) ListRouters(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.Router], error) {
+func (m *mockControlPlane) ListRouters(_ context.Context, _ domain.ListParams, _ domain.RouterFilter) (domain.ListResult[domain.Router], error) {
 	return domain.ListResult[domain.Router]{Items: m.routers}, m.routerErr
 }
 func (m *mockControlPlane) GetRouter(_ context.Context, name string) (*domain.Router, error) {
@@ -81,7 +81,7 @@ func (m *mockControlPlane) GetRouter(_ context.Context, name string) (*domain.Ro
 }
 
 // --- Balancers ---
-func (m *mockControlPlane) ListBalancers(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.LoadBalancer], error) {
+func (m *mockControlPlane) ListBalancers(_ context.Context, _ domain.ListParams, _ domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
 	return domain.ListResult[domain.LoadBalancer]{Items: m.lbs}, m.lbErr
 }
 func (m *mockControlPlane) GetBalancer(_ context.Context, name string) (*domain.LoadBalancer, error) {
@@ -97,7 +97,7 @@ func (m *mockControlPlane) GetBalancer(_ context.Context, name string) (*domain.
 }
 
 // --- Pools ---
-func (m *mockControlPlane) ListPools(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.Pool], error) {
+func (m *mockControlPlane) ListPools(_ context.Context, _ domain.ListParams, _ domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
 	result := make([]*domain.Pool, 0, len(m.pools))
 	for _, p := range m.pools {
 		result = append(result, p)
@@ -116,7 +116,7 @@ func (m *mockControlPlane) GetPool(_ context.Context, name string) (*domain.Pool
 }
 
 // --- Proxies ---
-func (m *mockControlPlane) ListProxies(_ context.Context, _ domain.ListParams) (domain.ListResult[domain.Proxy], error) {
+func (m *mockControlPlane) ListProxies(_ context.Context, _ domain.ListParams, _ domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
 	return domain.ListResult[domain.Proxy]{Items: m.proxies}, m.proxyErr
 }
 func (m *mockControlPlane) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {

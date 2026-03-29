@@ -38,6 +38,9 @@ message GetFlowResponse {
 message ListFlowsRequest {
   int32 page_size = 1;
   string page_token = 2;
+  string search = 3;
+  string router_id = 4;
+  string balancer_id = 5;
 }
 
 message ListFlowsResponse {

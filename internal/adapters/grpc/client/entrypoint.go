@@ -36,10 +36,13 @@ func (c *Client) GetEntrypoint(ctx context.Context, name string) (*domain.Entryp
 	return entrypointFromProto(resp.Entrypoint), nil
 }
 
-func (c *Client) ListEntrypoints(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Entrypoint], error) {
+func (c *Client) ListEntrypoints(ctx context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
 	resp, err := c.entrypoint.ListEntrypoints(ctx, &controlplanev1.ListEntrypointsRequest{
 		PageSize:  int32(params.PageSize),
 		PageToken: params.Cursor,
+		Search:    filter.Search,
+		Protocol:  filter.Protocol,
+		Host:      filter.Host,
 	})
 	if err != nil {
 		return domain.ListResult[domain.Entrypoint]{}, err

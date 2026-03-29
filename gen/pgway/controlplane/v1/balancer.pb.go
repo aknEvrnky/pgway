@@ -354,6 +354,9 @@ type ListBalancersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	PoolId        string                 `protobuf:"bytes,5,opt,name=pool_id,json=poolId,proto3" json:"pool_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -398,6 +401,27 @@ func (x *ListBalancersRequest) GetPageSize() int32 {
 func (x *ListBalancersRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListBalancersRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListBalancersRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ListBalancersRequest) GetPoolId() string {
+	if x != nil {
+		return x.PoolId
 	}
 	return ""
 }
@@ -568,11 +592,14 @@ const file_pgway_controlplane_v1_balancer_proto_rawDesc = "" +
 	"\x12GetBalancerRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"V\n" +
 	"\x13GetBalancerResponse\x12?\n" +
-	"\bbalancer\x18\x01 \x01(\v2#.pgway.controlplane.v1.LoadBalancerR\bbalancer\"R\n" +
+	"\bbalancer\x18\x01 \x01(\v2#.pgway.controlplane.v1.LoadBalancerR\bbalancer\"\x97\x01\n" +
 	"\x14ListBalancersRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"\xa3\x01\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06search\x18\x03 \x01(\tR\x06search\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x17\n" +
+	"\apool_id\x18\x05 \x01(\tR\x06poolId\"\xa3\x01\n" +
 	"\x15ListBalancersResponse\x12A\n" +
 	"\tbalancers\x18\x01 \x03(\v2#.pgway.controlplane.v1.LoadBalancerR\tbalancers\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +

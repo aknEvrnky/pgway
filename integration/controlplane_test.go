@@ -102,7 +102,7 @@ func TestControlPlane_Proxy(t *testing.T) {
 			_, err = svc.ApplyProxyV1(ctx, schema.Metadata{Name: "proxy-b"}, proxySpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListProxies(ctx, domain.ListParams{})
+			result, err := svc.ListProxies(ctx, domain.ListParams{}, domain.ProxyFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -211,7 +211,7 @@ func TestControlPlane_Pool(t *testing.T) {
 			_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-b"}, poolSpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListPools(ctx, domain.ListParams{})
+			result, err := svc.ListPools(ctx, domain.ListParams{}, domain.PoolFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -319,7 +319,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 			_, err = svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-b"}, lbSpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListBalancers(ctx, domain.ListParams{})
+			result, err := svc.ListBalancers(ctx, domain.ListParams{}, domain.BalancerFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -434,7 +434,7 @@ func TestControlPlane_Router(t *testing.T) {
 			_, err = svc.ApplyRouterV1(ctx, schema.Metadata{Name: "router-b"}, routerSpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListRouters(ctx, domain.ListParams{})
+			result, err := svc.ListRouters(ctx, domain.ListParams{}, domain.RouterFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -540,7 +540,7 @@ func TestControlPlane_Flow(t *testing.T) {
 			_, err = svc.ApplyFlowV1(ctx, schema.Metadata{Name: "flow-b"}, flowSpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListFlows(ctx, domain.ListParams{})
+			result, err := svc.ListFlows(ctx, domain.ListParams{}, domain.FlowFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}
@@ -652,7 +652,7 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			_, err = svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "ep-b"}, epSpec)
 			require.NoError(t, err)
 
-			result, err := svc.ListEntrypoints(ctx, domain.ListParams{})
+			result, err := svc.ListEntrypoints(ctx, domain.ListParams{}, domain.EntrypointFilter{})
 			require.NoError(t, err)
 			require.Len(t, result.Items, 2)
 			ids := map[string]bool{}

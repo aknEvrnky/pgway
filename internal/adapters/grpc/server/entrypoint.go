@@ -55,7 +55,13 @@ func (s *ControlPlaneServer) ListEntrypoints(ctx context.Context, req *controlpl
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListEntrypoints(ctx, params)
+	filter := domain.EntrypointFilter{
+		Search:   req.GetSearch(),
+		Protocol: req.GetProtocol(),
+		Host:     req.GetHost(),
+	}
+
+	result, err := s.cp.ListEntrypoints(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list entrypoints: %v", err)
 	}

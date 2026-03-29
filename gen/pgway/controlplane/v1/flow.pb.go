@@ -338,6 +338,9 @@ type ListFlowsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
+	RouterId      string                 `protobuf:"bytes,4,opt,name=router_id,json=routerId,proto3" json:"router_id,omitempty"`
+	BalancerId    string                 `protobuf:"bytes,5,opt,name=balancer_id,json=balancerId,proto3" json:"balancer_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -382,6 +385,27 @@ func (x *ListFlowsRequest) GetPageSize() int32 {
 func (x *ListFlowsRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListFlowsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListFlowsRequest) GetRouterId() string {
+	if x != nil {
+		return x.RouterId
+	}
+	return ""
+}
+
+func (x *ListFlowsRequest) GetBalancerId() string {
+	if x != nil {
+		return x.BalancerId
 	}
 	return ""
 }
@@ -553,11 +577,15 @@ const file_pgway_controlplane_v1_flow_proto_rawDesc = "" +
 	"\x0eGetFlowRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"B\n" +
 	"\x0fGetFlowResponse\x12/\n" +
-	"\x04flow\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.FlowR\x04flow\"N\n" +
+	"\x04flow\x18\x01 \x01(\v2\x1b.pgway.controlplane.v1.FlowR\x04flow\"\xa4\x01\n" +
 	"\x10ListFlowsRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"\x8f\x01\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06search\x18\x03 \x01(\tR\x06search\x12\x1b\n" +
+	"\trouter_id\x18\x04 \x01(\tR\brouterId\x12\x1f\n" +
+	"\vbalancer_id\x18\x05 \x01(\tR\n" +
+	"balancerId\"\x8f\x01\n" +
 	"\x11ListFlowsResponse\x121\n" +
 	"\x05flows\x18\x01 \x03(\v2\x1b.pgway.controlplane.v1.FlowR\x05flows\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +

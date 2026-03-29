@@ -53,7 +53,13 @@ func (s *ControlPlaneServer) ListFlows(ctx context.Context, req *controlplanev1.
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListFlows(ctx, params)
+	filter := domain.FlowFilter{
+		Search:     req.GetSearch(),
+		RouterId:   req.GetRouterId(),
+		BalancerId: req.GetBalancerId(),
+	}
+
+	result, err := s.cp.ListFlows(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list flows: %v", err)
 	}

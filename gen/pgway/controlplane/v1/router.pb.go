@@ -730,6 +730,7 @@ type ListRoutersRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageToken     string                 `protobuf:"bytes,2,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -774,6 +775,13 @@ func (x *ListRoutersRequest) GetPageSize() int32 {
 func (x *ListRoutersRequest) GetPageToken() string {
 	if x != nil {
 		return x.PageToken
+	}
+	return ""
+}
+
+func (x *ListRoutersRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
 	}
 	return ""
 }
@@ -971,11 +979,12 @@ const file_pgway_controlplane_v1_router_proto_rawDesc = "" +
 	"\x10GetRouterRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"J\n" +
 	"\x11GetRouterResponse\x125\n" +
-	"\x06router\x18\x01 \x01(\v2\x1d.pgway.controlplane.v1.RouterR\x06router\"P\n" +
+	"\x06router\x18\x01 \x01(\v2\x1d.pgway.controlplane.v1.RouterR\x06router\"h\n" +
 	"\x12ListRoutersRequest\x12\x1b\n" +
 	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
-	"page_token\x18\x02 \x01(\tR\tpageToken\"\x97\x01\n" +
+	"page_token\x18\x02 \x01(\tR\tpageToken\x12\x16\n" +
+	"\x06search\x18\x03 \x01(\tR\x06search\"\x97\x01\n" +
 	"\x13ListRoutersResponse\x127\n" +
 	"\arouters\x18\x01 \x03(\v2\x1d.pgway.controlplane.v1.RouterR\arouters\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\x12\x1f\n" +

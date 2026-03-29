@@ -51,11 +51,11 @@ func (s *Service) GetFlow(ctx context.Context, name string) (*domain.Flow, error
 	return s.flowRepo.Find(ctx, name)
 }
 
-func (s *Service) ListFlows(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error) {
+func (s *Service) ListFlows(ctx context.Context, params domain.ListParams, filter domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
 	if params.PageSize > domain.DefaultMaxPageSize {
 		params.PageSize = domain.DefaultMaxPageSize
 	}
-	return s.flowRepo.List(ctx, params)
+	return s.flowRepo.List(ctx, params, filter)
 }
 
 func (s *Service) DeleteFlow(ctx context.Context, name string) error {

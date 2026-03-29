@@ -55,7 +55,11 @@ func (s *ControlPlaneServer) ListRouters(ctx context.Context, req *controlplanev
 		Cursor:   cursor,
 	}
 
-	result, err := s.cp.ListRouters(ctx, params)
+	filter := domain.RouterFilter{
+		Search: req.GetSearch(),
+	}
+
+	result, err := s.cp.ListRouters(ctx, params, filter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "list routers: %v", err)
 	}

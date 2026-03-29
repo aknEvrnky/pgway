@@ -33,10 +33,13 @@ func (c *Client) GetFlow(ctx context.Context, name string) (*domain.Flow, error)
 	return flowFromProto(resp.Flow), nil
 }
 
-func (c *Client) ListFlows(ctx context.Context, params domain.ListParams) (domain.ListResult[domain.Flow], error) {
+func (c *Client) ListFlows(ctx context.Context, params domain.ListParams, filter domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
 	resp, err := c.flow.ListFlows(ctx, &controlplanev1.ListFlowsRequest{
 		PageSize:  int32(params.PageSize),
 		PageToken: params.Cursor,
+		Search:    filter.Search,
+		RouterId:  filter.RouterId,
+		BalancerId: filter.BalancerId,
 	})
 	if err != nil {
 		return domain.ListResult[domain.Flow]{}, err
