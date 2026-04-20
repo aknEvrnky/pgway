@@ -75,6 +75,11 @@ A minimal valid flow is `Entrypoint → LoadBalancer → Pool → Proxy`. Multip
 
 ## Installation
 
+### Prerequisites
+
+- Go **1.25** or newer (`go version`)
+- Optional, for dashboard development: [Bun](https://bun.sh/) or Node.js 20+
+
 ### From source
 
 ```bash
@@ -92,6 +97,14 @@ go install github.com/aknEvrnky/pgway/cmd/pgctl@latest
 ```
 
 ## Quick Start
+
+pgway needs a config file on startup. Copy the default one into a location it will find (see [Configuration](#configuration)):
+
+```bash
+cp config/default.yml ./config.yml
+# or system-wide:
+# sudo mkdir -p /etc/pgway && sudo cp config/default.yml /etc/pgway/config.yml
+```
 
 Start the all-in-one binary:
 
