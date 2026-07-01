@@ -17,8 +17,6 @@ import (
 type ControlPlaneReader interface {
 	GetProxy(ctx context.Context, name string) (*domain.Proxy, error)
 	ListProxies(ctx context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error)
-	GetProxiesByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error)
-	FindProxiesByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)
 
 	GetPool(ctx context.Context, name string) (*domain.Pool, error)
 	ListPools(ctx context.Context, params domain.ListParams, filter domain.PoolFilter) (domain.ListResult[domain.Pool], error)
@@ -34,6 +32,12 @@ type ControlPlaneReader interface {
 
 	GetEntrypoint(ctx context.Context, name string) (*domain.Entrypoint, error)
 	ListEntrypoints(ctx context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error)
+}
+
+// ProxyResolver resolves pool members for the data plane
+type ProxyResolver interface {
+	GetProxiesByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error)
+	FindProxiesByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)
 }
 
 // ControlPlaneWriter is used for write only cp access

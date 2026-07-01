@@ -98,7 +98,7 @@ func (s *ControlPlaneServer) GetProxiesByIds(ctx context.Context, req *controlpl
 		return nil, status.Error(codes.InvalidArgument, "ids are required")
 	}
 
-	proxies, err := s.cp.GetProxiesByIds(ctx, req.Ids)
+	proxies, err := s.resolver.GetProxiesByIds(ctx, req.Ids)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get proxies by ids: %q %v", req.Ids, err)
@@ -120,7 +120,7 @@ func (s *ControlPlaneServer) FindProxiesByLabels(ctx context.Context, req *contr
 		return nil, status.Error(codes.InvalidArgument, "labels are required")
 	}
 
-	proxies, err := s.cp.FindProxiesByLabels(ctx, req.Labels)
+	proxies, err := s.resolver.FindProxiesByLabels(ctx, req.Labels)
 
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "find proxies by labels: %q %v", req.Labels, err)

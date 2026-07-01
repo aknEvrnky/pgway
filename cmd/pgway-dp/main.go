@@ -31,7 +31,7 @@ func main() {
 	defer cpClient.Close()
 
 	// app takes cp client as read-only
-	app := api.NewApplication(cpClient)
+	app := api.NewApplication(cpClient, cpClient)
 	ctx := context.Background()
 
 	if err := app.Bootstrap(ctx); err != nil {

@@ -14,12 +14,14 @@ type ControlPlaneServer struct {
 	controlplanev1.UnimplementedEntrypointServiceServer
 	controlplanev1.UnimplementedFlowServiceServer
 
-	cp ports.ControlPlane
+	cp       ports.ControlPlane
+	resolver ports.ProxyResolver
 }
 
-func NewControlPlaneServer(cp ports.ControlPlane) *ControlPlaneServer {
+func NewControlPlaneServer(cp ports.ControlPlane, resolver ports.ProxyResolver) *ControlPlaneServer {
 	return &ControlPlaneServer{
-		cp: cp,
+		cp:       cp,
+		resolver: resolver,
 	}
 }
 
