@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockControlPlane implements ports.ControlPlaneReader for balancer tests.
+// mockControlPlane implements ports.ControlPlaneReader and ports.ProxyResolver for balancer tests.
 // Only lb/pool/proxy fields are relevant; other methods are no-ops.
 type mockControlPlane struct {
 	proxies []*domain.Proxy
@@ -171,7 +171,7 @@ func TestService_Bootstrap(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := NewService(tt.cp)
+			svc := NewService(tt.cp, tt.cp)
 			err := svc.Bootstrap(context.Background())
 
 			if tt.expectedErr != "" {
@@ -189,11 +189,12 @@ func TestService_Bootstrap(t *testing.T) {
 }
 
 func TestService_Get(t *testing.T) {
-	svc := NewService(&mockControlPlane{
+	cp := &mockControlPlane{
 		lbs:     []*domain.LoadBalancer{testLB},
 		pools:   map[string]*domain.Pool{"pool-1": testPool},
 		proxies: []*domain.Proxy{testProxy},
-	})
+	}
+	svc := NewService(cp, cp)
 	require.NoError(t, svc.Bootstrap(context.Background()))
 
 	t.Run("existing id", func(t *testing.T) {

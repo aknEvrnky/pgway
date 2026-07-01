@@ -50,7 +50,7 @@ func main() {
 
 	// gRPC server — cli's command bus
 	grpcServer := grpc.NewServer()
-	cpGrpcServer := server.NewControlPlaneServer(cpService)
+	cpGrpcServer := server.NewControlPlaneServer(cpService, cpService)
 	controlplanev1.RegisterProxyServiceServer(grpcServer, cpGrpcServer)
 	controlplanev1.RegisterPoolServiceServer(grpcServer, cpGrpcServer)
 	controlplanev1.RegisterBalancerServiceServer(grpcServer, cpGrpcServer)
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Data Plane — cpService as read only service
-	app := api.NewApplication(cpService)
+	app := api.NewApplication(cpService, cpService)
 	ctx := context.Background()
 
 	if err := app.Bootstrap(ctx); err != nil {

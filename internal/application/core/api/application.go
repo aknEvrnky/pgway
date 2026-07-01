@@ -18,10 +18,11 @@ type Application struct {
 
 func NewApplication(
 	cp ports.ControlPlaneReader,
+	resolver ports.ProxyResolver,
 ) *Application {
 	return &Application{
 		cache:           NewResourceCache(),
-		balancerService: balancer.NewService(cp),
+		balancerService: balancer.NewService(cp, resolver),
 		controlPlane:    cp,
 	}
 }

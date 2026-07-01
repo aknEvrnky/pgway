@@ -12,15 +12,18 @@ import (
 // todo could we use sync.Map?
 type Service struct {
 	cp       ports.ControlPlaneReader
+	resolver ports.ProxyResolver
 	mu       sync.RWMutex
 	registry map[string]LoadBalancer
 }
 
 func NewService(
 	cp ports.ControlPlaneReader,
+	resolver ports.ProxyResolver,
 ) *Service {
 	return &Service{
 		cp:       cp,
+		resolver: resolver,
 		registry: make(map[string]LoadBalancer),
 	}
 }
@@ -89,7 +92,7 @@ func (s *Service) Next(id string) (*domain.Proxy, error) {
 func (s *Service) resolveProxies(ctx context.Context, pool *domain.Pool) ([]*domain.Proxy, error) {
 	switch pool.Type {
 	case domain.PoolTypeStatic:
-		proxies, err := s.cp.GetProxiesByIds(ctx, pool.ProxyIds)
+		proxies, err := s.resolver.GetProxiesByIds(ctx, pool.ProxyIds)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +100,7 @@ func (s *Service) resolveProxies(ctx context.Context, pool *domain.Pool) ([]*dom
 		return proxies, nil
 
 	case domain.PoolTypeDynamic:
-		return s.cp.FindProxiesByLabels(ctx, pool.Selector.Allow)
+		return s.resolver.FindProxiesByLabels(ctx, pool.Selector.Allow)
 
 	default:
 		return nil, fmt.Errorf("unknown pool type: %q", pool.Type)

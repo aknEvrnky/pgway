@@ -172,11 +172,11 @@ func newGetFlowCmd(cp ports.ControlPlane) *cobra.Command {
 			enc.SetIndent("", "  ")
 
 			if len(args) > 0 {
-				pool, err := cp.GetRouter(ctx, args[0])
+				flow, err := cp.GetFlow(ctx, args[0])
 				if err != nil {
 					return err
 				}
-				return enc.Encode(pool)
+				return enc.Encode(flow)
 			}
 
 			result, err := cp.ListFlows(ctx, domain.ListParams{}, domain.FlowFilter{})

@@ -47,7 +47,7 @@ func main() {
 
 	// grpc server
 	grpcServer := grpc.NewServer()
-	cpGrpcServer := grpcserver.NewControlPlaneServer(cpService)
+	cpGrpcServer := grpcserver.NewControlPlaneServer(cpService, cpService)
 	controlplanev1.RegisterProxyServiceServer(grpcServer, cpGrpcServer)
 	controlplanev1.RegisterPoolServiceServer(grpcServer, cpGrpcServer)
 	controlplanev1.RegisterRouterServiceServer(grpcServer, cpGrpcServer)

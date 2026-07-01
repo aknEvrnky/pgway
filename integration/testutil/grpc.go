@@ -18,14 +18,14 @@ const bufSize = 1024 * 1024
 // NewTestGrpcServer starts an in-memory gRPC server with all 6 control plane
 // services registered. It returns a client connection backed by bufconn.
 // Both the server and connection are cleaned up when the test finishes.
-func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane) *grpc.ClientConn {
+func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane, resolver ports.ProxyResolver) *grpc.ClientConn {
 	t.Helper()
 
 	lis := bufconn.Listen(bufSize)
 	t.Cleanup(func() { lis.Close() }) // registered first → runs last (LIFO)
 
 	s := grpc.NewServer()
-	cpServer := grpcserver.NewControlPlaneServer(cp)
+	cpServer := grpcserver.NewControlPlaneServer(cp, resolver)
 	controlplanev1.RegisterProxyServiceServer(s, cpServer)
 	controlplanev1.RegisterPoolServiceServer(s, cpServer)
 	controlplanev1.RegisterRouterServiceServer(s, cpServer)

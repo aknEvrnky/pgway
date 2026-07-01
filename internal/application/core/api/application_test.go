@@ -15,7 +15,7 @@ import (
 
 // --- mock ---
 
-// mockControlPlane implements ports.ControlPlaneReader for all api tests.
+// mockControlPlane implements ports.ControlPlaneReader and ports.ProxyResolver for all api tests.
 type mockControlPlane struct {
 	entrypoints []*domain.Entrypoint
 	flows       []*domain.Flow
@@ -174,7 +174,7 @@ var (
 )
 
 func newApp(cp *mockControlPlane) *Application {
-	return NewApplication(cp)
+	return NewApplication(cp, cp)
 }
 
 // --- tests ---
@@ -216,7 +216,7 @@ func TestApplication_Bootstrap(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.cp)
+			app := newApp(tt.cp)
 			err := app.Bootstrap(context.Background())
 
 			if tt.expectedErr != "" {
@@ -254,7 +254,7 @@ func TestApplication_ValidateAll(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(&mockControlPlane{entrypoints: tt.eps})
+			app := newApp(&mockControlPlane{entrypoints: tt.eps})
 			require.NoError(t, app.warmupCache(context.Background()))
 			err := app.validateAll(context.Background())
 
@@ -331,7 +331,7 @@ func TestApplication_RouteRequest(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(&mockControlPlane{routers: tt.routers})
+			app := newApp(&mockControlPlane{routers: tt.routers})
 			require.NoError(t, app.warmupCache(context.Background()))
 
 			req, _ := http.NewRequest("GET", "http://"+tt.host+"/", nil)
@@ -477,7 +477,7 @@ func TestApplication_ExecuteFlow(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			app := NewApplication(tt.cp)
+			app := newApp(tt.cp)
 			require.NoError(t, app.Bootstrap(context.Background()))
 
 			req, _ := http.NewRequest("GET", "http://example.com/", nil)

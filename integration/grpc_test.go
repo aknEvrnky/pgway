@@ -20,7 +20,7 @@ func newGrpcEnv(t *testing.T) *grpc.ClientConn {
 	t.Helper()
 	store := badgerutil.NewBadgerStore(t)
 	svc := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
-	return testutil.NewTestGrpcServer(t, svc)
+	return testutil.NewTestGrpcServer(t, svc, svc)
 }
 
 // ---------------------------------------------------------------------------

@@ -67,7 +67,7 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 	require.NoError(t, err)
 
 	// Bootstrap Application from real DB
-	app := api.NewApplication(svc)
+	app := api.NewApplication(svc, svc)
 	err = app.Bootstrap(ctx)
 	require.NoError(t, err)
 
