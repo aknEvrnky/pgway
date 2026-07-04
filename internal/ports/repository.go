@@ -41,6 +41,21 @@ type PoolRepositoryPort interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type UserRepositoryPort interface {
+	List(ctx context.Context, params domain.ListParams, filter domain.UserFilter) (domain.ListResult[domain.User], error)
+	Find(ctx context.Context, id string) (*domain.User, error)
+	Count(ctx context.Context) (int, error)
+	Save(ctx context.Context, user *domain.User) error
+	Delete(ctx context.Context, id string) error
+}
+
+type TokenRepositoryPort interface {
+	Find(ctx context.Context, hash string) (*domain.Token, error)
+	Save(ctx context.Context, token *domain.Token) error
+	Delete(ctx context.Context, hash string) error
+	DeleteByUserId(ctx context.Context, userId string) error
+}
+
 type ProxyRepositoryPort interface {
 	List(ctx context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error)
 	Find(ctx context.Context, id string) (*domain.Proxy, error)
