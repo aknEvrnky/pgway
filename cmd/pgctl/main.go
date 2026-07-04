@@ -17,14 +17,12 @@ func main() {
 
 	cfg := config.Get()
 
-	client, err := grpcclient.NewClient(cfg.GrpcListenAddr)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "connect to control plane:", err)
-		os.Exit(1)
+	// the client is created after flag parsing so --token can take effect
+	connect := func(token string) (cmd.Client, error) {
+		return grpcclient.NewClient(cfg.GrpcListenAddr, token)
 	}
-	defer client.Close()
 
-	rootCmd := cmd.NewRootCmd(client)
+	rootCmd := cmd.NewRootCmd(connect, cfg.Token)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "unable to run command:", err)

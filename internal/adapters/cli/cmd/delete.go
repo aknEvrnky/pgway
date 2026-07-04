@@ -3,33 +3,32 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/spf13/cobra"
 )
 
-func newDeleteCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete resources",
 	}
 
-	cmd.AddCommand(newDeleteProxyCmd(cp))
-	cmd.AddCommand(newDeletePoolCmd(cp))
-	cmd.AddCommand(newDeleteBalancerCmd(cp))
-	cmd.AddCommand(newDeleteRouterCmd(cp))
-	cmd.AddCommand(newDeleteFlowCmd(cp))
-	cmd.AddCommand(newDeleteEntrypointCmd(cp))
+	cmd.AddCommand(newDeleteProxyCmd(d))
+	cmd.AddCommand(newDeletePoolCmd(d))
+	cmd.AddCommand(newDeleteBalancerCmd(d))
+	cmd.AddCommand(newDeleteRouterCmd(d))
+	cmd.AddCommand(newDeleteFlowCmd(d))
+	cmd.AddCommand(newDeleteEntrypointCmd(d))
 
 	return cmd
 }
 
-func newDeleteProxyCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteProxyCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "proxy <name>",
 		Short: "Delete a proxy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeleteProxy(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeleteProxy(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("proxy/%s deleted\n", args[0])
@@ -38,13 +37,13 @@ func newDeleteProxyCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 }
 
-func newDeletePoolCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeletePoolCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "pool <name>",
 		Short: "Delete a pool",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeletePool(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeletePool(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("pool/%s deleted\n", args[0])
@@ -53,13 +52,13 @@ func newDeletePoolCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 }
 
-func newDeleteBalancerCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteBalancerCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "balancer <name>",
 		Short: "Delete a load balancer",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeleteBalancer(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeleteBalancer(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("balancer/%s deleted\n", args[0])
@@ -68,13 +67,13 @@ func newDeleteBalancerCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 }
 
-func newDeleteRouterCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteRouterCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "router <name>",
 		Short: "Delete a router",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeleteRouter(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeleteRouter(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("router/%s deleted\n", args[0])
@@ -83,13 +82,13 @@ func newDeleteRouterCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 }
 
-func newDeleteFlowCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteFlowCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "flow <name>",
 		Short: "Delete a flow",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeleteFlow(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeleteFlow(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("flow/%s deleted\n", args[0])
@@ -98,13 +97,13 @@ func newDeleteFlowCmd(cp ports.ControlPlane) *cobra.Command {
 	}
 }
 
-func newDeleteEntrypointCmd(cp ports.ControlPlane) *cobra.Command {
+func newDeleteEntrypointCmd(d *Deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "entrypoint <name>",
 		Short: "Delete an entrypoint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cp.DeleteEntrypoint(cmd.Context(), args[0]); err != nil {
+			if err := d.Client.DeleteEntrypoint(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			fmt.Printf("entrypoint/%s deleted\n", args[0])

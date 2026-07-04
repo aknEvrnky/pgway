@@ -5,15 +5,14 @@ import (
 	"testing"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// stubControlPlane embeds ports.ControlPlane so only the methods under test
-// need to be implemented; calling any other method panics.
+// stubControlPlane embeds Client so only the methods under test need to be
+// implemented; calling any other method panics.
 type stubControlPlane struct {
-	ports.ControlPlane
+	Client
 
 	getFlowCalls   []string
 	getRouterCalls []string
@@ -32,7 +31,7 @@ func (s *stubControlPlane) GetRouter(_ context.Context, name string) (*domain.Ro
 func TestGetFlowCmd_SingleFlowQueriesFlows(t *testing.T) {
 	cp := &stubControlPlane{}
 
-	cmd := newGetFlowCmd(cp)
+	cmd := newGetFlowCmd(&Deps{Client: cp})
 	cmd.SetArgs([]string{"main-flow"})
 
 	require.NoError(t, cmd.Execute())
