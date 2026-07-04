@@ -112,6 +112,13 @@ Start the all-in-one binary:
 ./pgway
 ```
 
+On first start the server logs a one-time **bootstrap token**. Use it to create
+the first admin user (this also logs you in):
+
+```bash
+./pgctl init --bootstrap-token <token-from-server-log>
+```
+
 Describe your stack in YAML — the example below defines one upstream proxy, a static pool, a round-robin balancer and an entrypoint listening on `:8080`:
 
 ```yaml
@@ -313,6 +320,11 @@ pgway looks for a config file in the following order (first match wins):
 | `badger_path`      | `/var/pgway/lib` | BadgerDB storage directory |
 | `grpc_listen_addr` | `:9090`          | gRPC Control Plane listen address |
 | `rest_listen_addr` | `:8081`          | REST API listen address |
+| `token`            | *(empty)*        | Bearer token for outgoing CP calls (`pgctl`, `pgway-dp`) |
+| `token_ttl`        | `720h`           | Default lifetime of login-issued tokens |
+
+Every key can also be set via environment variables with the `PGWAY_` prefix
+(e.g. `PGWAY_TOKEN`).
 
 Example `config.yml`:
 
@@ -321,6 +333,48 @@ badger_path: /var/pgway/lib
 grpc_listen_addr: ":9090"
 rest_listen_addr: ":8081"
 ```
+
+## Authentication
+
+All gRPC endpoints require a bearer token; only `AuthService/Login` and
+`AuthService/InitAdmin` are exempt. The REST API does not enforce
+authentication yet (tracked separately for the dashboard integration).
+
+**Bootstrap.** When the server starts with no users, it logs a one-time
+bootstrap token and only `InitAdmin` is usable — there is no unauthenticated
+window. A restart before init generates a fresh token.
+
+```bash
+./pgctl init --bootstrap-token <token>   # creates the admin, stores a token in ~/.pgway/credentials
+```
+
+**Sessions.** `pgctl login` exchanges credentials for an opaque token (stored
+hashed server-side, revocable at any time):
+
+```bash
+pgctl login --username admin             # default TTL (token_ttl)
+pgctl login --username dp-agent --no-expiry   # long-lived token for automation
+pgctl logout                             # revoke current token
+```
+
+`pgctl` resolves its token in this order: `--token` flag → `PGWAY_TOKEN` env /
+`token` config key → `~/.pgway/credentials` (written by `pgctl login`).
+
+**Users.** Passwords are stored bcrypt-hashed. Changing a password revokes all
+of that user's tokens.
+
+```bash
+pgctl user create bob                    # admin only; prints a one-time temporary password
+pgctl user create alice --role admin
+pgctl user list                          # admin only
+pgctl user change-password               # own password
+pgctl user change-password bob           # admin reset
+pgctl user delete bob                    # admin only; the last admin cannot be deleted
+```
+
+**Distributed mode.** `pgway-dp` also authenticates to the CP: create a user
+for it, log in with `--no-expiry`, and put the token in the DP's config
+(`token` key or `PGWAY_TOKEN`).
 
 ## Distributed Mode
 
@@ -382,10 +436,11 @@ The codebase follows a hexagonal (ports & adapters) layout: `internal/ports` def
 - ✅ Router with multiple match types and composite conditions
 - ✅ Static and dynamic (label-selector) pools
 - ✅ gRPC Control Plane, CLI, BadgerDB storage
+- ✅ Token authentication for gRPC, user management (`pgctl init/login/user`)
 - 🚧 Dashboard (in progress), REST API (in flux)
 - 🚧 Weighted and least-bytes load balancing
 - 🔜 SOCKS5 support
-- 🔜 Authentication for gRPC / REST
+- 🔜 Authentication for REST / dashboard
 - 🔜 Health checks with automatic pool recovery
 - 🔜 Prometheus metrics
 
