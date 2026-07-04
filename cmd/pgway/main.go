@@ -8,19 +8,18 @@ import (
 	"syscall"
 	"time"
 
-	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
+	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	_ "github.com/aknEvrnky/pgway/internal/platform/logger"
 	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
 )
 
 func main() {
@@ -48,15 +47,19 @@ func main() {
 		badgerrepo.NewEntrypointRepository(db),
 	)
 
-	// gRPC server — cli's command bus
-	grpcServer := grpc.NewServer()
-	cpGrpcServer := server.NewControlPlaneServer(cpService, cpService)
-	controlplanev1.RegisterProxyServiceServer(grpcServer, cpGrpcServer)
-	controlplanev1.RegisterPoolServiceServer(grpcServer, cpGrpcServer)
-	controlplanev1.RegisterBalancerServiceServer(grpcServer, cpGrpcServer)
-	controlplanev1.RegisterRouterServiceServer(grpcServer, cpGrpcServer)
-	controlplanev1.RegisterFlowServiceServer(grpcServer, cpGrpcServer)
-	controlplanev1.RegisterEntrypointServiceServer(grpcServer, cpGrpcServer)
+	// Auth service — users, tokens, bootstrap flow
+	authService := auth.NewService(
+		badgerrepo.NewUserRepository(db),
+		badgerrepo.NewTokenRepository(db),
+		cfg.TokenTTL,
+	)
+
+	if err := authService.Bootstrap(context.Background()); err != nil {
+		zap.L().Fatal("auth bootstrap", zap.Error(err))
+	}
+
+	// gRPC server — cli's command bus, auth enforced
+	grpcServer := server.New(cpService, cpService, authService, authService, authService)
 
 	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)
 	if err != nil {

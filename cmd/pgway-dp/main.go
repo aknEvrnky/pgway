@@ -23,8 +23,8 @@ func main() {
 
 	cfg := config.Get()
 
-	// connect CP through gRPC
-	cpClient, err := grpcclient.NewClient(cfg.GrpcListenAddr)
+	// connect CP through gRPC; the token comes from config or PGWAY_TOKEN
+	cpClient, err := grpcclient.NewClient(cfg.GrpcListenAddr, cfg.Token)
 	if err != nil {
 		zap.L().Fatal("connect to control plane", zap.Error(err), zap.String("addr", cfg.GrpcListenAddr))
 	}

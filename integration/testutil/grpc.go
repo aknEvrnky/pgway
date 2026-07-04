@@ -4,9 +4,12 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
-	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
+	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
+	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,13 +28,7 @@ func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane, resolver ports.Proxy
 	t.Cleanup(func() { lis.Close() }) // registered first → runs last (LIFO)
 
 	s := grpc.NewServer()
-	cpServer := grpcserver.NewControlPlaneServer(cp, resolver)
-	controlplanev1.RegisterProxyServiceServer(s, cpServer)
-	controlplanev1.RegisterPoolServiceServer(s, cpServer)
-	controlplanev1.RegisterRouterServiceServer(s, cpServer)
-	controlplanev1.RegisterBalancerServiceServer(s, cpServer)
-	controlplanev1.RegisterEntrypointServiceServer(s, cpServer)
-	controlplanev1.RegisterFlowServiceServer(s, cpServer)
+	grpcserver.RegisterControlPlane(s, grpcserver.NewControlPlaneServer(cp, resolver))
 
 	go s.Serve(lis) //nolint:errcheck
 
@@ -51,4 +48,32 @@ func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane, resolver ports.Proxy
 	t.Cleanup(func() { conn.Close() })
 
 	return conn
+}
+
+// NewAuthTestServer starts the production gRPC server wiring (control plane +
+// auth, interceptors enabled, via grpcserver.New) on an ephemeral localhost
+// port. It returns the listen address and the auth service so tests can read
+// the bootstrap token.
+func NewAuthTestServer(t *testing.T) (string, *auth.Service) {
+	t.Helper()
+
+	store := badgerutil.NewBadgerStore(t)
+	cpService := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
+	authService := auth.NewService(store.Users, store.Tokens, time.Hour)
+
+	if err := authService.Bootstrap(context.Background()); err != nil {
+		t.Fatalf("auth bootstrap: %v", err)
+	}
+
+	s := grpcserver.New(cpService, cpService, authService, authService, authService)
+
+	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+
+	go s.Serve(lis) //nolint:errcheck
+	t.Cleanup(s.Stop)
+
+	return lis.Addr().String(), authService
 }

@@ -32,3 +32,8 @@ type FlowFilter struct {
 	RouterId   string
 	BalancerId string
 }
+
+type UserFilter struct {
+	Search string
+	Role   string
+}

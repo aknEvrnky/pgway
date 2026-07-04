@@ -1,0 +1,39 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "pgway/controlplane/v1/user.proto";
+
+message InitAdminRequest {
+  string bootstrap_token = 1;
+  string username = 2;
+  string password = 3;
+}
+
+message InitAdminResponse {
+  User user = 1;
+  string token = 2;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  // 0 means the server default TTL
+  int64 ttl_seconds = 3;
+  // issue a token that never expires (for data planes and automation)
+  bool no_expiry = 4;
+}
+
+message LoginResponse {
+  string token = 1;
+}
+
+message LogoutRequest {}
+
+message LogoutResponse {}
+
+service AuthService {
+  rpc InitAdmin(InitAdminRequest) returns (InitAdminResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}

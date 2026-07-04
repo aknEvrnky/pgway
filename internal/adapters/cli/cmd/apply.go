@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newApplyCmd(dispatcher *cli.Dispatcher) *cobra.Command {
+func newApplyCmd(d *Deps) *cobra.Command {
 	var filePath string
 
 	cmd := &cobra.Command{
@@ -36,7 +36,7 @@ func newApplyCmd(dispatcher *cli.Dispatcher) *cobra.Command {
 				return nil
 			}
 
-			return dispatcher.ApplyAll(cmd.Context(), resources)
+			return cli.NewDispatcher(d.Client).ApplyAll(cmd.Context(), resources)
 		},
 	}
 

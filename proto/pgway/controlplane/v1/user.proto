@@ -1,0 +1,62 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+import "google/protobuf/timestamp.proto";
+
+message User {
+  string id = 1;
+  string role = 2;
+  google.protobuf.Timestamp created_at = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message CreateUserRequest {
+  string username = 1;
+  // optional; a temporary password is generated when empty
+  string password = 2;
+  // optional; defaults to "member"
+  string role = 3;
+}
+
+message CreateUserResponse {
+  User user = 1;
+  // set only when the server generated a temporary password
+  string generated_password = 2;
+}
+
+message ListUsersRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  string search = 3;
+  string role = 4;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  string next_page_token = 2;
+  int32 total_count = 3;
+}
+
+message DeleteUserRequest {
+  string username = 1;
+}
+
+message DeleteUserResponse {}
+
+message ChangePasswordRequest {
+  // optional; defaults to the authenticated user
+  string username = 1;
+  // required when changing your own password; ignored for admin resets
+  string old_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordResponse {}
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+}

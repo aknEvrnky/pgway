@@ -10,7 +10,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
-// TestStore holds an open BadgerDB instance and all 6 repository adapters.
+// TestStore holds an open BadgerDB instance and all repository adapters.
 type TestStore struct {
 	DB      *badger.DB
 	Proxies ports.ProxyRepositoryPort
@@ -19,6 +19,8 @@ type TestStore struct {
 	Routers ports.RouterRepositoryPort
 	Flows   ports.FlowRepositoryPort
 	EPs     ports.EntryPointRepositoryPort
+	Users   ports.UserRepositoryPort
+	Tokens  ports.TokenRepositoryPort
 }
 
 // NewBadgerDB opens a BadgerDB in a temp directory. The database is closed
@@ -45,7 +47,7 @@ func NewBadgerDB(t *testing.T) *badger.DB {
 	return db
 }
 
-// NewBadgerStore opens a BadgerDB and initialises all 6 repository adapters.
+// NewBadgerStore opens a BadgerDB and initialises all repository adapters.
 func NewBadgerStore(t *testing.T) *TestStore {
 	t.Helper()
 
@@ -59,5 +61,7 @@ func NewBadgerStore(t *testing.T) *TestStore {
 		Routers: badgerrepo.NewRouterRepository(db),
 		Flows:   badgerrepo.NewFlowRepository(db),
 		EPs:     badgerrepo.NewEntrypointRepository(db),
+		Users:   badgerrepo.NewUserRepository(db),
+		Tokens:  badgerrepo.NewTokenRepository(db),
 	}
 }
