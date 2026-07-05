@@ -8,6 +8,7 @@ import (
 
 	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
+	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/ports"
@@ -58,7 +59,16 @@ func NewAuthTestServer(t *testing.T) (string, *auth.Service) {
 	t.Helper()
 
 	store := badgerutil.NewBadgerStore(t)
-	cpService := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
+	pubsub := memory.NewPubSub(10)
+	cpService := controlplane.NewService(
+		store.Proxies,
+		store.Pools,
+		store.LBs,
+		store.Routers,
+		store.Flows,
+		store.EPs,
+		pubsub,
+	)
 	authService := auth.NewService(store.Users, store.Tokens, time.Hour)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
+	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
@@ -41,8 +42,18 @@ func main() {
 	flowRepo := badgerrepo.NewFlowRepository(db)
 	epRepo := badgerrepo.NewEntrypointRepository(db)
 
+	pubsub := memory.NewPubSub(10)
+
 	// control plane service
-	cpService := controlplane.NewService(proxyRepo, poolRepo, lbRepo, routerRepo, flowRepo, epRepo)
+	cpService := controlplane.NewService(
+		proxyRepo,
+		poolRepo,
+		lbRepo,
+		routerRepo,
+		flowRepo,
+		epRepo,
+		pubsub,
+	)
 
 	// auth service — users, tokens, bootstrap flow
 	authService := auth.NewService(

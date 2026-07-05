@@ -11,6 +11,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
+	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
@@ -37,6 +38,8 @@ func main() {
 	}
 	defer db.Close()
 
+	pubsub := memory.NewPubSub(10)
+
 	// Control Plane — single service, used in both gRPC and data-plane
 	cpService := controlplane.NewService(
 		badgerrepo.NewProxyRepository(db),
@@ -45,6 +48,7 @@ func main() {
 		badgerrepo.NewRouterRepository(db),
 		badgerrepo.NewFlowRepository(db),
 		badgerrepo.NewEntrypointRepository(db),
+		pubsub,
 	)
 
 	// Auth service — users, tokens, bootstrap flow

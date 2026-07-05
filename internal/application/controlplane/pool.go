@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 	"github.com/oklog/ulid/v2"
@@ -40,6 +41,8 @@ func (s *Service) ApplyPoolV1(ctx context.Context, meta schema.Metadata, spec po
 		return nil, fmt.Errorf("save pool: %w", err)
 	}
 
+	_ = s.fireEvent(ctx, pool.Id, event.ResourceTypePool, event.ChangeKindSaved)
+
 	zap.L().Info("pool applied", zap.String("name", pool.Id))
 	return pool, nil
 }
@@ -66,6 +69,8 @@ func (s *Service) DeletePool(ctx context.Context, name string) error {
 	if err := s.poolRepo.Delete(ctx, name); err != nil {
 		return err
 	}
+
+	_ = s.fireEvent(ctx, name, event.ResourceTypePool, event.ChangeKindDeleted)
 
 	zap.L().Info("pool deleted", zap.String("name", name))
 	return nil
