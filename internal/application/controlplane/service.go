@@ -17,7 +17,7 @@ type Service struct {
 	flowRepo   ports.FlowRepositoryPort
 	epRepo     ports.EntryPointRepositoryPort
 
-	eventPublisher ports.EventPublisher
+	eventPublisher ports.EventPublisherPort
 }
 
 func NewService(
@@ -27,7 +27,7 @@ func NewService(
 	routerRepo ports.RouterRepositoryPort,
 	flowRepo ports.FlowRepositoryPort,
 	epRepo ports.EntryPointRepositoryPort,
-	eventPublisher ports.EventPublisher,
+	eventPublisher ports.EventPublisherPort,
 ) *Service {
 	return &Service{
 		proxyRepo:      proxyRepo,

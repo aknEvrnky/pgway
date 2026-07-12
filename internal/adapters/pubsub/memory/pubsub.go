@@ -44,15 +44,15 @@ func (p *PubSub) Subscribe(ctx context.Context) <-chan event.ChangeEvent {
 	p.subs[chId] = ch
 	p.mu.Unlock()
 
-	go func(id string) {
+	go func() {
 		<-ctx.Done()
 
 		p.mu.Lock()
-		delete(p.subs, id)
+		delete(p.subs, chId)
 		p.mu.Unlock()
 
 		close(ch)
-	}(chId)
+	}()
 
 	return ch
 }
