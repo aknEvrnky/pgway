@@ -11,11 +11,11 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
-	"github.com/aknEvrnky/pgway/internal/adapters/pubsub"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/consumer"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -90,7 +90,7 @@ func main() {
 
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
-	consumer := pubsub.NewConsumer(pubSub, app, httpAdapter)
+	eventConsumer := consumer.NewConsumer(pubSub, app, httpAdapter)
 
 	// Start
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
@@ -115,7 +115,7 @@ func main() {
 
 	go func() {
 		zap.L().Info("event consumer started")
-		if err := consumer.ConsumeEvents(sigCtx); err != nil {
+		if err := eventConsumer.ConsumeEvents(sigCtx); err != nil {
 			runErr <- err
 		}
 	}()
