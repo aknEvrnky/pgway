@@ -1,4 +1,13 @@
-.PHONY: proto
+.PHONY: proto build test
+
+build:
+	go build -o build/pgway ./cmd/pgway
+	go build -o build/pgway-cp ./cmd/pgway-cp
+	go build -o build/pgway-dp ./cmd/pgway-dp
+	go build -o build/pgctl ./cmd/pgctl
+
+test:
+	go test -race ./...
 
 proto:
 	protoc \

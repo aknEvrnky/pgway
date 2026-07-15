@@ -29,7 +29,7 @@ func Load(path string) error {
 	}
 
 	viper.SetDefault("badger_path", "/var/pgway/lib")
-	viper.SetDefault("grpc_listen_addr", "9090")
+	viper.SetDefault("grpc_listen_addr", ":9090")
 	viper.SetDefault("rest_listen_addr", ":8081")
 	viper.SetDefault("token", "")
 	viper.SetDefault("token_ttl", 720*time.Hour)

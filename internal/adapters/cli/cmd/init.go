@@ -51,7 +51,7 @@ The bootstrap token is printed to the server log on first start. Pass it via
 			}
 
 			fmt.Printf("admin user %q created\n", user.Id)
-			fmt.Printf("token stored in ~/.pgway/credentials\n")
+			fmt.Printf("token stored in ~/.pgctl/credentials\n")
 			fmt.Printf("token: %s\n", token)
 
 			return nil
