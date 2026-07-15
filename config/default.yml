@@ -1,3 +1,21 @@
+# pgway default configuration.
+# Every key can also be set via a PGWAY_-prefixed env var (e.g. PGWAY_TOKEN)
+# or, for the file location, the --config flag. Precedence:
+#   flags > env vars > this file > built-in defaults.
+
+# BadgerDB data directory (pgway, pgway-cp).
 badger_path: /var/pgway/lib
+
+# gRPC listen address for the control plane. pgway-dp / pgctl dial this address.
 grpc_listen_addr: ":9090"
+
+# REST API listen address (pgway, pgway-cp).
 rest_listen_addr: ":8081"
+
+# Outgoing control-plane auth token — only needed by pgway-dp / pgctl in
+# distributed mode. Prefer the PGWAY_TOKEN env var for secrets; leave empty
+# for the all-in-one pgway binary.
+token: ""
+
+# Default lifetime of login-issued tokens (pgway, pgway-cp).
+token_ttl: 720h

@@ -13,7 +13,7 @@ func credentialsPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve home dir: %w", err)
 	}
-	return filepath.Join(home, ".pgway", "credentials"), nil
+	return filepath.Join(home, ".pgctl", "credentials"), nil
 }
 
 func readCredentials() string {

@@ -6,23 +6,16 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/adapters/cli/cmd"
 	grpcclient "github.com/aknEvrnky/pgway/internal/adapters/grpc/client"
-	"github.com/aknEvrnky/pgway/internal/platform/config"
 )
 
 func main() {
-	if err := config.Load(""); err != nil {
-		fmt.Fprintln(os.Stderr, "load configuration:", err)
-		os.Exit(1)
+	// config is loaded inside the root command's PersistentPreRunE so the
+	// --config and --token flags are parsed before the client is dialed
+	connect := func(addr, token string) (cmd.Client, error) {
+		return grpcclient.NewClient(addr, token)
 	}
 
-	cfg := config.Get()
-
-	// the client is created after flag parsing so --token can take effect
-	connect := func(token string) (cmd.Client, error) {
-		return grpcclient.NewClient(cfg.GrpcListenAddr, token)
-	}
-
-	rootCmd := cmd.NewRootCmd(connect, cfg.Token)
+	rootCmd := cmd.NewRootCmd(connect)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "unable to run command:", err)

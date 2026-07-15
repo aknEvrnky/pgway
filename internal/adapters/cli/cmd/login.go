@@ -41,7 +41,7 @@ func newLoginCmd(d *Deps) *cobra.Command {
 			}
 
 			fmt.Printf("logged in as %q\n", username)
-			fmt.Printf("token stored in ~/.pgway/credentials\n")
+			fmt.Printf("token stored in ~/.pgctl/credentials\n")
 			fmt.Printf("token: %s\n", token)
 
 			return nil

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"net"
 	"os"
 	"os/signal"
@@ -22,7 +23,10 @@ import (
 )
 
 func main() {
-	if err := config.Load(""); err != nil {
+	configPath := flag.String("config", "", "path to config file (default: search /etc/pgway, $HOME/.pgway, .)")
+	flag.Parse()
+
+	if err := config.Load(*configPath); err != nil {
 		zap.L().Fatal("load configuration", zap.Error(err))
 	}
 

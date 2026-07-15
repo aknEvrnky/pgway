@@ -12,8 +12,8 @@ type Client interface {
 	Close() error
 }
 
-// ConnectFunc dials the control plane with the resolved bearer token.
-type ConnectFunc func(token string) (Client, error)
+// ConnectFunc dials the control plane at addr with the resolved bearer token.
+type ConnectFunc func(addr, token string) (Client, error)
 
 // Deps carries the connected client to commands. It is populated by the root
 // command's PersistentPreRunE, after flags are parsed.

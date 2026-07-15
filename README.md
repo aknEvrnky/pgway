@@ -85,7 +85,16 @@ A minimal valid flow is `Entrypoint → LoadBalancer → Pool → Proxy`. Multip
 ```bash
 git clone https://github.com/aknEvrnky/pgway.git
 cd pgway
+make build            # builds all four binaries into ./build/
+```
+
+`make build` produces `build/pgway`, `build/pgway-cp`, `build/pgway-dp` and
+`build/pgctl`. To build a single binary directly:
+
+```bash
 go build -o pgway ./cmd/pgway
+go build -o pgway-cp ./cmd/pgway-cp
+go build -o pgway-dp ./cmd/pgway-dp
 go build -o pgctl ./cmd/pgctl
 ```
 
@@ -93,6 +102,8 @@ go build -o pgctl ./cmd/pgctl
 
 ```bash
 go install github.com/aknEvrnky/pgway/cmd/pgway@latest
+go install github.com/aknEvrnky/pgway/cmd/pgway-cp@latest
+go install github.com/aknEvrnky/pgway/cmd/pgway-dp@latest
 go install github.com/aknEvrnky/pgway/cmd/pgctl@latest
 ```
 
@@ -308,30 +319,41 @@ spec:
 
 ## Configuration
 
-pgway looks for a config file in the following order (first match wins):
+All four binaries share the same configuration keys and loader. Values are
+resolved with the following precedence (highest wins):
 
-1. Path passed via `--config`
-2. `/etc/pgway/config.{yml,yaml,json,toml}`
-3. `$HOME/.pgway/config.{yml,yaml,json,toml}`
-4. `./config.{yml,yaml,json,toml}`
+1. **Flags** — `--config <path>` (all binaries) and `--token` (`pgctl`)
+2. **Environment variables** — any key with the `PGWAY_` prefix (e.g. `PGWAY_TOKEN`)
+3. **Config file** — see the search order below
+4. **Built-in defaults** — the values in the table below
+
+When `--config <path>` is given, exactly that file is loaded. Otherwise the
+binaries search for a `config.{yml,yaml,json,toml}` file in these directories,
+first match wins:
+
+1. `/etc/pgway/`
+2. `$HOME/.pgway/`
+3. `.` (current directory)
+
+A config file must exist on one of these paths (or be passed via `--config`)
+even when every value is supplied through environment variables.
 
 | Key                | Default          | Description |
 |--------------------|------------------|-------------|
-| `badger_path`      | `/var/pgway/lib` | BadgerDB storage directory |
-| `grpc_listen_addr` | `:9090`          | gRPC Control Plane listen address |
-| `rest_listen_addr` | `:8081`          | REST API listen address |
+| `badger_path`      | `/var/pgway/lib` | BadgerDB storage directory (`pgway`, `pgway-cp`) |
+| `grpc_listen_addr` | `:9090`          | gRPC Control Plane listen/dial address |
+| `rest_listen_addr` | `:8081`          | REST API listen address (`pgway`, `pgway-cp`) |
 | `token`            | *(empty)*        | Bearer token for outgoing CP calls (`pgctl`, `pgway-dp`) |
-| `token_ttl`        | `720h`           | Default lifetime of login-issued tokens |
+| `token_ttl`        | `720h`           | Default lifetime of login-issued tokens (`pgway`, `pgway-cp`) |
 
-Every key can also be set via environment variables with the `PGWAY_` prefix
-(e.g. `PGWAY_TOKEN`).
-
-Example `config.yml`:
+Example `config.yml` (copy `config/default.yml` as a starting point):
 
 ```yaml
 badger_path: /var/pgway/lib
 grpc_listen_addr: ":9090"
 rest_listen_addr: ":8081"
+token: ""          # only needed by pgway-dp / pgctl in distributed mode
+token_ttl: 720h
 ```
 
 ## Authentication
@@ -345,7 +367,7 @@ bootstrap token and only `InitAdmin` is usable — there is no unauthenticated
 window. A restart before init generates a fresh token.
 
 ```bash
-./pgctl init --bootstrap-token <token>   # creates the admin, stores a token in ~/.pgway/credentials
+./pgctl init --bootstrap-token <token>   # creates the admin, stores a token in ~/.pgctl/credentials
 ```
 
 **Sessions.** `pgctl login` exchanges credentials for an opaque token (stored
@@ -358,7 +380,9 @@ pgctl logout                             # revoke current token
 ```
 
 `pgctl` resolves its token in this order: `--token` flag → `PGWAY_TOKEN` env /
-`token` config key → `~/.pgway/credentials` (written by `pgctl login`).
+`token` config key → `~/.pgctl/credentials` (written by `pgctl login`). The
+credentials file lives under `~/.pgctl/` (the CLI's own state), separate from
+the shared config search path `~/.pgway/`.
 
 **Users.** Passwords are stored bcrypt-hashed. Changing a password revokes all
 of that user's tokens.
@@ -378,18 +402,39 @@ for it, log in with `--no-expiry`, and put the token in the DP's config
 
 ## Distributed Mode
 
-Run the Control Plane and Data Plane as separate processes:
+Run the Control Plane and Data Plane as separate processes. Each binary loads
+config the same way (see [Configuration](#configuration)); a distinct file can
+be pointed at with `--config`:
 
 ```bash
 # Terminal 1 — Control Plane
-./pgway-cp
+./pgway-cp --config /etc/pgway/cp.yml
 
 # Terminal 2 — Data Plane
-./pgway-dp
+./pgway-dp --config /etc/pgway/dp.yml
 
 # Terminal 3 — Manage
 ./pgctl apply -f stack.yaml
 ```
+
+The Data Plane dials the CP at `grpc_listen_addr` and authenticates with
+`token`. Both can come from the config file, an environment variable, or a
+dedicated `--config` file — pick whichever fits your deployment:
+
+```yaml
+# dp.yml — data plane config
+grpc_listen_addr: "cp-host:9090"
+token: "<long-lived token from: pgctl login --no-expiry>"
+```
+
+```bash
+# equivalently, entirely via environment variables
+PGWAY_GRPC_LISTEN_ADDR="cp-host:9090" PGWAY_TOKEN="<token>" ./pgway-dp --config ./config.yml
+```
+
+> The CLI credentials file moved from `~/.pgway/credentials` to
+> `~/.pgctl/credentials`. If you upgraded from an earlier build, re-run
+> `pgctl login` (or `pgctl init`) to write the token to the new location.
 
 ## Development
 
