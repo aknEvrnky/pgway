@@ -807,3 +807,26 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Event publishing
+// ---------------------------------------------------------------------------
+
+func TestControlPlane_PublisherFailureDoesNotBreakWrites(t *testing.T) {
+	t.Parallel()
+
+	svc := testutil.NewSvc(t, testutil.FailingPublisher{})
+	ctx := context.Background()
+
+	proxySpec := proxyv1.ProxySpecV1{
+		Protocol: "http",
+		Host:     "127.0.0.1",
+		Port:     8080,
+	}
+
+	_, err := svc.ApplyProxyV1(ctx, schema.Metadata{Name: "test-proxy"}, proxySpec)
+	require.NoError(t, err, "apply must succeed even when event publish fails")
+
+	require.NoError(t, svc.DeleteProxy(ctx, "test-proxy"),
+		"delete must succeed even when event publish fails")
+}
