@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 	"github.com/oklog/ulid/v2"
@@ -49,6 +50,8 @@ func (s *Service) ApplyProxyV1(ctx context.Context, meta schema.Metadata, spec p
 		return nil, fmt.Errorf("persisting proxy: %w", err)
 	}
 
+	_ = s.fireEvent(ctx, proxy.Id, event.ResourceTypeProxy, event.ChangeKindSaved)
+
 	zap.L().Info("proxy applied", zap.String("name", proxy.Id))
 
 	return proxy, nil
@@ -82,6 +85,8 @@ func (s *Service) DeleteProxy(ctx context.Context, name string) error {
 	if err := s.proxyRepo.Delete(ctx, name); err != nil {
 		return fmt.Errorf("delete proxy: %w", err)
 	}
+
+	_ = s.fireEvent(ctx, name, event.ResourceTypeProxy, event.ChangeKindDeleted)
 
 	zap.L().Info("proxy deleted", zap.String("name", name))
 	return nil

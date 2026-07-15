@@ -12,14 +12,11 @@ import (
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	"github.com/aknEvrnky/pgway/integration/testutil"
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 )
 
 func newGrpcEnv(t *testing.T) *grpc.ClientConn {
 	t.Helper()
-	store := badgerutil.NewBadgerStore(t)
-	svc := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
+	svc, _ := testutil.NewSvcWithPublisher(t)
 	return testutil.NewTestGrpcServer(t, svc, svc)
 }
 

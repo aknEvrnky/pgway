@@ -6,11 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
@@ -22,8 +21,7 @@ import (
 
 func TestFlow_BootstrapAndExecute(t *testing.T) {
 	t.Parallel()
-	store := badgerutil.NewBadgerStore(t)
-	svc := controlplane.NewService(store.Proxies, store.Pools, store.LBs, store.Routers, store.Flows, store.EPs)
+	svc, _ := testutil.NewSvcWithPublisher(t)
 	ctx := context.Background()
 
 	// 1. Proxy

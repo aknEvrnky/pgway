@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	"github.com/oklog/ulid/v2"
@@ -45,6 +46,8 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 		return nil, fmt.Errorf("save balancer: %w", err)
 	}
 
+	_ = s.fireEvent(ctx, lb.Id, event.ResourceTypeBalancer, event.ChangeKindSaved)
+
 	zap.L().Info("balancer applied", zap.String("name", lb.Id))
 	return lb, nil
 }
@@ -71,6 +74,8 @@ func (s *Service) DeleteBalancer(ctx context.Context, name string) error {
 	if err := s.lbRepo.Delete(ctx, name); err != nil {
 		return err
 	}
+
+	_ = s.fireEvent(ctx, name, event.ResourceTypeBalancer, event.ChangeKindDeleted)
 
 	zap.L().Info("balancer deleted", zap.String("name", name))
 	return nil

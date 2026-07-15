@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	"github.com/oklog/ulid/v2"
@@ -47,6 +48,8 @@ func (s *Service) ApplyEntrypointV1(ctx context.Context, meta schema.Metadata, s
 		return nil, fmt.Errorf("save entrypoint: %w", err)
 	}
 
+	_ = s.fireEvent(ctx, ep.Id, event.ResourceTypeEntrypoint, event.ChangeKindSaved)
+
 	zap.L().Info("entrypoint applied", zap.String("name", ep.Id))
 	return ep, nil
 }
@@ -73,6 +76,8 @@ func (s *Service) DeleteEntrypoint(ctx context.Context, name string) error {
 	if err := s.epRepo.Delete(ctx, name); err != nil {
 		return err
 	}
+
+	_ = s.fireEvent(ctx, name, event.ResourceTypeEntrypoint, event.ChangeKindDeleted)
 
 	zap.L().Info("entrypoint deleted", zap.String("name", name))
 	return nil

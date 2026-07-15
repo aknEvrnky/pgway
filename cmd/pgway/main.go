@@ -11,9 +11,11 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
+	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/consumer"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -37,6 +39,8 @@ func main() {
 	}
 	defer db.Close()
 
+	pubSub := memory.NewPubSub(10)
+
 	// Control Plane — single service, used in both gRPC and data-plane
 	cpService := controlplane.NewService(
 		badgerrepo.NewProxyRepository(db),
@@ -45,6 +49,7 @@ func main() {
 		badgerrepo.NewRouterRepository(db),
 		badgerrepo.NewFlowRepository(db),
 		badgerrepo.NewEntrypointRepository(db),
+		pubSub,
 	)
 
 	// Auth service — users, tokens, bootstrap flow
@@ -83,11 +88,15 @@ func main() {
 	// REST adapter
 	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
 
+	// event consumer — handler order matters: app refreshes the cache first,
+	// then the http adapter reads the refreshed cache
+	eventConsumer := consumer.NewConsumer(pubSub, app, httpAdapter)
+
 	// Start
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runErr := make(chan error, 3)
+	runErr := make(chan error, 4)
 
 	go func() {
 		zap.L().Info("grpc started", zap.String("addr", cfg.GrpcListenAddr))
@@ -100,7 +109,15 @@ func main() {
 	}()
 
 	go func() {
+		zap.L().Info("restapi started")
 		runErr <- restAdapter.Run(sigCtx)
+	}()
+
+	go func() {
+		zap.L().Info("event consumer started")
+		if err := eventConsumer.ConsumeEvents(sigCtx); err != nil {
+			runErr <- err
+		}
 	}()
 
 	select {

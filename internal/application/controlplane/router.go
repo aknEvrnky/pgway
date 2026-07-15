@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
 	"github.com/oklog/ulid/v2"
@@ -40,6 +41,8 @@ func (s *Service) ApplyRouterV1(ctx context.Context, meta schema.Metadata, spec 
 		return nil, fmt.Errorf("save router: %w", err)
 	}
 
+	_ = s.fireEvent(ctx, router.Id, event.ResourceTypeRouter, event.ChangeKindSaved)
+
 	zap.L().Info("router applied", zap.String("name", router.Id))
 	return router, nil
 }
@@ -66,6 +69,8 @@ func (s *Service) DeleteRouter(ctx context.Context, name string) error {
 	if err := s.routerRepo.Delete(ctx, name); err != nil {
 		return err
 	}
+
+	_ = s.fireEvent(ctx, name, event.ResourceTypeRouter, event.ChangeKindDeleted)
 
 	zap.L().Info("router deleted", zap.String("name", name))
 	return nil
