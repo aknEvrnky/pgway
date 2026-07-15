@@ -47,13 +47,13 @@ jobs:
       - name: Vet
         run: go vet ./...
       - name: Unit tests with coverage
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./internal/... ./cmd/...
-      - name: Integration tests
-        run: go test -race ./integration/...
+        run: go test -race -covermode=atomic -coverprofile=unit.out ./internal/... ./cmd/...
+      - name: Integration tests with coverage
+        run: go test -race -covermode=atomic -coverpkg=./internal/... -coverprofile=integration.out ./integration/...
       - uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.out
+          files: unit.out,integration.out
           fail_ci_if_error: false
 
   build:
