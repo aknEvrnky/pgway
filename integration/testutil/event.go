@@ -19,3 +19,22 @@ func (s *SpyPublisher) Publish(ctx context.Context, e event.ChangeEvent) error {
 
 	return nil
 }
+
+type SpyHandler struct {
+	mu     sync.Mutex
+	events []event.ChangeEvent
+}
+
+func (s *SpyHandler) Count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.events)
+}
+
+func (s *SpyHandler) HandleEvent(ctx context.Context, e event.ChangeEvent) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.events = append(s.events, e)
+
+	return nil
+}
