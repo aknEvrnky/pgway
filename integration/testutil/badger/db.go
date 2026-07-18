@@ -12,16 +12,17 @@ import (
 
 // TestStore holds an open BadgerDB instance and all repository adapters.
 type TestStore struct {
-	DB      *badger.DB
-	Proxies ports.ProxyRepositoryPort
-	Pools   ports.PoolRepositoryPort
-	LBs     ports.LoadBalancerRepositoryPort
-	Routers ports.RouterRepositoryPort
-	Flows   ports.FlowRepositoryPort
-	EPs     ports.EntryPointRepositoryPort
-	Users   ports.UserRepositoryPort
-	Tokens  ports.TokenRepositoryPort
-	Agents  ports.AgentRepositoryPort
+	DB                 *badger.DB
+	Proxies            ports.ProxyRepositoryPort
+	Pools              ports.PoolRepositoryPort
+	LBs                ports.LoadBalancerRepositoryPort
+	Routers            ports.RouterRepositoryPort
+	Flows              ports.FlowRepositoryPort
+	EPs                ports.EntryPointRepositoryPort
+	Users              ports.UserRepositoryPort
+	Tokens             ports.TokenRepositoryPort
+	Agents             ports.AgentRepositoryPort
+	RegistrationTokens ports.RegistrationTokenRepositoryPort
 }
 
 // NewBadgerDB opens a BadgerDB in a temp directory. The database is closed
@@ -55,15 +56,16 @@ func NewBadgerStore(t *testing.T) *TestStore {
 	db := NewBadgerDB(t)
 
 	return &TestStore{
-		DB:      db,
-		Proxies: badgerrepo.NewProxyRepository(db),
-		Pools:   badgerrepo.NewPoolRepository(db),
-		LBs:     badgerrepo.NewBalancerRepository(db),
-		Routers: badgerrepo.NewRouterRepository(db),
-		Flows:   badgerrepo.NewFlowRepository(db),
-		EPs:     badgerrepo.NewEntrypointRepository(db),
-		Users:   badgerrepo.NewUserRepository(db),
-		Tokens:  badgerrepo.NewTokenRepository(db),
-		Agents:  badgerrepo.NewAgentRepository(db),
+		DB:                 db,
+		Proxies:            badgerrepo.NewProxyRepository(db),
+		Pools:              badgerrepo.NewPoolRepository(db),
+		LBs:                badgerrepo.NewBalancerRepository(db),
+		Routers:            badgerrepo.NewRouterRepository(db),
+		Flows:              badgerrepo.NewFlowRepository(db),
+		EPs:                badgerrepo.NewEntrypointRepository(db),
+		Users:              badgerrepo.NewUserRepository(db),
+		Tokens:             badgerrepo.NewTokenRepository(db),
+		Agents:             badgerrepo.NewAgentRepository(db),
+		RegistrationTokens: badgerrepo.NewRegistrationTokenRepository(db),
 	}
 }
