@@ -99,6 +99,15 @@ func (m *mockTokenRepo) DeleteByUserId(_ context.Context, userId string) error {
 	return nil
 }
 
+func (m *mockTokenRepo) DeleteByAgentId(ctx context.Context, agentID string) error {
+	for hash, t := range m.tokens {
+		if t.AgentId == agentID {
+			delete(m.tokens, hash)
+		}
+	}
+	return nil
+}
+
 // --- helpers ---
 
 const testTTL = time.Hour

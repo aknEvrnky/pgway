@@ -151,4 +151,22 @@ func TestTokenRepository(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "bob", got.UserId)
 	})
+
+	t.Run("DeleteByAgentId removes only that agent's tokens", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		require.NoError(t, store.Tokens.Save(ctx, &domain.Token{Hash: "a1", AgentId: "agent-alpha"}))
+		require.NoError(t, store.Tokens.Save(ctx, &domain.Token{Hash: "f1", AgentId: "agent-alpha"}))
+		require.NoError(t, store.Tokens.Save(ctx, &domain.Token{Hash: "b1", AgentId: "agent-beta"}))
+
+		require.NoError(t, store.Tokens.DeleteByAgentId(ctx, "agent-alpha"))
+
+		_, err := store.Tokens.Find(ctx, "a1")
+		assert.Error(t, err)
+		_, err = store.Tokens.Find(ctx, "f1")
+		assert.Error(t, err)
+
+		got, err := store.Tokens.Find(ctx, "b1")
+		require.NoError(t, err)
+		assert.Equal(t, "agent-beta", got.AgentId)
+	})
 }

@@ -107,6 +107,18 @@ func (r *TokenRepository) Delete(ctx context.Context, hash string) error {
 }
 
 func (r *TokenRepository) DeleteByUserId(ctx context.Context, userId string) error {
+	return r.deleteWhere(func(token *domain.Token) bool {
+		return token.UserId == userId
+	})
+}
+
+func (r *TokenRepository) DeleteByAgentId(ctx context.Context, agentID string) error {
+	return r.deleteWhere(func(token *domain.Token) bool {
+		return token.AgentId == agentID
+	})
+}
+
+func (r *TokenRepository) deleteWhere(match func(*domain.Token) bool) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		opts := badgerdb.DefaultIteratorOptions
 		opts.Prefix = []byte(tokenPrefix)
@@ -127,7 +139,7 @@ func (r *TokenRepository) DeleteByUserId(ctx context.Context, userId string) err
 				return err
 			}
 
-			if token.UserId == userId {
+			if match(token) {
 				keys = append(keys, it.Item().KeyCopy(nil))
 			}
 		}

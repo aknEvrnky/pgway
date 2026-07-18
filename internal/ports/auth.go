@@ -32,8 +32,28 @@ type AuthManager interface {
 	Logout(ctx context.Context, token string) error
 }
 
-// TokenAuthenticator resolves a bearer token to its user. Used by transport
+// TokenAuthenticator resolves a bearer token to its principal. Used by transport
 // interceptors on every call.
 type TokenAuthenticator interface {
 	Authenticate(ctx context.Context, token string) (*domain.User, error)
+}
+
+// AgentCredentials covers the token mechanics of the agent lifecycle:
+// single-use registration tokens and per-agent bearer tokens. Implemented
+// by the auth service, consumed by the agent service.
+type AgentCredentials interface {
+	// CreateRegistrationToken mints a single-use registration token and
+	// returns its plaintext. Only the hash is persisted.
+	CreateRegistrationToken(ctx context.Context, ttl time.Duration) (string, error)
+	// ConsumeRegistrationToken validates and burns a registration token
+	// atomically: exactly one concurrent caller succeeds for a given token.
+	ConsumeRegistrationToken(ctx context.Context, token string) error
+	// IssueAgentToken mints a bearer token bound to the agent and returns
+	// its plaintext.
+	IssueAgentToken(ctx context.Context, agentId string, ttl time.Duration) (string, error)
+	// ExtendAgentToken pushes an agent token's expiry forward by ttl from
+	// now. The token value never changes (sliding TTL).
+	ExtendAgentToken(ctx context.Context, rawToken string, ttl time.Duration) error
+	// RevokeAgentTokens deletes every token bound to the agent.
+	RevokeAgentTokens(ctx context.Context, agentId string) error
 }

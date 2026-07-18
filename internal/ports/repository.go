@@ -54,6 +54,7 @@ type TokenRepositoryPort interface {
 	Save(ctx context.Context, token *domain.Token) error
 	Delete(ctx context.Context, hash string) error
 	DeleteByUserId(ctx context.Context, userId string) error
+	DeleteByAgentId(ctx context.Context, agentID string) error
 }
 
 type ProxyRepositoryPort interface {
@@ -63,4 +64,22 @@ type ProxyRepositoryPort interface {
 	FindByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)
 	Save(ctx context.Context, proxy *domain.Proxy) error
 	Delete(ctx context.Context, id string) error
+}
+
+type AgentRepositoryPort interface {
+	List(ctx context.Context, params domain.ListParams, filter domain.AgentFilter) (domain.ListResult[domain.Agent], error)
+	Find(ctx context.Context, id string) (*domain.Agent, error)
+	// Create inserts a new agent. It fails with domain.ErrAgentExists when
+	// the id is taken; the uniqueness check is atomic at the storage layer.
+	Create(ctx context.Context, agent *domain.Agent) error
+	Save(ctx context.Context, agent *domain.Agent) error
+	Delete(ctx context.Context, id string) error
+}
+
+type RegistrationTokenRepositoryPort interface {
+	Save(ctx context.Context, token *domain.RegistrationToken) error
+	// Consume atomically finds and deletes the token by hash: exactly one
+	// concurrent caller succeeds. The deleted record is returned so the
+	// caller can run an expiry check.
+	Consume(ctx context.Context, hash string) (*domain.RegistrationToken, error)
 }

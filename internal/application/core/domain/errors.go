@@ -6,4 +6,5 @@ var (
 	ErrNoProxy        = errors.New("no proxy")
 	ErrNoPool         = errors.New("no pool")
 	ErrNoMatchingRule = errors.New("no matching rule found")
+	ErrAgentExists    = errors.New("agent already exists")
 )
