@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,65 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockAgentRepo struct {
-	agents map[string]*domain.Agent
-}
-
-func newMockAgentRepo() *mockAgentRepo {
-	return &mockAgentRepo{agents: map[string]*domain.Agent{}}
-}
-
-func (m *mockAgentRepo) List(_ context.Context, _ domain.ListParams, filter domain.AgentFilter) (domain.ListResult[domain.Agent], error) {
-	var items []*domain.Agent
-outer:
-	for _, a := range m.agents {
-		if filter.Search != "" &&
-			!strings.Contains(a.Id, filter.Search) &&
-			!strings.Contains(a.Hostname, filter.Search) {
-			continue
-		}
-		for k, v := range filter.Labels {
-			if a.Labels[k] != v {
-				continue outer
-			}
-		}
-		items = append(items, a)
-	}
-	return domain.ListResult[domain.Agent]{Items: items, TotalCount: len(items)}, nil
-}
-
-func (m *mockAgentRepo) Find(_ context.Context, id string) (*domain.Agent, error) {
-	a, ok := m.agents[id]
-	if !ok {
-		return nil, fmt.Errorf("agent %q not found", id)
-	}
-	copied := *a
-	return &copied, nil
-}
-
-func (m *mockAgentRepo) Create(_ context.Context, agent *domain.Agent) error {
-	if _, ok := m.agents[agent.Id]; ok {
-		return domain.ErrAgentExists
-	}
-	copied := *agent
-	m.agents[agent.Id] = &copied
-	return nil
-}
-
-func (m *mockAgentRepo) Save(_ context.Context, agent *domain.Agent) error {
-	copied := *agent
-	m.agents[agent.Id] = &copied
-	return nil
-}
-
-func (m *mockAgentRepo) Delete(_ context.Context, id string) error {
-	if _, ok := m.agents[id]; !ok {
-		return fmt.Errorf("agent %q not found", id)
-	}
-	delete(m.agents, id)
-	return nil
-}
-
 // --- helpers ---
 
 func newTestAuthenticator() (*Authenticator, *mockUserRepo, *mockAgentRepo, *mockTokenRepo) {
@@ -78,13 +17,6 @@ func newTestAuthenticator() (*Authenticator, *mockUserRepo, *mockAgentRepo, *moc
 	agents := newMockAgentRepo()
 	tokens := newMockTokenRepo()
 	return NewAuthenticator(users, agents, tokens), users, agents, tokens
-}
-
-// seedToken stores a token record for the given raw token and returns its hash.
-func seedToken(tokens *mockTokenRepo, raw string, record domain.Token) string {
-	record.Hash = hashToken(raw)
-	tokens.tokens[record.Hash] = &record
-	return record.Hash
 }
 
 // --- tests ---

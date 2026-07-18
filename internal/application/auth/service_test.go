@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -10,103 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// --- in-memory mocks ---
-
-type mockUserRepo struct {
-	users map[string]*domain.User
-}
-
-func newMockUserRepo() *mockUserRepo {
-	return &mockUserRepo{users: map[string]*domain.User{}}
-}
-
-func (m *mockUserRepo) List(_ context.Context, _ domain.ListParams, filter domain.UserFilter) (domain.ListResult[domain.User], error) {
-	var items []*domain.User
-	for _, u := range m.users {
-		if filter.Role != "" && string(u.Role) != filter.Role {
-			continue
-		}
-		items = append(items, u)
-	}
-	return domain.ListResult[domain.User]{Items: items, TotalCount: len(items)}, nil
-}
-
-func (m *mockUserRepo) Find(_ context.Context, id string) (*domain.User, error) {
-	u, ok := m.users[id]
-	if !ok {
-		return nil, fmt.Errorf("user %q not found", id)
-	}
-	copied := *u
-	return &copied, nil
-}
-
-func (m *mockUserRepo) Count(_ context.Context) (int, error) {
-	return len(m.users), nil
-}
-
-func (m *mockUserRepo) Save(_ context.Context, user *domain.User) error {
-	copied := *user
-	m.users[user.Id] = &copied
-	return nil
-}
-
-func (m *mockUserRepo) Delete(_ context.Context, id string) error {
-	if _, ok := m.users[id]; !ok {
-		return fmt.Errorf("user %q not found", id)
-	}
-	delete(m.users, id)
-	return nil
-}
-
-type mockTokenRepo struct {
-	tokens map[string]*domain.Token
-}
-
-func newMockTokenRepo() *mockTokenRepo {
-	return &mockTokenRepo{tokens: map[string]*domain.Token{}}
-}
-
-func (m *mockTokenRepo) Find(_ context.Context, hash string) (*domain.Token, error) {
-	t, ok := m.tokens[hash]
-	if !ok {
-		return nil, fmt.Errorf("token not found")
-	}
-	copied := *t
-	return &copied, nil
-}
-
-func (m *mockTokenRepo) Save(_ context.Context, token *domain.Token) error {
-	copied := *token
-	m.tokens[token.Hash] = &copied
-	return nil
-}
-
-func (m *mockTokenRepo) Delete(_ context.Context, hash string) error {
-	if _, ok := m.tokens[hash]; !ok {
-		return fmt.Errorf("token not found")
-	}
-	delete(m.tokens, hash)
-	return nil
-}
-
-func (m *mockTokenRepo) DeleteByUserId(_ context.Context, userId string) error {
-	for hash, t := range m.tokens {
-		if t.UserId == userId {
-			delete(m.tokens, hash)
-		}
-	}
-	return nil
-}
-
-func (m *mockTokenRepo) DeleteByAgentId(_ context.Context, agentId string) error {
-	for hash, t := range m.tokens {
-		if t.AgentId == agentId {
-			delete(m.tokens, hash)
-		}
-	}
-	return nil
-}
 
 // --- helpers ---
 
