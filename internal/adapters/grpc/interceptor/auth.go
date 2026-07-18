@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,7 +26,7 @@ func isExempt(fullMethod string) bool {
 }
 
 // UnaryAuth validates the bearer token on every unary RPC and injects the
-// authenticated user (and raw token) into the handler context.
+// authenticated principal (and raw token) into the handler context.
 func UnaryAuth(authenticator ports.TokenAuthenticator) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		if isExempt(info.FullMethod) {
@@ -63,12 +64,20 @@ func authenticate(ctx context.Context, authenticator ports.TokenAuthenticator) (
 		return nil, err
 	}
 
-	user, err := authenticator.Authenticate(ctx, token)
+	principal, err := authenticator.Authenticate(ctx, token)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid or expired token")
 	}
 
-	ctx = auth.ContextWithUser(ctx, user)
+	// Agent principals stay locked out until the per-method policy map lands
+	// (T6, #44): without it an authenticated agent would reach every RPC,
+	// including writes. Authentication succeeded, so this is PermissionDenied,
+	// not Unauthenticated.
+	if principal.Kind() == domain.PrincipalKindAgent {
+		return nil, status.Error(codes.PermissionDenied, "agent access not yet enabled")
+	}
+
+	ctx = auth.ContextWithPrincipal(ctx, principal)
 	ctx = auth.ContextWithToken(ctx, token)
 
 	return ctx, nil

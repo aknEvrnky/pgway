@@ -99,9 +99,9 @@ func (m *mockTokenRepo) DeleteByUserId(_ context.Context, userId string) error {
 	return nil
 }
 
-func (m *mockTokenRepo) DeleteByAgentId(ctx context.Context, agentID string) error {
+func (m *mockTokenRepo) DeleteByAgentId(_ context.Context, agentId string) error {
 	for hash, t := range m.tokens {
-		if t.AgentId == agentID {
+		if t.AgentId == agentId {
 			delete(m.tokens, hash)
 		}
 	}
@@ -195,15 +195,16 @@ func TestService_InitAdmin(t *testing.T) {
 func TestService_Login(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("valid credentials return working token", func(t *testing.T) {
-		svc, _, _, _ := initializedService(t)
+	t.Run("valid credentials issue a token bound to the user", func(t *testing.T) {
+		svc, _, tokens, _ := initializedService(t)
 
 		token, err := svc.Login(ctx, "admin", "password123", 0, false)
 		require.NoError(t, err)
 
-		user, err := svc.Authenticate(ctx, token)
-		require.NoError(t, err)
-		assert.Equal(t, "admin", user.Id)
+		record, ok := tokens.tokens[hashToken(token)]
+		require.True(t, ok, "token must be persisted by hash")
+		assert.Equal(t, "admin", record.UserId)
+		assert.Empty(t, record.AgentId)
 	})
 
 	t.Run("wrong password", func(t *testing.T) {
@@ -240,52 +241,15 @@ func TestService_Login(t *testing.T) {
 	})
 }
 
-func TestService_Authenticate(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("empty token", func(t *testing.T) {
-		svc, _, _, _ := initializedService(t)
-		_, err := svc.Authenticate(ctx, "")
-		assert.ErrorIs(t, err, ErrInvalidToken)
-	})
-
-	t.Run("unknown token", func(t *testing.T) {
-		svc, _, _, _ := initializedService(t)
-		_, err := svc.Authenticate(ctx, "pgw_unknown")
-		assert.ErrorIs(t, err, ErrInvalidToken)
-	})
-
-	t.Run("expired token rejected and cleaned up", func(t *testing.T) {
-		svc, _, tokens, token := initializedService(t)
-
-		past := time.Now().Add(-time.Minute)
-		record := tokens.tokens[hashToken(token)]
-		record.ExpiresAt = &past
-
-		_, err := svc.Authenticate(ctx, token)
-		assert.ErrorIs(t, err, ErrInvalidToken)
-		assert.NotContains(t, tokens.tokens, hashToken(token))
-	})
-
-	t.Run("token of deleted user rejected", func(t *testing.T) {
-		svc, users, _, token := initializedService(t)
-		delete(users.users, "admin")
-
-		_, err := svc.Authenticate(ctx, token)
-		assert.ErrorIs(t, err, ErrInvalidToken)
-	})
-}
-
 func TestService_Logout(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("revokes token", func(t *testing.T) {
-		svc, _, _, token := initializedService(t)
+		svc, _, tokens, token := initializedService(t)
 
 		require.NoError(t, svc.Logout(ctx, token))
 
-		_, err := svc.Authenticate(ctx, token)
-		assert.ErrorIs(t, err, ErrInvalidToken)
+		assert.NotContains(t, tokens.tokens, hashToken(token))
 	})
 
 	t.Run("unknown token", func(t *testing.T) {
@@ -378,16 +342,15 @@ func TestService_ChangePassword(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("with old password verification", func(t *testing.T) {
-		svc, _, _, token := initializedService(t)
+		svc, _, tokens, token := initializedService(t)
 
 		require.NoError(t, svc.ChangePassword(ctx, "admin", "password123", "newpassword123"))
 
 		// old token revoked
-		_, err := svc.Authenticate(ctx, token)
-		assert.ErrorIs(t, err, ErrInvalidToken)
+		assert.NotContains(t, tokens.tokens, hashToken(token))
 
 		// new password works, old one does not
-		_, err = svc.Login(ctx, "admin", "newpassword123", 0, false)
+		_, err := svc.Login(ctx, "admin", "newpassword123", 0, false)
 		assert.NoError(t, err)
 		_, err = svc.Login(ctx, "admin", "password123", 0, false)
 		assert.ErrorIs(t, err, ErrInvalidCredentials)
@@ -416,14 +379,13 @@ func TestService_ResetPassword(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("sets password without verification and revokes tokens", func(t *testing.T) {
-		svc, _, _, token := initializedService(t)
+		svc, _, tokens, token := initializedService(t)
 
 		require.NoError(t, svc.ResetPassword(ctx, "admin", "newpassword123"))
 
-		_, err := svc.Authenticate(ctx, token)
-		assert.ErrorIs(t, err, ErrInvalidToken)
+		assert.NotContains(t, tokens.tokens, hashToken(token))
 
-		_, err = svc.Login(ctx, "admin", "newpassword123", 0, false)
+		_, err := svc.Login(ctx, "admin", "newpassword123", 0, false)
 		assert.NoError(t, err)
 	})
 

@@ -59,19 +59,21 @@ func main() {
 		pubsub,
 	)
 
-	// auth service — users, tokens, bootstrap flow
-	authService := auth.NewService(
-		badgerrepo.NewUserRepository(db),
-		badgerrepo.NewTokenRepository(db),
-		cfg.TokenTTL,
-	)
+	userRepo := badgerrepo.NewUserRepository(db)
+	agentRepo := badgerrepo.NewAgentRepository(db)
+	tokenRepo := badgerrepo.NewTokenRepository(db)
+
+	// auth — Service owns user accounts/sessions; Authenticator resolves
+	// bearer tokens to principals for the transports.
+	authService := auth.NewService(userRepo, tokenRepo, cfg.TokenTTL)
+	authenticator := auth.NewAuthenticator(userRepo, agentRepo, tokenRepo)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
 	}
 
 	// grpc server, auth enforced
-	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authService)
+	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator)
 
 	// tcp port
 	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)

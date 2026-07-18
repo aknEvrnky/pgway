@@ -35,7 +35,7 @@ type AuthManager interface {
 // TokenAuthenticator resolves a bearer token to its principal. Used by transport
 // interceptors on every call.
 type TokenAuthenticator interface {
-	Authenticate(ctx context.Context, token string) (*domain.User, error)
+	Authenticate(ctx context.Context, token string) (*domain.Principal, error)
 }
 
 // AgentCredentials covers the token mechanics of the agent lifecycle:

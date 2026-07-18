@@ -9,17 +9,19 @@ import (
 type contextKey int
 
 const (
-	userContextKey contextKey = iota
+	principalContextKey contextKey = iota
 	tokenContextKey
 )
 
-func ContextWithUser(ctx context.Context, user *domain.User) context.Context {
-	return context.WithValue(ctx, userContextKey, user)
+// ContextWithPrincipal carries the authenticated principal (user or agent)
+// into the handler context. Set only by transport auth middleware.
+func ContextWithPrincipal(ctx context.Context, principal *domain.Principal) context.Context {
+	return context.WithValue(ctx, principalContextKey, principal)
 }
 
-func UserFromContext(ctx context.Context) (*domain.User, bool) {
-	user, ok := ctx.Value(userContextKey).(*domain.User)
-	return user, ok
+func PrincipalFromContext(ctx context.Context) (*domain.Principal, bool) {
+	principal, ok := ctx.Value(principalContextKey).(*domain.Principal)
+	return principal, ok
 }
 
 // ContextWithToken carries the raw bearer token so handlers like Logout can

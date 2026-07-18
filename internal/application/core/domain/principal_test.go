@@ -10,7 +10,7 @@ func TestPrincipal_Kind(t *testing.T) {
 	tests := []struct {
 		name         string
 		user         *User
-		agentID      string
+		agent        *Agent
 		expectedKind PrincipalKind
 	}{
 		{
@@ -18,13 +18,15 @@ func TestPrincipal_Kind(t *testing.T) {
 			user: &User{
 				Id: "user-1",
 			},
-			agentID:      "",
+			agent:        nil,
 			expectedKind: PrincipalKindUser,
 		},
 		{
-			name:         "the kind is agent if user is nil",
-			user:         nil,
-			agentID:      "agent-perry",
+			name: "the kind is agent if user is nil",
+			user: nil,
+			agent: &Agent{
+				Id: "agent-perry",
+			},
 			expectedKind: PrincipalKindAgent,
 		},
 	}
@@ -32,8 +34,8 @@ func TestPrincipal_Kind(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			principal := Principal{
-				User:    tt.user,
-				AgentId: tt.agentID,
+				User:  tt.user,
+				Agent: tt.agent,
 			}
 
 			assert.Equal(t, tt.expectedKind, principal.Kind())

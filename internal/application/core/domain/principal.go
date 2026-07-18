@@ -8,8 +8,8 @@ const (
 )
 
 type Principal struct {
-	User    *User
-	AgentId string
+	User  *User
+	Agent *Agent
 }
 
 func (p *Principal) Kind() PrincipalKind {

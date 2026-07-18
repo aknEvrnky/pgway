@@ -70,12 +70,13 @@ func NewAuthTestServer(t *testing.T) (string, *auth.Service) {
 		pubsub,
 	)
 	authService := auth.NewService(store.Users, store.Tokens, time.Hour)
+	authenticator := auth.NewAuthenticator(store.Users, store.Agents, store.Tokens)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		t.Fatalf("auth bootstrap: %v", err)
 	}
 
-	s := grpcserver.New(cpService, cpService, authService, authService, authService)
+	s := grpcserver.New(cpService, cpService, authService, authService, authenticator)
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
