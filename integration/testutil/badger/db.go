@@ -21,6 +21,7 @@ type TestStore struct {
 	EPs     ports.EntryPointRepositoryPort
 	Users   ports.UserRepositoryPort
 	Tokens  ports.TokenRepositoryPort
+	Agents  ports.AgentRepositoryPort
 }
 
 // NewBadgerDB opens a BadgerDB in a temp directory. The database is closed
@@ -63,5 +64,6 @@ func NewBadgerStore(t *testing.T) *TestStore {
 		EPs:     badgerrepo.NewEntrypointRepository(db),
 		Users:   badgerrepo.NewUserRepository(db),
 		Tokens:  badgerrepo.NewTokenRepository(db),
+		Agents:  badgerrepo.NewAgentRepository(db),
 	}
 }

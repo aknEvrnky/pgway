@@ -54,7 +54,7 @@ type TokenRepositoryPort interface {
 	Save(ctx context.Context, token *domain.Token) error
 	Delete(ctx context.Context, hash string) error
 	DeleteByUserId(ctx context.Context, userId string) error
-	DeleteByAgentId(ctx context.Context, agentID string) error
+	DeleteByAgentId(ctx context.Context, agentId string) error
 }
 
 type ProxyRepositoryPort interface {

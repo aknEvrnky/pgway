@@ -112,9 +112,9 @@ func (r *TokenRepository) DeleteByUserId(ctx context.Context, userId string) err
 	})
 }
 
-func (r *TokenRepository) DeleteByAgentId(ctx context.Context, agentID string) error {
+func (r *TokenRepository) DeleteByAgentId(ctx context.Context, agentId string) error {
 	return r.deleteWhere(func(token *domain.Token) bool {
-		return token.AgentId == agentID
+		return token.AgentId == agentId
 	})
 }
 
