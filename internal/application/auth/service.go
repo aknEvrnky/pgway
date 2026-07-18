@@ -300,6 +300,10 @@ func (s *Service) issueToken(ctx context.Context, userId string, ttl time.Durati
 		record.ExpiresAt = &expires
 	}
 
+	if err := record.Validate(); err != nil {
+		return "", ErrInvalidToken
+	}
+
 	if err := s.tokens.Save(ctx, record); err != nil {
 		return "", fmt.Errorf("persisting token: %w", err)
 	}
