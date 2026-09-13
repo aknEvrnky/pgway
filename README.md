@@ -15,7 +15,7 @@ Client → pgway (Gateway) → Upstream Proxy Pool → Target Server
 - Single, stable entry point for your upstream proxy infrastructure
 - Static or dynamic (label-based) proxy pools
 - Request routing by host, path, method, header or custom rules
-- Round-robin and weighted load balancing (least-bytes in progress)
+- Round-robin, weighted, and least-bytes load balancing
 - Control Plane / Data Plane separation over gRPC (single-process or distributed)
 - CLI (`pgctl`) for declarative resource management
 - Web dashboard for visual configuration (work in progress)
@@ -255,6 +255,9 @@ spec:
 ### LoadBalancer
 
 Sits in front of exactly one pool. `weighted` requires a **static** pool.
+`least-bytes` works with static or dynamic pools; it routes to the proxy with the
+fewest accumulated **downstream** bytes (response / tunnel→client). Counters
+reset lazily on the next selection after `reset_interval` (default `1m`).
 
 ```yaml
 kind: LoadBalancer
@@ -262,8 +265,19 @@ version: v1
 metadata:
   name: rr
 spec:
-  type: round-robin   # round-robin | weighted | least-bytes (wip)
+  type: round-robin   # round-robin | weighted | least-bytes
   pool_id: dynamic-pool
+```
+
+```yaml
+kind: LoadBalancer
+version: v1
+metadata:
+  name: lb-bytes
+spec:
+  type: least-bytes
+  pool_id: dynamic-pool
+  reset_interval: 1m   # optional; omit → 1m
 ```
 
 ### Router
@@ -514,12 +528,12 @@ The codebase follows a hexagonal (ports & adapters) layout: `internal/ports` def
 - ✅ gRPC Control Plane, CLI, BadgerDB storage
 - ✅ Token authentication for gRPC, user management (`pgctl init/login/user`)
 - ✅ Weighted load balancing
+- ✅ Least-bytes load balancing
 - 🚧 Dashboard (in progress), REST API (in flux)
-- 🚧 Least-bytes load balancing
 - 🔜 SOCKS5 support
-- 🔜 Authentication for REST / dashboard
-- 🔜 Health checks with automatic pool recovery
 - 🔜 Prometheus metrics
+- 🔜 Health checks with automatic pool recovery
+- 🔜 Authentication for REST / dashboard
 
 ## License
 
