@@ -46,3 +46,6 @@ heartbeat_interval: 10s
 # First-time Register secret. Prefer PGWAY_REGISTRATION_TOKEN; leave empty
 # when agent_state_path already holds credentials.
 registration_token: ""
+
+# Global log level: debug | info | warn | error (also PGWAY_LOG_LEVEL).
+log_level: info

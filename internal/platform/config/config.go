@@ -37,6 +37,8 @@ type Config struct {
 	// RegistrationToken is the single-use bootstrap secret for first Register.
 	// Prefer PGWAY_REGISTRATION_TOKEN; never commit this value.
 	RegistrationToken string `mapstructure:"registration_token"`
+	// LogLevel sets the global zap log level (debug|info|warn|error).
+	LogLevel string `mapstructure:"log_level"`
 }
 
 var c *Config
@@ -64,6 +66,7 @@ func Load(path string) error {
 	viper.SetDefault("agent_state_path", "/var/lib/pgway/agent.json")
 	viper.SetDefault("heartbeat_interval", 10*time.Second)
 	viper.SetDefault("registration_token", "")
+	viper.SetDefault("log_level", "info")
 
 	// PGWAY_TOKEN etc. override file values
 	viper.SetEnvPrefix("pgway")

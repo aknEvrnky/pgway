@@ -18,7 +18,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
-	_ "github.com/aknEvrnky/pgway/internal/platform/logger"
+	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	"go.uber.org/zap"
 )
 
@@ -40,6 +40,9 @@ func main() {
 	}
 
 	cfg := config.Get()
+	if err := logger.SetLevel(cfg.LogLevel); err != nil {
+		zap.L().Fatal("set log level", zap.Error(err))
+	}
 
 	lock, err := agentstate.NewLock(cfg.AgentStatePath).Acquire()
 	if err != nil {

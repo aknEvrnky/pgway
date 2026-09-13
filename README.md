@@ -353,6 +353,7 @@ even when every value is supplied through environment variables.
 | `agent_state_path`          | `/var/lib/pgway/agent.json`| Persisted agent credentials (`pgway-dp`) |
 | `heartbeat_interval`        | `10s`                      | Heartbeat period (`pgway-dp`) |
 | `registration_token`        | *(empty)*                  | First-time Register secret; prefer `PGWAY_REGISTRATION_TOKEN` |
+| `log_level`                 | `info`                     | Global zap level (`debug`\|`info`\|`warn`\|`error`) |
 
 Example `config.yml` (copy `config/default.yml` as a starting point):
 
