@@ -3,6 +3,7 @@ package balancer
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/balancer/algorithm"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -46,6 +47,20 @@ func TestBuild(t *testing.T) {
 			p:                    poolWithProxy,
 			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "weighted", PoolId: "pool-1"},
 			expectedBalancerType: &algorithm.Weighted{},
+			expectedErr:          nil,
+		},
+		{
+			name:                 "it builds least-bytes load balancer",
+			p:                    poolWithProxy,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "least-bytes", PoolId: "pool-1", ResetInterval: time.Minute},
+			expectedBalancerType: &algorithm.LeastBytes{},
+			expectedErr:          nil,
+		},
+		{
+			name:                 "least-bytes works with dynamic pool",
+			p:                    dynamicPool,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "least-bytes", PoolId: "pool-dyn"},
+			expectedBalancerType: &algorithm.LeastBytes{},
 			expectedErr:          nil,
 		},
 		{
