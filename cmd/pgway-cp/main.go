@@ -14,6 +14,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -62,18 +63,25 @@ func main() {
 	userRepo := badgerrepo.NewUserRepository(db)
 	agentRepo := badgerrepo.NewAgentRepository(db)
 	tokenRepo := badgerrepo.NewTokenRepository(db)
+	regTokenRepo := badgerrepo.NewRegistrationTokenRepository(db)
 
 	// auth — Service owns user accounts/sessions; Authenticator resolves
 	// bearer tokens to principals for the transports.
 	authService := auth.NewService(userRepo, tokenRepo, cfg.TokenTTL)
 	authenticator := auth.NewAuthenticator(userRepo, agentRepo, tokenRepo)
+	agentCreds := auth.NewAgentCredentialService(tokenRepo, regTokenRepo)
+	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.AgentTokenTTL)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
 	}
 
 	// grpc server, auth enforced
-	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator)
+	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, grpcserver.AgentServerConfig{
+		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
+		AgentTokenTTL:        cfg.AgentTokenTTL,
+		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
+	})
 
 	// tcp port
 	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)
