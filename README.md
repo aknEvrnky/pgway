@@ -15,7 +15,7 @@ Client → pgway (Gateway) → Upstream Proxy Pool → Target Server
 - Single, stable entry point for your upstream proxy infrastructure
 - Static or dynamic (label-based) proxy pools
 - Request routing by host, path, method, header or custom rules
-- Round-robin load balancing (weighted and least-bytes in progress)
+- Round-robin and weighted load balancing (least-bytes in progress)
 - Control Plane / Data Plane separation over gRPC (single-process or distributed)
 - CLI (`pgctl`) for declarative resource management
 - Web dashboard for visual configuration (work in progress)
@@ -151,8 +151,8 @@ metadata:
 spec:
   title: Main Pool
   type: static
-  proxy_ids:
-    - proxy-1
+  members:
+    - proxy_id: proxy-1
 ---
 kind: LoadBalancer
 version: v1
@@ -227,14 +227,17 @@ spec:
 Static list by ID, or dynamic by matching labels on proxies.
 
 ```yaml
-# static
+# static (optional per-member weight; default 1; weighted LB requires static)
 kind: Pool
 version: v1
 metadata:
   name: static-pool
 spec:
   type: static
-  proxy_ids: [proxy-1, proxy-2]
+  members:
+    - proxy_id: proxy-1
+      weight: 3
+    - proxy_id: proxy-2
 ---
 # dynamic
 kind: Pool
@@ -251,7 +254,7 @@ spec:
 
 ### LoadBalancer
 
-Sits in front of exactly one pool.
+Sits in front of exactly one pool. `weighted` requires a **static** pool.
 
 ```yaml
 kind: LoadBalancer
@@ -259,7 +262,7 @@ version: v1
 metadata:
   name: rr
 spec:
-  type: round-robin   # round-robin | weighted (wip) | least-bytes (wip)
+  type: round-robin   # round-robin | weighted | least-bytes (wip)
   pool_id: dynamic-pool
 ```
 
@@ -510,8 +513,9 @@ The codebase follows a hexagonal (ports & adapters) layout: `internal/ports` def
 - ✅ Static and dynamic (label-selector) pools
 - ✅ gRPC Control Plane, CLI, BadgerDB storage
 - ✅ Token authentication for gRPC, user management (`pgctl init/login/user`)
+- ✅ Weighted load balancing
 - 🚧 Dashboard (in progress), REST API (in flux)
-- 🚧 Weighted and least-bytes load balancing
+- 🚧 Least-bytes load balancing
 - 🔜 SOCKS5 support
 - 🔜 Authentication for REST / dashboard
 - 🔜 Health checks with automatic pool recovery
