@@ -36,7 +36,9 @@ func RunHeartbeat(ctx context.Context, hb ports.AgentHeartbeater, interval time.
 				zap.L().Warn("agent heartbeat failed", zap.Error(err))
 				continue
 			}
-			zap.L().Debug("agent heartbeat ok", zap.Time("token_expires_at", expiresAt))
+			zap.L().Info("agent heartbeat ok",
+				zap.Time("token_expires_at", expiresAt),
+			)
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -92,6 +93,13 @@ func (s *AgentServer) Heartbeat(ctx context.Context, _ *controlplanev1.Heartbeat
 	expires, err := s.agents.Heartbeat(ctx)
 	if err != nil {
 		return nil, mapAgentError("heartbeat", err)
+	}
+
+	if p, ok := auth.PrincipalFromContext(ctx); ok && p.Agent != nil {
+		zap.L().Info("agent heartbeat",
+			zap.String("agent_id", p.Agent.Id),
+			zap.Time("token_expires_at", expires),
+		)
 	}
 
 	return &controlplanev1.HeartbeatResponse{
