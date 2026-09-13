@@ -23,6 +23,9 @@ var dummyHash = sync.OnceValue(func() []byte {
 	return hash
 })
 
+// Service owns user accounts and their sessions: bootstrap/init, login/logout
+// and user CRUD. Token verification lives in Authenticator, agent credential
+// mechanics in AgentCredentialService — one struct per port boundary.
 type Service struct {
 	users      ports.UserRepositoryPort
 	tokens     ports.TokenRepositoryPort
@@ -143,31 +146,6 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 		return ErrInvalidToken
 	}
 	return nil
-}
-
-func (s *Service) Authenticate(ctx context.Context, token string) (*domain.User, error) {
-	if token == "" {
-		return nil, ErrInvalidToken
-	}
-
-	record, err := s.tokens.Find(ctx, hashToken(token))
-	if err != nil {
-		return nil, ErrInvalidToken
-	}
-
-	if record.IsExpired(time.Now()) {
-		_ = s.tokens.Delete(ctx, record.Hash)
-		return nil, ErrInvalidToken
-	}
-
-	user, err := s.users.Find(ctx, record.UserId)
-	if err != nil {
-		// user deleted while token still stored
-		_ = s.tokens.Delete(ctx, record.Hash)
-		return nil, ErrInvalidToken
-	}
-
-	return user, nil
 }
 
 func (s *Service) CreateUser(ctx context.Context, username, password string, role domain.Role) (*domain.User, string, error) {
@@ -322,6 +300,10 @@ func (s *Service) issueToken(ctx context.Context, userId string, ttl time.Durati
 		record.ExpiresAt = &expires
 	}
 
+	if err := record.Validate(); err != nil {
+		return "", ErrInvalidToken
+	}
+
 	if err := s.tokens.Save(ctx, record); err != nil {
 		return "", fmt.Errorf("persisting token: %w", err)
 	}
@@ -344,4 +326,3 @@ func hashPassword(password string) (string, error) {
 
 var _ ports.UserManager = (*Service)(nil)
 var _ ports.AuthManager = (*Service)(nil)
-var _ ports.TokenAuthenticator = (*Service)(nil)

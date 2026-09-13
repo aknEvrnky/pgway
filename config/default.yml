@@ -12,10 +12,40 @@ grpc_listen_addr: ":9090"
 # REST API listen address (pgway, pgway-cp).
 rest_listen_addr: ":8081"
 
-# Outgoing control-plane auth token — only needed by pgway-dp / pgctl in
-# distributed mode. Prefer the PGWAY_TOKEN env var for secrets; leave empty
-# for the all-in-one pgway binary.
+# Outgoing control-plane auth token — pgctl in distributed mode.
+# Prefer the PGWAY_TOKEN env var for secrets; leave empty for all-in-one.
+# pgway-dp uses an agent token from agent_state_path after registration.
 token: ""
 
 # Default lifetime of login-issued tokens (pgway, pgway-cp).
 token_ttl: 720h
+
+# Single-use agent registration token default TTL (pgway, pgway-cp).
+registration_token_ttl: 24h
+
+# Sliding TTL for per-agent bearer tokens; extended on every heartbeat.
+agent_token_ttl: 168h
+
+# Derived agent status boundary: within → active, beyond → disconnected.
+agent_heartbeat_threshold: 30s
+
+# --- Data plane (pgway-dp) agent identity ---
+
+# Unique agent name registered with the CP. Empty → hostname.
+agent_name: ""
+
+# Operator-declared labels advertised at Register (seed for placement).
+agent_labels: {}
+
+# Persisted agent credentials ({agent_id, agent_token}). Dir 0700, file 0600.
+agent_state_path: /var/lib/pgway/agent.json
+
+# How often pgway-dp sends Heartbeat RPCs.
+heartbeat_interval: 10s
+
+# First-time Register secret. Prefer PGWAY_REGISTRATION_TOKEN; leave empty
+# when agent_state_path already holds credentials.
+registration_token: ""
+
+# Global log level: debug | info | warn | error (also PGWAY_LOG_LEVEL).
+log_level: info

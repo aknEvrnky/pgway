@@ -9,6 +9,7 @@ import (
 	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/ports"
@@ -51,12 +52,35 @@ func NewTestGrpcServer(t *testing.T, cp ports.ControlPlane, resolver ports.Proxy
 	return conn
 }
 
+// AuthTestServerOpts tunes agent-related TTLs for integration tests.
+type AuthTestServerOpts struct {
+	HeartbeatThreshold   time.Duration
+	AgentTokenTTL        time.Duration
+	RegistrationTokenTTL time.Duration
+}
+
 // NewAuthTestServer starts the production gRPC server wiring (control plane +
-// auth, interceptors enabled, via grpcserver.New) on an ephemeral localhost
-// port. It returns the listen address and the auth service so tests can read
-// the bootstrap token.
+// auth + agents, interceptors enabled, via grpcserver.New) on an ephemeral
+// localhost port. It returns the listen address and the auth service so tests
+// can read the bootstrap token.
 func NewAuthTestServer(t *testing.T) (string, *auth.Service) {
 	t.Helper()
+	return NewAuthTestServerWithOpts(t, AuthTestServerOpts{})
+}
+
+// NewAuthTestServerWithOpts is NewAuthTestServer with overrideable agent TTLs.
+func NewAuthTestServerWithOpts(t *testing.T, opts AuthTestServerOpts) (string, *auth.Service) {
+	t.Helper()
+
+	if opts.HeartbeatThreshold <= 0 {
+		opts.HeartbeatThreshold = 30 * time.Second
+	}
+	if opts.AgentTokenTTL <= 0 {
+		opts.AgentTokenTTL = time.Hour
+	}
+	if opts.RegistrationTokenTTL <= 0 {
+		opts.RegistrationTokenTTL = time.Hour
+	}
 
 	store := badgerutil.NewBadgerStore(t)
 	pubsub := memory.NewPubSub(10)
@@ -70,12 +94,19 @@ func NewAuthTestServer(t *testing.T) (string, *auth.Service) {
 		pubsub,
 	)
 	authService := auth.NewService(store.Users, store.Tokens, time.Hour)
+	authenticator := auth.NewAuthenticator(store.Users, store.Agents, store.Tokens)
+	agentCreds := auth.NewAgentCredentialService(store.Tokens, store.RegistrationTokens)
+	agentService := agentapp.NewService(store.Agents, agentCreds, opts.AgentTokenTTL)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		t.Fatalf("auth bootstrap: %v", err)
 	}
 
-	s := grpcserver.New(cpService, cpService, authService, authService, authService)
+	s := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, context.Background(), grpcserver.AgentServerConfig{
+		HeartbeatThreshold:   opts.HeartbeatThreshold,
+		AgentTokenTTL:        opts.AgentTokenTTL,
+		RegistrationTokenTTL: opts.RegistrationTokenTTL,
+	})
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

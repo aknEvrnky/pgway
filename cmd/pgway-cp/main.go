@@ -14,10 +14,11 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
-	_ "github.com/aknEvrnky/pgway/internal/platform/logger"
+	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
@@ -31,6 +32,9 @@ func main() {
 	}
 
 	cfg := config.Get()
+	if err := logger.SetLevel(cfg.LogLevel); err != nil {
+		zap.L().Fatal("set log level", zap.Error(err))
+	}
 
 	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badgerrepo.NewBadgerLogger())
 	db, err := badgerdb.Open(opts)
@@ -48,7 +52,6 @@ func main() {
 
 	pubsub := memory.NewPubSub(10)
 
-	// control plane service
 	cpService := controlplane.NewService(
 		proxyRepo,
 		poolRepo,
@@ -59,33 +62,35 @@ func main() {
 		pubsub,
 	)
 
-	// auth service — users, tokens, bootstrap flow
-	authService := auth.NewService(
-		badgerrepo.NewUserRepository(db),
-		badgerrepo.NewTokenRepository(db),
-		cfg.TokenTTL,
-	)
+	userRepo := badgerrepo.NewUserRepository(db)
+	agentRepo := badgerrepo.NewAgentRepository(db)
+	tokenRepo := badgerrepo.NewTokenRepository(db)
+	regTokenRepo := badgerrepo.NewRegistrationTokenRepository(db)
+
+	authService := auth.NewService(userRepo, tokenRepo, cfg.TokenTTL)
+	authenticator := auth.NewAuthenticator(userRepo, agentRepo, tokenRepo)
+	agentCreds := auth.NewAgentCredentialService(tokenRepo, regTokenRepo)
+	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.AgentTokenTTL)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
 	}
 
-	// grpc server, auth enforced
-	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authService)
+	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// tcp port
+	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, sigCtx, grpcserver.AgentServerConfig{
+		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
+		AgentTokenTTL:        cfg.AgentTokenTTL,
+		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
+	})
+
 	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)
-
 	if err != nil {
 		zap.L().Fatal("listen", zap.Error(err), zap.String("grpc_listen_addr", cfg.GrpcListenAddr))
 	}
 
-	// REST adapter
 	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
-
-	// graceful shutdown
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		zap.L().Info("control plane started", zap.String("grpc", cfg.GrpcListenAddr))
@@ -96,14 +101,14 @@ func main() {
 	}()
 
 	go func() {
-		if err := restAdapter.Run(context.Background()); err != nil {
+		if err := restAdapter.Run(sigCtx); err != nil {
 			zap.L().Fatal("rest serve", zap.Error(err))
 		}
 	}()
 
-	<-sigCh
+	<-sigCtx.Done()
 	zap.L().Info("shutting down control plane")
-	grpcServer.GracefulStop()
+	grpcserver.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

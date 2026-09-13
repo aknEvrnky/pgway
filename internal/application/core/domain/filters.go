@@ -37,3 +37,8 @@ type UserFilter struct {
 	Search string
 	Role   string
 }
+
+type AgentFilter struct {
+	Search string
+	Labels map[string]string
+}

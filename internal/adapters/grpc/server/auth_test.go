@@ -51,7 +51,15 @@ func (m *mockManagers) Login(_ context.Context, _, _ string, _ time.Duration, _ 
 func (m *mockManagers) Logout(_ context.Context, _ string) error { return nil }
 
 func ctxWithUser(role domain.Role, id string) context.Context {
-	return auth.ContextWithUser(context.Background(), &domain.User{Id: id, Role: role})
+	return auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+		User: &domain.User{Id: id, Role: role},
+	})
+}
+
+func ctxWithAgent(id string) context.Context {
+	return auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+		Agent: &domain.Agent{Id: id},
+	})
 }
 
 func assertCode(t *testing.T, err error, expected codes.Code) {
@@ -80,6 +88,13 @@ func TestAuthServer_AdminOnlyEndpoints(t *testing.T) {
 	t.Run("unauthenticated context denied", func(t *testing.T) {
 		_, err := srv.CreateUser(context.Background(), &controlplanev1.CreateUserRequest{Username: "x"})
 		assertCode(t, err, codes.Unauthenticated)
+	})
+
+	// defensive: even if the interceptor policy ever lets an agent through,
+	// admin endpoints must not treat it as a user (and must not panic)
+	t.Run("agent principal denied", func(t *testing.T) {
+		_, err := srv.CreateUser(ctxWithAgent("edge-1"), &controlplanev1.CreateUserRequest{Username: "x"})
+		assertCode(t, err, codes.PermissionDenied)
 	})
 
 	t.Run("admin allowed", func(t *testing.T) {
@@ -128,6 +143,17 @@ func TestAuthServer_ChangePassword(t *testing.T) {
 			NewPassword: "newpassword123",
 		})
 		assertCode(t, err, codes.PermissionDenied)
+	})
+
+	t.Run("agent principal cannot manage passwords", func(t *testing.T) {
+		mocks := &mockManagers{}
+		srv := NewAuthServer(mocks, mocks)
+
+		_, err := srv.ChangePassword(ctxWithAgent("edge-1"), &controlplanev1.ChangePasswordRequest{
+			NewPassword: "newpassword123",
+		})
+		assertCode(t, err, codes.PermissionDenied)
+		assert.Empty(t, mocks.changePasswordCalls)
 	})
 
 	t.Run("admin reset routes to ResetPassword", func(t *testing.T) {

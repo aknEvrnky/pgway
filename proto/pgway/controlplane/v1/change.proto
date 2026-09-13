@@ -1,0 +1,18 @@
+syntax = "proto3";
+package pgway.controlplane.v1;
+option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;controlplanev1";
+
+// ResourceChanged is a thin hint; the DP re-reads truth from the CP.
+message ResourceChanged {
+  // entrypoint | flow | router | proxy | pool | balancer
+  string resource_type = 1;
+  // saved | deleted
+  string change_kind = 2;
+  string id = 3;
+}
+
+message WatchRequest {}
+
+service ChangeService {
+  rpc Watch(WatchRequest) returns (stream ResourceChanged);
+}

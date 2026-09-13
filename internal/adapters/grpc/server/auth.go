@@ -151,9 +151,15 @@ func (s *AuthServer) DeleteUser(ctx context.Context, req *controlplanev1.DeleteU
 }
 
 func (s *AuthServer) ChangePassword(ctx context.Context, req *controlplanev1.ChangePasswordRequest) (*controlplanev1.ChangePasswordResponse, error) {
-	actor, ok := auth.UserFromContext(ctx)
+	principal, ok := auth.PrincipalFromContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "no user in call context")
+		return nil, status.Error(codes.Unauthenticated, "no principal in call context")
+	}
+
+	// password management is a user affair; agent principals have no password
+	actor := principal.User
+	if actor == nil {
+		return nil, status.Error(codes.PermissionDenied, "user principal required")
 	}
 
 	if req.NewPassword == "" {
@@ -193,12 +199,13 @@ func (s *AuthServer) ChangePassword(ctx context.Context, req *controlplanev1.Cha
 // --- helpers ---
 
 func requireAdmin(ctx context.Context) error {
-	user, ok := auth.UserFromContext(ctx)
+	principal, ok := auth.PrincipalFromContext(ctx)
 	if !ok {
-		return status.Error(codes.Unauthenticated, "no user in call context")
+		return status.Error(codes.Unauthenticated, "no principal in call context")
 	}
 
-	if !user.IsAdmin() {
+	// a non-user principal (agent) is authenticated but never an admin
+	if principal.User == nil || !principal.User.IsAdmin() {
 		return status.Error(codes.PermissionDenied, "admin role required")
 	}
 
