@@ -6,6 +6,14 @@ A proxy gateway that manages HTTP/SOCKS5 upstream proxies through a centralized 
 
 > ⚠️ **Experimental** — pgway is under active development. The core proxy gateway is working and tested; **the Dashboard and REST API surface are subject to breaking changes**. Use with caution if you plan to self-host.
 
+## Documentation
+
+Full guides (concepts, getting started, resource reference, auth, CLI, and more):
+
+**https://pgway.aknevrnky.dev/docs**
+
+(Also available at the site root: https://pgway.aknevrnky.dev/)
+
 ```
 Client → pgway (Gateway) → Upstream Proxy Pool → Target Server
 ```
