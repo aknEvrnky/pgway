@@ -1,0 +1,71 @@
+package agentruntime
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+type fakeHB struct {
+	calls int
+	err   error
+}
+
+func (f *fakeHB) Heartbeat(context.Context) (time.Time, error) {
+	f.calls++
+	if f.err != nil {
+		return time.Time{}, f.err
+	}
+	return time.Now().Add(time.Hour), nil
+}
+
+func TestRunHeartbeatStopsOnCancel(t *testing.T) {
+	hb := &fakeHB{}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan error, 1)
+	go func() {
+		done <- RunHeartbeat(ctx, hb, 20*time.Millisecond)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	err := <-done
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.GreaterOrEqual(t, hb.calls, 1)
+}
+
+func TestRunHeartbeatFatalOnUnauthenticated(t *testing.T) {
+	hb := &fakeHB{err: status.Error(codes.Unauthenticated, "revoked")}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	err := RunHeartbeat(ctx, hb, 10*time.Millisecond)
+	require.Error(t, err)
+	assert.Equal(t, codes.Unauthenticated, status.Code(err))
+	assert.Contains(t, err.Error(), "PGWAY_REGISTRATION_TOKEN")
+}
+
+func TestRunHeartbeatContinuesOnTransient(t *testing.T) {
+	hb := &fakeHB{err: status.Error(codes.Unavailable, "down")}
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan error, 1)
+	go func() {
+		done <- RunHeartbeat(ctx, hb, 15*time.Millisecond)
+	}()
+
+	time.Sleep(50 * time.Millisecond)
+	cancel()
+
+	err := <-done
+	assert.True(t, errors.Is(err, context.Canceled) || err != nil)
+	assert.GreaterOrEqual(t, hb.calls, 2)
+}
