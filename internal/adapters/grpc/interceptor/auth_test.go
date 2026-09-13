@@ -57,6 +57,8 @@ func callUnary(t *testing.T, ctx context.Context, method string) (context.Contex
 }
 
 const protectedMethod = "/pgway.controlplane.v1.ProxyService/ListProxies"
+const agentWriteMethod = "/pgway.controlplane.v1.ProxyService/ApplyProxyV1"
+const agentHeartbeatMethod = "/pgway.controlplane.v1.AgentService/Heartbeat"
 
 func TestUnaryAuth(t *testing.T) {
 	t.Run("valid token injects principal and token into context", func(t *testing.T) {
@@ -73,13 +75,30 @@ func TestUnaryAuth(t *testing.T) {
 		assert.Equal(t, "pgw_valid", token)
 	})
 
-	// Pins the T2 interim gate: agents authenticate fine but stay locked out
-	// until the per-method policy map exists (T6, #44). PermissionDenied, not
-	// Unauthenticated — the token itself is valid.
-	t.Run("agent principal denied until policy map lands", func(t *testing.T) {
+	t.Run("agent principal allowed on heartbeat", func(t *testing.T) {
+		agentPrincipal := &domain.Principal{Agent: &domain.Agent{Id: "edge-1"}}
+		ctx, err := callUnaryAs(t, agentPrincipal, ctxWithAuthHeader("Bearer pgw_valid"), agentHeartbeatMethod)
+		require.NoError(t, err)
+		principal, ok := auth.PrincipalFromContext(ctx)
+		require.True(t, ok)
+		assert.Equal(t, domain.PrincipalKindAgent, principal.Kind())
+	})
+
+	t.Run("agent principal allowed on read-only list", func(t *testing.T) {
 		agentPrincipal := &domain.Principal{Agent: &domain.Agent{Id: "edge-1"}}
 		_, err := callUnaryAs(t, agentPrincipal, ctxWithAuthHeader("Bearer pgw_valid"), protectedMethod)
+		assert.NoError(t, err)
+	})
+
+	t.Run("agent principal denied on write RPC", func(t *testing.T) {
+		agentPrincipal := &domain.Principal{Agent: &domain.Agent{Id: "edge-1"}}
+		_, err := callUnaryAs(t, agentPrincipal, ctxWithAuthHeader("Bearer pgw_valid"), agentWriteMethod)
 		assert.Equal(t, codes.PermissionDenied, status.Code(err))
+	})
+
+	t.Run("user principal still allowed on write RPC", func(t *testing.T) {
+		_, err := callUnary(t, ctxWithAuthHeader("Bearer pgw_valid"), agentWriteMethod)
+		assert.NoError(t, err)
 	})
 
 	t.Run("missing metadata", func(t *testing.T) {
@@ -107,6 +126,7 @@ func TestUnaryAuth(t *testing.T) {
 		for _, method := range []string{
 			"/pgway.controlplane.v1.AuthService/Login",
 			"/pgway.controlplane.v1.AuthService/InitAdmin",
+			"/pgway.controlplane.v1.AgentService/Register",
 		} {
 			_, err := callUnary(t, context.Background(), method)
 			assert.NoError(t, err, "method %s should be exempt", method)
@@ -114,14 +134,21 @@ func TestUnaryAuth(t *testing.T) {
 	})
 }
 
-// TestExemptList pins the exemption list: only the two credential-issuing
-// RPCs may ever bypass authentication.
 func TestExemptList(t *testing.T) {
-	assert.Len(t, exemptMethods, 2)
+	assert.Len(t, exemptMethods, 3)
 	assert.True(t, isExempt("/pgway.controlplane.v1.AuthService/Login"))
 	assert.True(t, isExempt("/pgway.controlplane.v1.AuthService/InitAdmin"))
+	assert.True(t, isExempt("/pgway.controlplane.v1.AgentService/Register"))
 
 	assert.False(t, isExempt("/pgway.controlplane.v1.AuthService/Logout"))
 	assert.False(t, isExempt("/pgway.controlplane.v1.UserService/CreateUser"))
 	assert.False(t, isExempt(protectedMethod))
+}
+
+func TestAgentAllowedList(t *testing.T) {
+	assert.True(t, isAgentAllowed(agentHeartbeatMethod))
+	assert.True(t, isAgentAllowed("/pgway.controlplane.v1.AgentService/Deregister"))
+	assert.True(t, isAgentAllowed(protectedMethod))
+	assert.False(t, isAgentAllowed(agentWriteMethod))
+	assert.False(t, isAgentAllowed("/pgway.controlplane.v1.AgentService/DeleteAgent"))
 }

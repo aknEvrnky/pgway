@@ -13,15 +13,49 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// exemptMethods can be called without a token. Only the two RPCs that hand
-// out credentials in the first place belong here.
+// exemptMethods can be called without a token. Only RPCs that hand out
+// credentials in the first place belong here.
 var exemptMethods = map[string]struct{}{
 	"/pgway.controlplane.v1.AuthService/Login":     {},
 	"/pgway.controlplane.v1.AuthService/InitAdmin": {},
+	"/pgway.controlplane.v1.AgentService/Register": {},
+}
+
+// agentAllowedMethods is the allow-list for agent principals. Everything else
+// is PermissionDenied. Users are unrestricted by this map (handler-level
+// authz still applies).
+var agentAllowedMethods = map[string]struct{}{
+	"/pgway.controlplane.v1.AgentService/Heartbeat":  {},
+	"/pgway.controlplane.v1.AgentService/Deregister": {},
+
+	"/pgway.controlplane.v1.ProxyService/GetProxy":            {},
+	"/pgway.controlplane.v1.ProxyService/ListProxies":         {},
+	"/pgway.controlplane.v1.ProxyService/GetProxiesByIds":     {},
+	"/pgway.controlplane.v1.ProxyService/FindProxiesByLabels": {},
+
+	"/pgway.controlplane.v1.PoolService/GetPool":   {},
+	"/pgway.controlplane.v1.PoolService/ListPools": {},
+
+	"/pgway.controlplane.v1.BalancerService/GetBalancer":   {},
+	"/pgway.controlplane.v1.BalancerService/ListBalancers": {},
+
+	"/pgway.controlplane.v1.RouterService/GetRouter":   {},
+	"/pgway.controlplane.v1.RouterService/ListRouters": {},
+
+	"/pgway.controlplane.v1.FlowService/GetFlow":   {},
+	"/pgway.controlplane.v1.FlowService/ListFlows": {},
+
+	"/pgway.controlplane.v1.EntrypointService/GetEntrypoint":   {},
+	"/pgway.controlplane.v1.EntrypointService/ListEntrypoints": {},
 }
 
 func isExempt(fullMethod string) bool {
 	_, ok := exemptMethods[fullMethod]
+	return ok
+}
+
+func isAgentAllowed(fullMethod string) bool {
+	_, ok := agentAllowedMethods[fullMethod]
 	return ok
 }
 
@@ -33,7 +67,7 @@ func UnaryAuth(authenticator ports.TokenAuthenticator) grpc.UnaryServerIntercept
 			return handler(ctx, req)
 		}
 
-		ctx, err := authenticate(ctx, authenticator)
+		ctx, err := authenticate(ctx, authenticator, info.FullMethod)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +83,7 @@ func StreamAuth(authenticator ports.TokenAuthenticator) grpc.StreamServerInterce
 			return handler(srv, ss)
 		}
 
-		ctx, err := authenticate(ss.Context(), authenticator)
+		ctx, err := authenticate(ss.Context(), authenticator, info.FullMethod)
 		if err != nil {
 			return err
 		}
@@ -58,7 +92,7 @@ func StreamAuth(authenticator ports.TokenAuthenticator) grpc.StreamServerInterce
 	}
 }
 
-func authenticate(ctx context.Context, authenticator ports.TokenAuthenticator) (context.Context, error) {
+func authenticate(ctx context.Context, authenticator ports.TokenAuthenticator, fullMethod string) (context.Context, error) {
 	token, err := bearerToken(ctx)
 	if err != nil {
 		return nil, err
@@ -69,12 +103,8 @@ func authenticate(ctx context.Context, authenticator ports.TokenAuthenticator) (
 		return nil, status.Error(codes.Unauthenticated, "invalid or expired token")
 	}
 
-	// Agent principals stay locked out until the per-method policy map lands
-	// (T6, #44): without it an authenticated agent would reach every RPC,
-	// including writes. Authentication succeeded, so this is PermissionDenied,
-	// not Unauthenticated.
-	if principal.Kind() == domain.PrincipalKindAgent {
-		return nil, status.Error(codes.PermissionDenied, "agent access not yet enabled")
+	if principal.Kind() == domain.PrincipalKindAgent && !isAgentAllowed(fullMethod) {
+		return nil, status.Error(codes.PermissionDenied, "agent not permitted for this method")
 	}
 
 	ctx = auth.ContextWithPrincipal(ctx, principal)
