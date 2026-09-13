@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
@@ -10,7 +11,8 @@ type Config struct {
 	BadgerPath     string `mapstructure:"badger_path"`
 	GrpcListenAddr string `mapstructure:"grpc_listen_addr"`
 	RestListenAddr string `mapstructure:"rest_listen_addr"`
-	// Token authenticates outgoing control-plane calls (pgctl, pgway-dp).
+	// Token authenticates outgoing control-plane calls (pgctl).
+	// pgway-dp uses an agent token from the state file after registration.
 	Token string `mapstructure:"token"`
 	// TokenTTL is the default lifetime of login-issued tokens.
 	TokenTTL time.Duration `mapstructure:"token_ttl"`
@@ -23,6 +25,18 @@ type Config struct {
 	// AgentHeartbeatThreshold is the active/disconnected boundary used when
 	// deriving agent status at read time (≈3× heartbeat interval).
 	AgentHeartbeatThreshold time.Duration `mapstructure:"agent_heartbeat_threshold"`
+	// AgentName is the unique agent identity registered with the CP (DP).
+	// Empty defaults to the host name.
+	AgentName string `mapstructure:"agent_name"`
+	// AgentLabels are operator-declared labels advertised at Register (DP).
+	AgentLabels map[string]string `mapstructure:"agent_labels"`
+	// AgentStatePath is the DP credentials file (agent_id + agent_token).
+	AgentStatePath string `mapstructure:"agent_state_path"`
+	// HeartbeatInterval is how often the DP sends Heartbeat RPCs.
+	HeartbeatInterval time.Duration `mapstructure:"heartbeat_interval"`
+	// RegistrationToken is the single-use bootstrap secret for first Register.
+	// Prefer PGWAY_REGISTRATION_TOKEN; never commit this value.
+	RegistrationToken string `mapstructure:"registration_token"`
 }
 
 var c *Config
@@ -45,6 +59,11 @@ func Load(path string) error {
 	viper.SetDefault("registration_token_ttl", 24*time.Hour)
 	viper.SetDefault("agent_token_ttl", 168*time.Hour)
 	viper.SetDefault("agent_heartbeat_threshold", 30*time.Second)
+	viper.SetDefault("agent_name", "")
+	viper.SetDefault("agent_labels", map[string]string{})
+	viper.SetDefault("agent_state_path", "/var/lib/pgway/agent.json")
+	viper.SetDefault("heartbeat_interval", 10*time.Second)
+	viper.SetDefault("registration_token", "")
 
 	// PGWAY_TOKEN etc. override file values
 	viper.SetEnvPrefix("pgway")
@@ -57,6 +76,17 @@ func Load(path string) error {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return err
+	}
+
+	if cfg.AgentName == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+		cfg.AgentName = hostname
+	}
+	if cfg.AgentLabels == nil {
+		cfg.AgentLabels = map[string]string{}
 	}
 
 	c = &cfg

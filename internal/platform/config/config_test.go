@@ -19,7 +19,16 @@ func writeConfig(t *testing.T, contents string) string {
 	return path
 }
 
+func hostname(t *testing.T) string {
+	t.Helper()
+	h, err := os.Hostname()
+	require.NoError(t, err)
+	return h
+}
+
 func TestLoad(t *testing.T) {
+	host := hostname(t)
+
 	tests := []struct {
 		name string
 		file string
@@ -42,6 +51,11 @@ token_ttl: 1h`,
 				RegistrationTokenTTL:    24 * time.Hour,
 				AgentTokenTTL:           168 * time.Hour,
 				AgentHeartbeatThreshold: 30 * time.Second,
+				AgentName:               host,
+				AgentLabels:             map[string]string{},
+				AgentStatePath:          "/var/lib/pgway/agent.json",
+				HeartbeatInterval:       10 * time.Second,
+				RegistrationToken:       "",
 			},
 		},
 		{
@@ -56,6 +70,11 @@ token_ttl: 1h`,
 				RegistrationTokenTTL:    24 * time.Hour,
 				AgentTokenTTL:           168 * time.Hour,
 				AgentHeartbeatThreshold: 30 * time.Second,
+				AgentName:               host,
+				AgentLabels:             map[string]string{},
+				AgentStatePath:          "/var/lib/pgway/agent.json",
+				HeartbeatInterval:       10 * time.Second,
+				RegistrationToken:       "",
 			},
 		},
 		{
@@ -71,6 +90,11 @@ token_ttl: 1h`,
 				RegistrationTokenTTL:    24 * time.Hour,
 				AgentTokenTTL:           168 * time.Hour,
 				AgentHeartbeatThreshold: 30 * time.Second,
+				AgentName:               host,
+				AgentLabels:             map[string]string{},
+				AgentStatePath:          "/var/lib/pgway/agent.json",
+				HeartbeatInterval:       10 * time.Second,
+				RegistrationToken:       "",
 			},
 		},
 		{
@@ -88,6 +112,57 @@ agent_heartbeat_threshold: 15s`,
 				RegistrationTokenTTL:    2 * time.Hour,
 				AgentTokenTTL:           48 * time.Hour,
 				AgentHeartbeatThreshold: 15 * time.Second,
+				AgentName:               host,
+				AgentLabels:             map[string]string{},
+				AgentStatePath:          "/var/lib/pgway/agent.json",
+				HeartbeatInterval:       10 * time.Second,
+				RegistrationToken:       "",
+			},
+		},
+		{
+			name: "reads dp agent fields from file",
+			file: `badger_path: /data/pgway
+agent_name: edge-1
+agent_labels:
+  region: us-east
+agent_state_path: /tmp/pgway/agent.json
+heartbeat_interval: 5s
+registration_token: reg-secret`,
+			want: Config{
+				BadgerPath:              "/data/pgway",
+				GrpcListenAddr:          ":9090",
+				RestListenAddr:          ":8081",
+				Token:                   "",
+				TokenTTL:                720 * time.Hour,
+				RegistrationTokenTTL:    24 * time.Hour,
+				AgentTokenTTL:           168 * time.Hour,
+				AgentHeartbeatThreshold: 30 * time.Second,
+				AgentName:               "edge-1",
+				AgentLabels:             map[string]string{"region": "us-east"},
+				AgentStatePath:          "/tmp/pgway/agent.json",
+				HeartbeatInterval:       5 * time.Second,
+				RegistrationToken:       "reg-secret",
+			},
+		},
+		{
+			name: "registration token env overrides file",
+			file: `badger_path: /data/pgway
+registration_token: file-reg`,
+			env: map[string]string{"PGWAY_REGISTRATION_TOKEN": "env-reg"},
+			want: Config{
+				BadgerPath:              "/data/pgway",
+				GrpcListenAddr:          ":9090",
+				RestListenAddr:          ":8081",
+				Token:                   "",
+				TokenTTL:                720 * time.Hour,
+				RegistrationTokenTTL:    24 * time.Hour,
+				AgentTokenTTL:           168 * time.Hour,
+				AgentHeartbeatThreshold: 30 * time.Second,
+				AgentName:               host,
+				AgentLabels:             map[string]string{},
+				AgentStatePath:          "/var/lib/pgway/agent.json",
+				HeartbeatInterval:       10 * time.Second,
+				RegistrationToken:       "env-reg",
 			},
 		},
 	}
