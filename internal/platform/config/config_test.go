@@ -34,22 +34,28 @@ rest_listen_addr: ":7001"
 token: file-token
 token_ttl: 1h`,
 			want: Config{
-				BadgerPath:     "/data/pgway",
-				GrpcListenAddr: ":7000",
-				RestListenAddr: ":7001",
-				Token:          "file-token",
-				TokenTTL:       time.Hour,
+				BadgerPath:              "/data/pgway",
+				GrpcListenAddr:          ":7000",
+				RestListenAddr:          ":7001",
+				Token:                   "file-token",
+				TokenTTL:                time.Hour,
+				RegistrationTokenTTL:    24 * time.Hour,
+				AgentTokenTTL:           168 * time.Hour,
+				AgentHeartbeatThreshold: 30 * time.Second,
 			},
 		},
 		{
 			name: "applies defaults for omitted keys",
 			file: `badger_path: /data/pgway`,
 			want: Config{
-				BadgerPath:     "/data/pgway",
-				GrpcListenAddr: ":9090", // default must carry the leading colon
-				RestListenAddr: ":8081",
-				Token:          "",
-				TokenTTL:       720 * time.Hour,
+				BadgerPath:              "/data/pgway",
+				GrpcListenAddr:          ":9090", // default must carry the leading colon
+				RestListenAddr:          ":8081",
+				Token:                   "",
+				TokenTTL:                720 * time.Hour,
+				RegistrationTokenTTL:    24 * time.Hour,
+				AgentTokenTTL:           168 * time.Hour,
+				AgentHeartbeatThreshold: 30 * time.Second,
 			},
 		},
 		{
@@ -57,11 +63,31 @@ token_ttl: 1h`,
 			file: `token: file-token`,
 			env:  map[string]string{"PGWAY_TOKEN": "env-token"},
 			want: Config{
-				BadgerPath:     "/var/pgway/lib",
-				GrpcListenAddr: ":9090",
-				RestListenAddr: ":8081",
-				Token:          "env-token",
-				TokenTTL:       720 * time.Hour,
+				BadgerPath:              "/var/pgway/lib",
+				GrpcListenAddr:          ":9090",
+				RestListenAddr:          ":8081",
+				Token:                   "env-token",
+				TokenTTL:                720 * time.Hour,
+				RegistrationTokenTTL:    24 * time.Hour,
+				AgentTokenTTL:           168 * time.Hour,
+				AgentHeartbeatThreshold: 30 * time.Second,
+			},
+		},
+		{
+			name: "reads agent ttl fields from file",
+			file: `badger_path: /data/pgway
+registration_token_ttl: 2h
+agent_token_ttl: 48h
+agent_heartbeat_threshold: 15s`,
+			want: Config{
+				BadgerPath:              "/data/pgway",
+				GrpcListenAddr:          ":9090",
+				RestListenAddr:          ":8081",
+				Token:                   "",
+				TokenTTL:                720 * time.Hour,
+				RegistrationTokenTTL:    2 * time.Hour,
+				AgentTokenTTL:           48 * time.Hour,
+				AgentHeartbeatThreshold: 15 * time.Second,
 			},
 		},
 	}

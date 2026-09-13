@@ -19,3 +19,12 @@ token: ""
 
 # Default lifetime of login-issued tokens (pgway, pgway-cp).
 token_ttl: 720h
+
+# Single-use agent registration token default TTL (pgway, pgway-cp).
+registration_token_ttl: 24h
+
+# Sliding TTL for per-agent bearer tokens; extended on every heartbeat.
+agent_token_ttl: 168h
+
+# Derived agent status boundary: within → active, beyond → disconnected.
+agent_heartbeat_threshold: 30s
