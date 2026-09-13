@@ -102,7 +102,7 @@ func NewAuthTestServerWithOpts(t *testing.T, opts AuthTestServerOpts) (string, *
 		t.Fatalf("auth bootstrap: %v", err)
 	}
 
-	s := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, grpcserver.AgentServerConfig{
+	s := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, context.Background(), grpcserver.AgentServerConfig{
 		HeartbeatThreshold:   opts.HeartbeatThreshold,
 		AgentTokenTTL:        opts.AgentTokenTTL,
 		RegistrationTokenTTL: opts.RegistrationTokenTTL,

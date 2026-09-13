@@ -21,7 +21,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
-	_ "github.com/aknEvrnky/pgway/internal/platform/logger"
+	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
@@ -35,6 +35,9 @@ func main() {
 	}
 
 	cfg := config.Get()
+	if err := logger.SetLevel(cfg.LogLevel); err != nil {
+		zap.L().Fatal("set log level", zap.Error(err))
+	}
 
 	// BadgerDB
 	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badgerrepo.NewBadgerLogger())
@@ -73,8 +76,12 @@ func main() {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
 	}
 
+	ctx := context.Background()
+	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	// gRPC server — cli's command bus, auth enforced
-	grpcServer := server.New(cpService, cpService, authService, authService, authenticator, agentService, pubSub, server.AgentServerConfig{
+	grpcServer := server.New(cpService, cpService, authService, authService, authenticator, agentService, pubSub, sigCtx, server.AgentServerConfig{
 		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
 		AgentTokenTTL:        cfg.AgentTokenTTL,
 		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
@@ -87,7 +94,6 @@ func main() {
 
 	// Data Plane — cpService as read only service
 	app := api.NewApplication(cpService, cpService)
-	ctx := context.Background()
 
 	if err := app.Bootstrap(ctx); err != nil {
 		zap.L().Fatal("bootstrap", zap.Error(err))
@@ -105,10 +111,6 @@ func main() {
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
 	eventConsumer := consumer.NewConsumer(pubSub, app, httpAdapter)
-
-	// Start
-	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	runErr := make(chan error, 4)
 
@@ -138,11 +140,12 @@ func main() {
 	case <-sigCtx.Done():
 	case err := <-runErr:
 		zap.L().Error("server failed", zap.Error(err))
+		stop()
 	}
 
 	// Graceful shutdown
 	zap.L().Info("shutting down")
-	grpcServer.GracefulStop()
+	server.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/ports"
@@ -11,11 +13,15 @@ import (
 // Slow consumers are already soft-dropped by the memory bus buffer.
 type ChangeServer struct {
 	controlplanev1.UnimplementedChangeServiceServer
-	events ports.EventSubscriberPort
+	events   ports.EventSubscriberPort
+	shutdown context.Context
 }
 
-func NewChangeServer(events ports.EventSubscriberPort) *ChangeServer {
-	return &ChangeServer{events: events}
+func NewChangeServer(events ports.EventSubscriberPort, shutdown context.Context) *ChangeServer {
+	if shutdown == nil {
+		shutdown = context.Background()
+	}
+	return &ChangeServer{events: events, shutdown: shutdown}
 }
 
 func RegisterChange(s grpc.ServiceRegistrar, srv *ChangeServer) {
@@ -23,7 +29,15 @@ func RegisterChange(s grpc.ServiceRegistrar, srv *ChangeServer) {
 }
 
 func (s *ChangeServer) Watch(_ *controlplanev1.WatchRequest, stream controlplanev1.ChangeService_WatchServer) error {
-	ctx := stream.Context()
+	// Merge stream lifetime with process shutdown. Without this,
+	// GracefulStop blocks forever on open Watch streams: it waits for
+	// handlers to return, while Watch waits for the stream context that
+	// GracefulStop does not cancel.
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+	stop := context.AfterFunc(s.shutdown, cancel)
+	defer stop()
+
 	ch := s.events.Subscribe(ctx)
 
 	for e := range ch {

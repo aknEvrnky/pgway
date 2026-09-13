@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"time"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
@@ -20,6 +21,9 @@ type AgentServerConfig struct {
 // New builds the control plane gRPC server: auth interceptors installed and
 // every service registered. Single wiring point shared by the binaries and
 // the integration test server.
+//
+// shutdown is canceled when the process is stopping; ChangeService.Watch
+// streams exit so GracefulStop can finish.
 func New(
 	cp ports.ControlPlane,
 	resolver ports.ProxyResolver,
@@ -28,6 +32,7 @@ func New(
 	authenticator ports.TokenAuthenticator,
 	agents ports.AgentManager,
 	events ports.EventSubscriberPort,
+	shutdown context.Context,
 	agentCfg AgentServerConfig,
 ) *grpc.Server {
 	s := grpc.NewServer(
@@ -44,7 +49,7 @@ func New(
 		agentCfg.RegistrationTokenTTL,
 	))
 	if events != nil {
-		RegisterChange(s, NewChangeServer(events))
+		RegisterChange(s, NewChangeServer(events, shutdown))
 	}
 
 	return s
