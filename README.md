@@ -338,13 +338,21 @@ first match wins:
 A config file must exist on one of these paths (or be passed via `--config`)
 even when every value is supplied through environment variables.
 
-| Key                | Default          | Description |
-|--------------------|------------------|-------------|
-| `badger_path`      | `/var/pgway/lib` | BadgerDB storage directory (`pgway`, `pgway-cp`) |
-| `grpc_listen_addr` | `:9090`          | gRPC Control Plane listen/dial address |
-| `rest_listen_addr` | `:8081`          | REST API listen address (`pgway`, `pgway-cp`) |
-| `token`            | *(empty)*        | Bearer token for outgoing CP calls (`pgctl`, `pgway-dp`) |
-| `token_ttl`        | `720h`           | Default lifetime of login-issued tokens (`pgway`, `pgway-cp`) |
+| Key                         | Default                    | Description |
+|-----------------------------|----------------------------|-------------|
+| `badger_path`               | `/var/pgway/lib`           | BadgerDB storage directory (`pgway`, `pgway-cp`) |
+| `grpc_listen_addr`          | `:9090`                    | gRPC Control Plane listen/dial address |
+| `rest_listen_addr`          | `:8081`                    | REST API listen address (`pgway`, `pgway-cp`) |
+| `token`                     | *(empty)*                  | Bearer token for outgoing CP calls (`pgctl`) |
+| `token_ttl`                 | `720h`                     | Default lifetime of login-issued tokens (`pgway`, `pgway-cp`) |
+| `registration_token_ttl`    | `24h`                      | Default TTL for single-use agent registration tokens |
+| `agent_token_ttl`           | `168h`                     | Sliding TTL for per-agent bearer tokens |
+| `agent_heartbeat_threshold` | `30s`                      | Active/disconnected status boundary |
+| `agent_name`                | *(hostname)*               | Unique agent identity (`pgway-dp`) |
+| `agent_labels`              | `{}`                       | Labels advertised at Register (`pgway-dp`) |
+| `agent_state_path`          | `/var/lib/pgway/agent.json`| Persisted agent credentials (`pgway-dp`) |
+| `heartbeat_interval`        | `10s`                      | Heartbeat period (`pgway-dp`) |
+| `registration_token`        | *(empty)*                  | First-time Register secret; prefer `PGWAY_REGISTRATION_TOKEN` |
 
 Example `config.yml` (copy `config/default.yml` as a starting point):
 
@@ -352,15 +360,16 @@ Example `config.yml` (copy `config/default.yml` as a starting point):
 badger_path: /var/pgway/lib
 grpc_listen_addr: ":9090"
 rest_listen_addr: ":8081"
-token: ""          # only needed by pgway-dp / pgctl in distributed mode
+token: ""          # pgctl only; pgway-dp uses agent credentials
 token_ttl: 720h
 ```
 
 ## Authentication
 
-All gRPC endpoints require a bearer token; only `AuthService/Login` and
-`AuthService/InitAdmin` are exempt. The REST API does not enforce
-authentication yet (tracked separately for the dashboard integration).
+All gRPC endpoints require a bearer token; only `AuthService/Login`,
+`AuthService/InitAdmin`, and `AgentService/Register` are exempt. The REST API
+does not enforce authentication yet (tracked separately for the dashboard
+integration).
 
 **Bootstrap.** When the server starts with no users, it logs a one-time
 bootstrap token and only `InitAdmin` is usable — there is no unauthenticated
@@ -375,7 +384,7 @@ hashed server-side, revocable at any time):
 
 ```bash
 pgctl login --username admin             # default TTL (token_ttl)
-pgctl login --username dp-agent --no-expiry   # long-lived token for automation
+pgctl login --username alice --no-expiry # long-lived token for automation
 pgctl logout                             # revoke current token
 ```
 
@@ -396,9 +405,21 @@ pgctl user change-password bob           # admin reset
 pgctl user delete bob                    # admin only; the last admin cannot be deleted
 ```
 
-**Distributed mode.** `pgway-dp` also authenticates to the CP: create a user
-for it, log in with `--no-expiry`, and put the token in the DP's config
-(`token` key or `PGWAY_TOKEN`).
+**Distributed mode — agents.** `pgway-dp` authenticates with a per-agent token,
+not a user login:
+
+```bash
+pgctl agent token create                 # prints a single-use registration token
+PGWAY_REGISTRATION_TOKEN=<token> ./pgway-dp --config /etc/pgway/dp.yml
+pgctl agent list                         # active / passive / disconnected
+pgctl agent delete <name>                # revoke credentials + remove registry row
+```
+
+On first start the DP exchanges the registration token for an agent token and
+writes `{agent_id, agent_token}` to `agent_state_path`. Later restarts reuse
+that file and heartbeats extend the sliding TTL. Graceful shutdown calls
+`Deregister` (status → passive); deleting the agent (or letting the token
+expire without heartbeats) requires a fresh registration token.
 
 ## Distributed Mode
 
@@ -417,19 +438,25 @@ be pointed at with `--config`:
 ./pgctl apply -f stack.yaml
 ```
 
-The Data Plane dials the CP at `grpc_listen_addr` and authenticates with
-`token`. Both can come from the config file, an environment variable, or a
-dedicated `--config` file — pick whichever fits your deployment:
+The Data Plane dials the CP at `grpc_listen_addr` and authenticates with an
+agent token obtained via registration (see [Authentication](#authentication)).
+Example DP config:
 
 ```yaml
 # dp.yml — data plane config
 grpc_listen_addr: "cp-host:9090"
-token: "<long-lived token from: pgctl login --no-expiry>"
+agent_name: edge-1
+agent_state_path: /var/lib/pgway/agent.json
+heartbeat_interval: 10s
 ```
 
 ```bash
-# equivalently, entirely via environment variables
-PGWAY_GRPC_LISTEN_ADDR="cp-host:9090" PGWAY_TOKEN="<token>" ./pgway-dp --config ./config.yml
+# first start (once per agent)
+REG=$(pgctl agent token create)
+PGWAY_GRPC_LISTEN_ADDR="cp-host:9090" PGWAY_REGISTRATION_TOKEN="$REG" ./pgway-dp --config ./dp.yml
+
+# subsequent starts reuse agent_state_path — no registration token needed
+PGWAY_GRPC_LISTEN_ADDR="cp-host:9090" ./pgway-dp --config ./dp.yml
 ```
 
 > The CLI credentials file moved from `~/.pgway/credentials` to
