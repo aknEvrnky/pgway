@@ -27,6 +27,7 @@ var exemptMethods = map[string]struct{}{
 var agentAllowedMethods = map[string]struct{}{
 	"/pgway.controlplane.v1.AgentService/Heartbeat":  {},
 	"/pgway.controlplane.v1.AgentService/Deregister": {},
+	"/pgway.controlplane.v1.ChangeService/Watch":     {},
 
 	"/pgway.controlplane.v1.ProxyService/GetProxy":            {},
 	"/pgway.controlplane.v1.ProxyService/ListProxies":         {},

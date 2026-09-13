@@ -148,6 +148,7 @@ func TestExemptList(t *testing.T) {
 func TestAgentAllowedList(t *testing.T) {
 	assert.True(t, isAgentAllowed(agentHeartbeatMethod))
 	assert.True(t, isAgentAllowed("/pgway.controlplane.v1.AgentService/Deregister"))
+	assert.True(t, isAgentAllowed("/pgway.controlplane.v1.ChangeService/Watch"))
 	assert.True(t, isAgentAllowed(protectedMethod))
 	assert.False(t, isAgentAllowed(agentWriteMethod))
 	assert.False(t, isAgentAllowed("/pgway.controlplane.v1.AgentService/DeleteAgent"))

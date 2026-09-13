@@ -77,7 +77,7 @@ func main() {
 	}
 
 	// grpc server, auth enforced
-	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, grpcserver.AgentServerConfig{
+	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, grpcserver.AgentServerConfig{
 		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
 		AgentTokenTTL:        cfg.AgentTokenTTL,
 		RegistrationTokenTTL: cfg.RegistrationTokenTTL,

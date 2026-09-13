@@ -27,6 +27,7 @@ func New(
 	authManager ports.AuthManager,
 	authenticator ports.TokenAuthenticator,
 	agents ports.AgentManager,
+	events ports.EventSubscriberPort,
 	agentCfg AgentServerConfig,
 ) *grpc.Server {
 	s := grpc.NewServer(
@@ -42,6 +43,9 @@ func New(
 		agentCfg.AgentTokenTTL,
 		agentCfg.RegistrationTokenTTL,
 	))
+	if events != nil {
+		RegisterChange(s, NewChangeServer(events))
+	}
 
 	return s
 }
