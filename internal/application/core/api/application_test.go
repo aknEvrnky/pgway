@@ -169,7 +169,7 @@ outer:
 
 var (
 	testProxy = &domain.Proxy{Id: "p1", Protocol: "http", Host: "127.0.0.1", Port: 8080}
-	testPool  = &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, ProxyIds: []string{"p1"}}
+	testPool  = &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}}
 	testLB    = &domain.LoadBalancer{Id: "lb-1", Type: domain.BalancerTypeRoundRobin, PoolId: "pool-1"}
 	testEP    = &domain.Entrypoint{Id: "ep-1", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 8080, FlowId: "flow-1"}
 	testFlow  = &domain.Flow{Id: "flow-1", BalancerId: "lb-1"}

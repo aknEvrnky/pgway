@@ -5,10 +5,16 @@ option go_package = "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1;contro
 import "pgway/controlplane/v1/common.proto";
 import "google/protobuf/timestamp.proto";
 
+message PoolMember {
+  string proxy_id = 1;
+  // Weight defaults to 1 when unset (0). Values must be >= 1 after defaulting.
+  int32 weight = 2;
+}
+
 message PoolSpecV1 {
   string title = 1;
   string type = 2;
-  repeated string proxy_ids = 3;
+  repeated PoolMember members = 3;
   SelectorSpec selector = 4;
 }
 
@@ -21,7 +27,7 @@ message Pool {
   string title = 2;
   string type = 3;
   map<string, string> labels = 4;
-  repeated string proxy_ids = 5;
+  repeated PoolMember members = 5;
   SelectorSpec selector = 6;
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;

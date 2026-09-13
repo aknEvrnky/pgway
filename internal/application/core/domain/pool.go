@@ -17,6 +17,12 @@ type LabelSelector struct {
 	Allow map[string]string `json:"allow,omitempty"`
 }
 
+// PoolMember is a static-pool entry with a selection weight.
+type PoolMember struct {
+	ProxyId string `json:"proxy_id"`
+	Weight  int    `json:"weight"`
+}
+
 type Pool struct {
 	Timestamps
 	Id     string            `json:"id"`
@@ -25,15 +31,22 @@ type Pool struct {
 	Labels map[string]string `json:"labels"`
 
 	// Static pool
-	ProxyIds []string `json:"proxy_ids,omitempty"`
+	Members []PoolMember `json:"members,omitempty"`
 
 	// Dynamic pool
 	Selector *LabelSelector `json:"selector,omitempty"`
 
-	//Proxies []*Proxy `json:"proxies"`
-
 	hasProxiesResolved bool
 	resolvedProxies    []*Proxy
+}
+
+// MemberProxyIds returns proxy IDs from static members in order.
+func (p *Pool) MemberProxyIds() []string {
+	ids := make([]string, 0, len(p.Members))
+	for _, m := range p.Members {
+		ids = append(ids, m.ProxyId)
+	}
+	return ids
 }
 
 func (p *Pool) LoadResolvedProxies(proxies []*Proxy) {
@@ -60,19 +73,32 @@ func (p *Pool) Validate() error {
 
 	switch p.Type {
 	case PoolTypeStatic:
-		if len(p.ProxyIds) == 0 {
-			return fmt.Errorf("static pool %q requires at least one proxy_id", p.Id)
+		if len(p.Members) == 0 {
+			return fmt.Errorf("static pool %q requires at least one member", p.Id)
 		}
 		if p.Selector != nil {
 			return fmt.Errorf("static pool %q must not have selector", p.Id)
+		}
+		seen := make(map[string]struct{}, len(p.Members))
+		for i, m := range p.Members {
+			if m.ProxyId == "" {
+				return fmt.Errorf("static pool %q member[%d]: proxy_id is required", p.Id, i)
+			}
+			if m.Weight < 1 {
+				return fmt.Errorf("static pool %q member %q: weight must be >= 1", p.Id, m.ProxyId)
+			}
+			if _, ok := seen[m.ProxyId]; ok {
+				return fmt.Errorf("static pool %q has duplicate proxy_id %q", p.Id, m.ProxyId)
+			}
+			seen[m.ProxyId] = struct{}{}
 		}
 
 	case PoolTypeDynamic:
 		if p.Selector == nil || len(p.Selector.Allow) == 0 {
 			return fmt.Errorf("dynamic pool %q requires selector with at least one allow label", p.Id)
 		}
-		if len(p.ProxyIds) > 0 {
-			return fmt.Errorf("dynamic pool %q must not have proxy_ids", p.Id)
+		if len(p.Members) > 0 {
+			return fmt.Errorf("dynamic pool %q must not have members", p.Id)
 		}
 	}
 

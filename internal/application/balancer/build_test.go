@@ -12,7 +12,17 @@ import (
 
 func TestBuild(t *testing.T) {
 	poolWithProxy := func() *domain.Pool {
-		p := &domain.Pool{Id: "pool-1"}
+		p := &domain.Pool{
+			Id:      "pool-1",
+			Type:    domain.PoolTypeStatic,
+			Members: []domain.PoolMember{{ProxyId: "proxy-1", Weight: 1}},
+		}
+		p.LoadResolvedProxies([]*domain.Proxy{{Id: "proxy-1"}})
+		return p
+	}()
+
+	dynamicPool := func() *domain.Pool {
+		p := &domain.Pool{Id: "pool-dyn", Type: domain.PoolTypeDynamic}
 		p.LoadResolvedProxies([]*domain.Proxy{{Id: "proxy-1"}})
 		return p
 	}()
@@ -30,6 +40,19 @@ func TestBuild(t *testing.T) {
 			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "round-robin", PoolId: "pool-1"},
 			expectedBalancerType: &algorithm.RoundRobin{},
 			expectedErr:          nil,
+		},
+		{
+			name:                 "it builds weighted load balancer",
+			p:                    poolWithProxy,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "weighted", PoolId: "pool-1"},
+			expectedBalancerType: &algorithm.Weighted{},
+			expectedErr:          nil,
+		},
+		{
+			name:        "weighted rejects dynamic pool",
+			p:           dynamicPool,
+			lb:          &domain.LoadBalancer{Id: "lb-1", Type: "weighted", PoolId: "pool-dyn"},
+			expectedErr: fmt.Errorf(`weighted balancer requires static pool "pool-dyn"`),
 		},
 		{
 			name:                 "it can not build unknown lb type",

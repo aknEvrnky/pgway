@@ -11,6 +11,8 @@ func Build(lb *domain.LoadBalancer, p *domain.Pool) (LoadBalancer, error) {
 	switch lb.Type {
 	case domain.BalancerTypeRoundRobin:
 		return algorithm.NewRoundRobin(p)
+	case domain.BalancerTypeWeighted:
+		return algorithm.NewWeighted(p)
 	default:
 		return nil, fmt.Errorf("unknown balancer type %q", lb.Type)
 	}

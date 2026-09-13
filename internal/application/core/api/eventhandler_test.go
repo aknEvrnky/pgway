@@ -63,7 +63,10 @@ func TestApplication_HandleEvent_BootstrapApplication(t *testing.T) {
 	newTestPool := new(domain.Pool)
 	*newTestPool = *testPool
 
-	newTestPool.ProxyIds = []string{"p1", "p2"}
+	newTestPool.Members = []domain.PoolMember{
+		{ProxyId: "p1", Weight: 1},
+		{ProxyId: "p2", Weight: 1},
+	}
 
 	cp.proxies = []*domain.Proxy{testProxy, newTestProxy}
 	cp.pools["pool-1"] = newTestPool
@@ -115,7 +118,10 @@ func TestApplication_HandleEvent_DeletedRemovesFromCache(t *testing.T) {
 func TestApplication_HandleEvent_TopologyEventKeepsBalancerState(t *testing.T) {
 	// two proxies make the round-robin cursor position observable
 	secondProxy := &domain.Proxy{Id: "p2", Protocol: "http", Host: "127.0.0.1", Port: 8181}
-	pool := &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, ProxyIds: []string{"p1", "p2"}}
+	pool := &domain.Pool{Id: "pool-1", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{
+		{ProxyId: "p1", Weight: 1},
+		{ProxyId: "p2", Weight: 1},
+	}}
 
 	cp := &mockControlPlane{
 		entrypoints: []*domain.Entrypoint{testEP},
