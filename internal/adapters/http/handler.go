@@ -38,21 +38,23 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	zap.L().Info("using proxy", zap.String("proxy", proxy.Id))
 
-	// todo: handle byte calculation
-	defer h.app.Release(r.Context(), balancerId, domain.BalancerResult{
-		ProxyId: proxy.Id,
-		Bytes:   0,
-	})
+	var transferred int64
+	defer func() {
+		h.app.Release(r.Context(), balancerId, domain.BalancerResult{
+			ProxyId: proxy.Id,
+			Bytes:   transferred,
+		})
+	}()
 
 	if r.Method == http.MethodConnect {
-		h.handleTunnel(w, r, proxy)
+		h.handleTunnel(w, r, proxy, &transferred)
 		return
 	}
 
-	h.handleHTTP(w, r, proxy)
+	h.handleHTTP(w, r, proxy, &transferred)
 }
 
-func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy) {
+func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64) {
 	// connect to target
 	dst, err := h.transport.Dial(r.Context(), proxy, r.Host)
 	if err != nil {
@@ -86,16 +88,19 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 		_, err := io.Copy(dst, src)
 		errc <- err
 	}()
-	if _, err := io.Copy(src, dst); err != nil {
-		zap.L().Debug("tunnel copy src→dst", zap.Error(err))
+	// Downstream only: upstream → client
+	n, err := io.Copy(src, dst)
+	*transferred = n
+	if err != nil {
+		zap.L().Debug("tunnel copy dst→src", zap.Error(err))
 	}
 	if err := <-errc; err != nil {
-		zap.L().Debug("tunnel copy dst→src", zap.Error(err))
+		zap.L().Debug("tunnel copy src→dst", zap.Error(err))
 	}
 }
 
 // HTTP — direkt forward
-func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy) {
+func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64) {
 	// Hop-by-hop header'ları temizle
 	r.RequestURI = ""
 	h.removeHopHeaders(r.Header)
@@ -110,7 +115,9 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	h.removeHopHeaders(resp.Header)
 	h.copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	n, err := io.Copy(w, resp.Body)
+	*transferred = n
+	if err != nil {
 		zap.L().Error("copy response body", zap.Error(err))
 	}
 }
@@ -119,17 +126,17 @@ func (h *Handler) removeHopHeaders(header http.Header) {
 	hopHeaders := []string{
 		"Connection", "Proxy-Connection", "Keep-Alive",
 		"Proxy-Authenticate", "Proxy-Authorization",
-		"Te", "Trailers", "Transfer-Encoding", "Upgrade",
+		"Te", "Trailer", "Transfer-Encoding", "Upgrade",
 	}
-	for _, hh := range hopHeaders {
-		header.Del(hh)
+	for _, h := range hopHeaders {
+		header.Del(h)
 	}
 }
 
 func (h *Handler) copyHeaders(dst, src http.Header) {
-	for key, values := range src {
-		for _, v := range values {
-			dst.Add(key, v)
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
 		}
 	}
 }

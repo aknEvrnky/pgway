@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -13,9 +14,10 @@ func (c *Client) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spec
 	resp, err := c.balancer.ApplyBalancerV1(ctx, &controlplanev1.ApplyBalancerV1Request{
 		Metadata: metaToProto(meta),
 		Spec: &controlplanev1.BalancerSpecV1{
-			Title:  spec.Title,
-			Type:   spec.Type,
-			PoolId: spec.PoolId,
+			Title:         spec.Title,
+			Type:          spec.Type,
+			PoolId:        spec.PoolId,
+			ResetInterval: spec.ResetInterval,
 		},
 	})
 	if err != nil {
@@ -68,10 +70,16 @@ func balancerFromProto(pb *controlplanev1.LoadBalancer) *domain.LoadBalancer {
 		return nil
 	}
 
-	return &domain.LoadBalancer{
+	lb := &domain.LoadBalancer{
 		Id:     pb.Id,
 		Title:  pb.Title,
 		Type:   domain.BalancerType(pb.Type),
 		PoolId: pb.PoolId,
 	}
+	if pb.ResetInterval != "" {
+		if d, err := time.ParseDuration(pb.ResetInterval); err == nil {
+			lb.ResetInterval = d
+		}
+	}
+	return lb
 }

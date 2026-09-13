@@ -9,6 +9,7 @@ message BalancerSpecV1 {
   string title = 1;
   string type = 2;
   string pool_id = 3;
+  string reset_interval = 4;
 }
 
 message LoadBalancer {
@@ -18,6 +19,7 @@ message LoadBalancer {
   string pool_id = 4;
   google.protobuf.Timestamp created_at = 5;
   google.protobuf.Timestamp updated_at = 6;
+  string reset_interval = 7;
 }
 
 message ApplyBalancerV1Request {

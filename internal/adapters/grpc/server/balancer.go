@@ -97,9 +97,10 @@ func balancerSpecFromProto(pb *controlplanev1.BalancerSpecV1) balancerv1.Balance
 	}
 
 	return balancerv1.BalancerSpecV1{
-		Title:  pb.Title,
-		Type:   pb.Type,
-		PoolId: pb.PoolId,
+		Title:         pb.Title,
+		Type:          pb.Type,
+		PoolId:        pb.PoolId,
+		ResetInterval: pb.ResetInterval,
 	}
 }
 
@@ -108,7 +109,7 @@ func balancerToProto(bl *domain.LoadBalancer) *controlplanev1.LoadBalancer {
 		return nil
 	}
 
-	return &controlplanev1.LoadBalancer{
+	pb := &controlplanev1.LoadBalancer{
 		Id:        bl.Id,
 		Title:     bl.Title,
 		Type:      string(bl.Type),
@@ -116,4 +117,8 @@ func balancerToProto(bl *domain.LoadBalancer) *controlplanev1.LoadBalancer {
 		CreatedAt: timestamppb.New(bl.CreatedAt),
 		UpdatedAt: timestamppb.New(bl.UpdatedAt),
 	}
+	if bl.ResetInterval > 0 {
+		pb.ResetInterval = bl.ResetInterval.String()
+	}
+	return pb
 }
