@@ -131,6 +131,16 @@ func TestAgent_Validate(t *testing.T) {
 			},
 			expectedErr: "agent ID is required",
 		},
+		{
+			name: "it is not valid if a label key is empty",
+			agent: Agent{
+				Id: "agent-1",
+				Labels: map[string]string{
+					"": "value",
+				},
+			},
+			expectedErr: "label keys must be non-empty",
+		},
 	}
 
 	for _, tt := range tests {

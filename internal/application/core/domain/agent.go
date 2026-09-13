@@ -35,6 +35,11 @@ func (a *Agent) Validate() error {
 	if a.Id == "" {
 		return fmt.Errorf("agent ID is required")
 	}
+	for k := range a.Labels {
+		if k == "" {
+			return fmt.Errorf("label keys must be non-empty")
+		}
+	}
 
 	return nil
 }
