@@ -9,6 +9,7 @@ type Client interface {
 	ports.ControlPlane
 	ports.UserManager
 	ports.AuthManager
+	ports.AgentManager
 	Close() error
 }
 

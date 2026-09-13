@@ -61,6 +61,7 @@ func NewRootCmd(connect ConnectFunc) *cobra.Command {
 		newLoginCmd(deps),
 		newLogoutCmd(deps),
 		newUserCmd(deps),
+		newAgentCmd(deps),
 	)
 
 	return root
