@@ -19,12 +19,13 @@ type Client struct {
 	entrypoint controlplanev1.EntrypointServiceClient
 	user       controlplanev1.UserServiceClient
 	auth       controlplanev1.AuthServiceClient
+	agent      controlplanev1.AgentServiceClient
 
 	conn *grpc.ClientConn
 }
 
 // NewClient connects to the control plane. token authenticates every call;
-// it may be empty for the exempt RPCs (Login, InitAdmin).
+// it may be empty for the exempt RPCs (Login, InitAdmin, Register).
 func NewClient(addr, token string) (*Client, error) {
 	conn, err := grpc.NewClient(
 		"passthrough:///"+addr,
@@ -44,6 +45,7 @@ func NewClient(addr, token string) (*Client, error) {
 		entrypoint: controlplanev1.NewEntrypointServiceClient(conn),
 		user:       controlplanev1.NewUserServiceClient(conn),
 		auth:       controlplanev1.NewAuthServiceClient(conn),
+		agent:      controlplanev1.NewAgentServiceClient(conn),
 		conn:       conn,
 	}, nil
 }
