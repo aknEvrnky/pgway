@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 type BalancerType string
 
 const (
@@ -18,10 +20,11 @@ func (b BalancerType) IsValid() bool {
 
 type LoadBalancer struct {
 	Timestamps
-	Id     string       `json:"id"`
-	Title  string       `json:"title"`
-	Type   BalancerType `json:"type"`
-	PoolId string       `json:"pool_id"`
+	Id            string        `json:"id"`
+	Title         string        `json:"title"`
+	Type          BalancerType  `json:"type"`
+	PoolId        string        `json:"pool_id"`
+	ResetInterval time.Duration `json:"reset_interval,omitempty"` // least-bytes only; 0 → default at Build
 }
 
 type BalancerResult struct {

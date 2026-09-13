@@ -441,6 +441,46 @@ func TestControlPlane_Balancer(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, domain.BalancerTypeWeighted, lb.Type)
 		}},
+		{"least-bytes apply stores reset_interval", func(t *testing.T) {
+			svc, _ := testutil.NewSvcWithPublisher(t)
+			ctx := context.Background()
+
+			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-lb"}, poolv1.PoolSpecV1{
+				Title:   "static",
+				Type:    "static",
+				Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+			})
+			require.NoError(t, err)
+
+			lb, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-bytes"}, balancerv1.BalancerSpecV1{
+				Title:         "least bytes",
+				Type:          "least-bytes",
+				PoolId:        "pool-lb",
+				ResetInterval: "30s",
+			})
+			require.NoError(t, err)
+			assert.Equal(t, domain.BalancerTypeLeastBytes, lb.Type)
+			assert.Equal(t, 30*time.Second, lb.ResetInterval)
+		}},
+		{"least-bytes apply defaults reset_interval to 1m", func(t *testing.T) {
+			svc, _ := testutil.NewSvcWithPublisher(t)
+			ctx := context.Background()
+
+			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-lb2"}, poolv1.PoolSpecV1{
+				Title:   "static",
+				Type:    "static",
+				Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+			})
+			require.NoError(t, err)
+
+			lb, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-bytes-def"}, balancerv1.BalancerSpecV1{
+				Title:  "least bytes",
+				Type:   "least-bytes",
+				PoolId: "pool-lb2",
+			})
+			require.NoError(t, err)
+			assert.Equal(t, time.Minute, lb.ResetInterval)
+		}},
 		{"pool cannot become dynamic while weighted balancer references it", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()

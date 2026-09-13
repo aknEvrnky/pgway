@@ -34,6 +34,10 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 		return nil, fmt.Errorf("domain validation: invalid balancer type %q", lb.Type)
 	}
 
+	if lb.Type == domain.BalancerTypeLeastBytes {
+		lb.ResetInterval = spec.ResolvedResetInterval()
+	}
+
 	if lb.Type == domain.BalancerTypeWeighted {
 		pool, err := s.poolRepo.Find(ctx, lb.PoolId)
 		if err != nil {
