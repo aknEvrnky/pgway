@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/aknEvrnky/pgway/integration/testutil"
-	"github.com/aknEvrnky/pgway/internal/adapters/agentruntime"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/application/consumer"
+	"github.com/aknEvrnky/pgway/internal/application/core/agenthost"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -66,7 +66,7 @@ func TestWatchHotReload(t *testing.T) {
 
 	go func() { _ = eventConsumer.ConsumeEvents(runCtx) }()
 	go func() {
-		_ = agentruntime.RunWatch(runCtx, clientWatcher{
+		_ = agenthost.RunWatch(runCtx, clientWatcher{
 			watch: func(c context.Context) error { return agent.Watch(c, localBus) },
 		}, func(c context.Context) error {
 			return app.Bootstrap(c)

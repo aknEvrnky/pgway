@@ -2,10 +2,14 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/ports"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func (c *Client) CreateRegistrationToken(ctx context.Context, ttl time.Duration) (string, error) {
@@ -38,15 +42,26 @@ func (c *Client) Register(ctx context.Context, regToken string, agent domain.Age
 func (c *Client) Heartbeat(ctx context.Context) (time.Time, error) {
 	resp, err := c.agent.Heartbeat(ctx, &controlplanev1.HeartbeatRequest{})
 	if err != nil {
-		return time.Time{}, err
+		return time.Time{}, mapAgentAuth(err)
 	}
 	return resp.TokenExpiresAt.AsTime(), nil
 }
 
 func (c *Client) Deregister(ctx context.Context) error {
 	_, err := c.agent.Deregister(ctx, &controlplanev1.DeregisterRequest{})
+	return mapAgentAuth(err)
+}
+
+func mapAgentAuth(err error) error {
+	if err == nil {
+		return nil
+	}
+	if status.Code(err) == codes.Unauthenticated {
+		return fmt.Errorf("%w: %w", ports.ErrAgentUnauthenticated, err)
+	}
 	return err
 }
+
 
 func (c *Client) ListAgents(ctx context.Context, params domain.ListParams, filter domain.AgentFilter) (domain.ListResult[domain.Agent], error) {
 	resp, err := c.agent.ListAgents(ctx, &controlplanev1.ListAgentsRequest{

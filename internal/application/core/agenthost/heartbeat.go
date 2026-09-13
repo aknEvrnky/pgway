@@ -1,24 +1,18 @@
-package agentruntime
+package agenthost
 
 import (
 	"context"
 	"errors"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
-
-// Heartbeater sends periodic Heartbeat RPCs. Identity comes from the bearer token.
-type Heartbeater interface {
-	Heartbeat(ctx context.Context) (time.Time, error)
-}
 
 // RunHeartbeat ticks until ctx is canceled. Transient errors are logged;
 // Unauthenticated is fatal (token revoked/expired — admin must mint a new
 // registration token).
-func RunHeartbeat(ctx context.Context, hb Heartbeater, interval time.Duration) error {
+func RunHeartbeat(ctx context.Context, hb ports.AgentHeartbeater, interval time.Duration) error {
 	if interval <= 0 {
 		interval = 10 * time.Second
 	}
@@ -33,7 +27,7 @@ func RunHeartbeat(ctx context.Context, hb Heartbeater, interval time.Duration) e
 		case <-ticker.C:
 			expiresAt, err := hb.Heartbeat(ctx)
 			if err != nil {
-				if isUnauthenticated(err) {
+				if isAuthRejected(err) {
 					return fatalAuthError(err)
 				}
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -47,8 +41,8 @@ func RunHeartbeat(ctx context.Context, hb Heartbeater, interval time.Duration) e
 	}
 }
 
-func isUnauthenticated(err error) bool {
-	return status.Code(err) == codes.Unauthenticated
+func isAuthRejected(err error) bool {
+	return errors.Is(err, ports.ErrAgentUnauthenticated)
 }
 
 func fatalAuthError(err error) error {

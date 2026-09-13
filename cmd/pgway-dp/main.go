@@ -8,12 +8,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/adapters/agentruntime"
+	"github.com/aknEvrnky/pgway/internal/adapters/agentstate"
 	grpcclient "github.com/aknEvrnky/pgway/internal/adapters/grpc/client"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/application/consumer"
+	"github.com/aknEvrnky/pgway/internal/application/core/agenthost"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -40,7 +41,7 @@ func main() {
 
 	cfg := config.Get()
 
-	lock, err := agentruntime.AcquireLock(agentruntime.LockPath(cfg.AgentStatePath))
+	lock, err := agentstate.NewLock(cfg.AgentStatePath).Acquire()
 	if err != nil {
 		zap.L().Fatal("acquire agent lock", zap.Error(err))
 	}
@@ -57,13 +58,18 @@ func main() {
 		Version: "dev",
 		Labels:  cfg.AgentLabels,
 	}
-	if err := agentruntime.EnsureHostname(&agent); err != nil {
-		zap.L().Fatal("resolve hostname", zap.Error(err))
+	if agent.Hostname == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			zap.L().Fatal("resolve hostname", zap.Error(err))
+		}
+		agent.Hostname = hostname
 	}
 
-	boot, err := agentruntime.BootstrapCredentials(
+	store := agentstate.NewStore(cfg.AgentStatePath)
+	boot, err := agenthost.BootstrapCredentials(
 		context.Background(),
-		cfg.AgentStatePath,
+		store,
 		cfg.RegistrationToken,
 		agent,
 		cpClient,
@@ -104,7 +110,7 @@ func main() {
 	}()
 
 	go func() {
-		hbErr <- agentruntime.RunHeartbeat(sigCtx, cpClient, cfg.HeartbeatInterval)
+		hbErr <- agenthost.RunHeartbeat(sigCtx, cpClient, cfg.HeartbeatInterval)
 	}()
 
 	go func() {
@@ -112,7 +118,7 @@ func main() {
 	}()
 
 	go func() {
-		watchErr <- agentruntime.RunWatch(sigCtx, changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
+		watchErr <- agenthost.RunWatch(sigCtx, changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
 			return app.Bootstrap(c)
 		})
 	}()

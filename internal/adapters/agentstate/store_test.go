@@ -1,19 +1,24 @@
-package agentruntime
+package agentstate
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestSaveLoadState(t *testing.T) {
+func TestStoreSaveLoad(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "pgway")
 	path := filepath.Join(dir, "agent.json")
+	store := NewStore(path)
 
-	require.NoError(t, SaveState(path, &State{AgentID: "edge-1", AgentToken: "tok-abc"}))
+	require.NoError(t, store.Save(context.Background(), &ports.AgentHostCredentials{
+		AgentID: "edge-1", AgentToken: "tok-abc",
+	}))
 
 	info, err := os.Stat(path)
 	require.NoError(t, err)
@@ -23,27 +28,28 @@ func TestSaveLoadState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
 
-	got, err := LoadState(path)
+	got, err := store.Load(context.Background())
 	require.NoError(t, err)
 	assert.Equal(t, "edge-1", got.AgentID)
 	assert.Equal(t, "tok-abc", got.AgentToken)
 }
 
-func TestLoadStateMissing(t *testing.T) {
-	_, err := LoadState(filepath.Join(t.TempDir(), "missing.json"))
+func TestStoreLoadMissing(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "missing.json"))
+	_, err := store.Load(context.Background())
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
 
-func TestLoadStateRejectsIncomplete(t *testing.T) {
+func TestStoreRejectsIncomplete(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"agent_id":"only"}`), 0o600))
 
-	_, err := LoadState(path)
+	_, err := NewStore(path).Load(context.Background())
 	assert.Error(t, err)
 }
 
-func TestSaveStateRejectsEmpty(t *testing.T) {
-	err := SaveState(filepath.Join(t.TempDir(), "agent.json"), &State{})
+func TestStoreSaveRejectsEmpty(t *testing.T) {
+	err := NewStore(filepath.Join(t.TempDir(), "agent.json")).Save(context.Background(), &ports.AgentHostCredentials{})
 	assert.Error(t, err)
 }
 
@@ -52,18 +58,19 @@ func TestLockPath(t *testing.T) {
 }
 
 func TestAcquireLockExclusive(t *testing.T) {
-	lockPath := filepath.Join(t.TempDir(), "agent.lock")
+	statePath := filepath.Join(t.TempDir(), "agent.json")
+	lock := NewLock(statePath)
 
-	first, err := AcquireLock(lockPath)
+	first, err := lock.Acquire()
 	require.NoError(t, err)
 	defer first.Close()
 
-	_, err = AcquireLock(lockPath)
+	_, err = NewLock(statePath).Acquire()
 	assert.Error(t, err)
 
 	require.NoError(t, first.Close())
 
-	second, err := AcquireLock(lockPath)
+	second, err := NewLock(statePath).Acquire()
 	require.NoError(t, err)
 	require.NoError(t, second.Close())
 }

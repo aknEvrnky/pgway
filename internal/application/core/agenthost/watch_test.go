@@ -1,4 +1,4 @@
-package agentruntime
+package agenthost
 
 import (
 	"context"
@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type fakeWatcher struct {
@@ -48,13 +47,13 @@ func TestRunWatchStopsOnCancel(t *testing.T) {
 }
 
 func TestRunWatchFatalUnauthenticated(t *testing.T) {
-	w := &fakeWatcher{fail: status.Error(codes.Unauthenticated, "revoked")}
+	w := &fakeWatcher{fail: ports.ErrAgentUnauthenticated}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	err := RunWatch(ctx, w, nil)
 	require.Error(t, err)
-	assert.Equal(t, codes.Unauthenticated, status.Code(err))
+	assert.ErrorIs(t, err, ports.ErrAgentUnauthenticated)
 }
 
 func TestRunWatchCallsOnConnect(t *testing.T) {

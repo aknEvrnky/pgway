@@ -14,7 +14,7 @@ import (
 func (c *Client) Watch(ctx context.Context, pub ports.EventPublisherPort) error {
 	stream, err := c.change.Watch(ctx, &controlplanev1.WatchRequest{})
 	if err != nil {
-		return err
+		return mapAgentAuth(err)
 	}
 
 	for {
@@ -23,7 +23,7 @@ func (c *Client) Watch(ctx context.Context, pub ports.EventPublisherPort) error 
 			if err == io.EOF || ctx.Err() != nil {
 				return ctx.Err()
 			}
-			return err
+			return mapAgentAuth(err)
 		}
 		if err := pub.Publish(ctx, changeEventFromProto(msg)); err != nil {
 			return err

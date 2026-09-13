@@ -1,21 +1,17 @@
-package agentruntime
+package agenthost
 
 import (
 	"context"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
 )
-
-// Watcher opens a Watch stream until it fails or ctx is canceled.
-type Watcher interface {
-	Watch(ctx context.Context) error
-}
 
 // RunWatch reconnects forever until ctx is canceled. onConnect runs before
 // each stream (full reload to close missed-event gaps). Transient failures
 // back off; Unauthenticated is fatal.
-func RunWatch(ctx context.Context, watch Watcher, onConnect func(context.Context) error) error {
+func RunWatch(ctx context.Context, watch ports.AgentChangeWatcher, onConnect func(context.Context) error) error {
 	backoff := time.Second
 	const maxBackoff = 30 * time.Second
 
@@ -26,7 +22,7 @@ func RunWatch(ctx context.Context, watch Watcher, onConnect func(context.Context
 
 		if onConnect != nil {
 			if err := onConnect(ctx); err != nil {
-				if isUnauthenticated(err) {
+				if isAuthRejected(err) {
 					return fatalAuthError(err)
 				}
 				zap.L().Warn("watch reconnect reload failed", zap.Error(err))
@@ -41,7 +37,7 @@ func RunWatch(ctx context.Context, watch Watcher, onConnect func(context.Context
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if isUnauthenticated(err) {
+		if isAuthRejected(err) {
 			return fatalAuthError(err)
 		}
 		if err != nil {
