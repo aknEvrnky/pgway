@@ -92,12 +92,15 @@ func (s *Service) Next(id string) (*domain.Proxy, error) {
 func (s *Service) resolveProxies(ctx context.Context, pool *domain.Pool) ([]*domain.Proxy, error) {
 	switch pool.Type {
 	case domain.PoolTypeStatic:
-		proxies, err := s.resolver.GetProxiesByIds(ctx, pool.ProxyIds)
+		ids := pool.MemberProxyIds()
+		proxies, err := s.resolver.GetProxiesByIds(ctx, ids)
 		if err != nil {
 			return nil, err
 		}
-
-		return proxies, nil
+		if len(proxies) == 0 {
+			return proxies, nil
+		}
+		return orderProxiesByIDs(proxies, ids)
 
 	case domain.PoolTypeDynamic:
 		return s.resolver.FindProxiesByLabels(ctx, pool.Selector.Allow)
@@ -105,4 +108,21 @@ func (s *Service) resolveProxies(ctx context.Context, pool *domain.Pool) ([]*dom
 	default:
 		return nil, fmt.Errorf("unknown pool type: %q", pool.Type)
 	}
+}
+
+// orderProxiesByIDs returns proxies in the same order as ids.
+func orderProxiesByIDs(proxies []*domain.Proxy, ids []string) ([]*domain.Proxy, error) {
+	byID := make(map[string]*domain.Proxy, len(proxies))
+	for _, p := range proxies {
+		byID[p.Id] = p
+	}
+	ordered := make([]*domain.Proxy, 0, len(ids))
+	for _, id := range ids {
+		p, ok := byID[id]
+		if !ok {
+			return nil, fmt.Errorf("proxy %q not found", id)
+		}
+		ordered = append(ordered, p)
+	}
+	return ordered, nil
 }

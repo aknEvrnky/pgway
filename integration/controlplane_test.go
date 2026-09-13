@@ -162,9 +162,9 @@ func TestControlPlane_Pool(t *testing.T) {
 	t.Parallel()
 
 	poolSpec := poolv1.PoolSpecV1{
-		Title:    "test-pool",
-		Type:     "static",
-		ProxyIds: []string{"p1"},
+		Title:   "test-pool",
+		Type:    "static",
+		Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
 	}
 
 	for _, tt := range []struct {
@@ -403,6 +403,67 @@ func TestControlPlane_Balancer(t *testing.T) {
 
 			err := svc.DeleteBalancer(ctx, "ghost-lb")
 			assert.ErrorContains(t, err, "not found")
+		}},
+		{"weighted apply requires static pool", func(t *testing.T) {
+			svc, _ := testutil.NewSvcWithPublisher(t)
+			ctx := context.Background()
+
+			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "dyn-pool"}, poolv1.PoolSpecV1{
+				Title:    "dyn",
+				Type:     "dynamic",
+				Selector: &poolv1.SelectorSpec{Allow: map[string]string{"env": "prod"}},
+			})
+			require.NoError(t, err)
+
+			_, err = svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "w-lb"}, balancerv1.BalancerSpecV1{
+				Title:  "weighted",
+				Type:   "weighted",
+				PoolId: "dyn-pool",
+			})
+			require.ErrorContains(t, err, "requires static pool")
+		}},
+		{"weighted apply succeeds for static pool", func(t *testing.T) {
+			svc, _ := testutil.NewSvcWithPublisher(t)
+			ctx := context.Background()
+
+			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "static-pool"}, poolv1.PoolSpecV1{
+				Title:   "static",
+				Type:    "static",
+				Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+			})
+			require.NoError(t, err)
+
+			lb, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "w-lb"}, balancerv1.BalancerSpecV1{
+				Title:  "weighted",
+				Type:   "weighted",
+				PoolId: "static-pool",
+			})
+			require.NoError(t, err)
+			assert.Equal(t, domain.BalancerTypeWeighted, lb.Type)
+		}},
+		{"pool cannot become dynamic while weighted balancer references it", func(t *testing.T) {
+			svc, _ := testutil.NewSvcWithPublisher(t)
+			ctx := context.Background()
+
+			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "static-pool"}, poolv1.PoolSpecV1{
+				Title:   "static",
+				Type:    "static",
+				Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+			})
+			require.NoError(t, err)
+			_, err = svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "w-lb"}, balancerv1.BalancerSpecV1{
+				Title:  "weighted",
+				Type:   "weighted",
+				PoolId: "static-pool",
+			})
+			require.NoError(t, err)
+
+			_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "static-pool"}, poolv1.PoolSpecV1{
+				Title:    "now-dyn",
+				Type:     "dynamic",
+				Selector: &poolv1.SelectorSpec{Allow: map[string]string{"env": "prod"}},
+			})
+			require.ErrorContains(t, err, "referenced by weighted balancer")
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

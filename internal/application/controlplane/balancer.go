@@ -34,6 +34,16 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 		return nil, fmt.Errorf("domain validation: invalid balancer type %q", lb.Type)
 	}
 
+	if lb.Type == domain.BalancerTypeWeighted {
+		pool, err := s.poolRepo.Find(ctx, lb.PoolId)
+		if err != nil {
+			return nil, fmt.Errorf("weighted balancer requires pool %q: %w", lb.PoolId, err)
+		}
+		if pool.Type != domain.PoolTypeStatic {
+			return nil, fmt.Errorf("weighted balancer requires static pool %q (got %q)", lb.PoolId, pool.Type)
+		}
+	}
+
 	now := time.Now()
 	if existing, err := s.lbRepo.Find(ctx, lb.Id); err == nil {
 		lb.CreatedAt = existing.CreatedAt

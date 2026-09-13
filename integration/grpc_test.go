@@ -128,9 +128,9 @@ func TestGRPC_Pool(t *testing.T) {
 			applyResp, err := client.ApplyPoolV1(ctx, &controlplanev1.ApplyPoolV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "test-pool"},
 				Spec: &controlplanev1.PoolSpecV1{
-					Title:    "Test Pool",
-					Type:     "static",
-					ProxyIds: []string{"p1"},
+					Title:   "Test Pool",
+					Type:    "static",
+					Members: []*controlplanev1.PoolMember{{ProxyId: "p1"}},
 				},
 			})
 			require.NoError(t, err)
@@ -149,13 +149,13 @@ func TestGRPC_Pool(t *testing.T) {
 
 			r1, err := client.ApplyPoolV1(ctx, &controlplanev1.ApplyPoolV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "pool-a"},
-				Spec:     &controlplanev1.PoolSpecV1{Title: "Pool A", Type: "static", ProxyIds: []string{"p1"}},
+				Spec:     &controlplanev1.PoolSpecV1{Title: "Pool A", Type: "static", Members: []*controlplanev1.PoolMember{{ProxyId: "p1"}}},
 			})
 			require.NoError(t, err)
 
 			r2, err := client.ApplyPoolV1(ctx, &controlplanev1.ApplyPoolV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "pool-b"},
-				Spec:     &controlplanev1.PoolSpecV1{Title: "Pool B", Type: "static", ProxyIds: []string{"p2"}},
+				Spec:     &controlplanev1.PoolSpecV1{Title: "Pool B", Type: "static", Members: []*controlplanev1.PoolMember{{ProxyId: "p2"}}},
 			})
 			require.NoError(t, err)
 
@@ -176,7 +176,7 @@ func TestGRPC_Pool(t *testing.T) {
 
 			_, err := client.ApplyPoolV1(ctx, &controlplanev1.ApplyPoolV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "test-pool"},
-				Spec:     &controlplanev1.PoolSpecV1{Title: "Test Pool", Type: "static", ProxyIds: []string{"p1"}},
+				Spec:     &controlplanev1.PoolSpecV1{Title: "Test Pool", Type: "static", Members: []*controlplanev1.PoolMember{{ProxyId: "p1"}}},
 			})
 			require.NoError(t, err)
 
@@ -232,8 +232,19 @@ func TestGRPC_Balancer(t *testing.T) {
 		}},
 		{"Apply→List", func(t *testing.T) {
 			conn := newGrpcEnv(t)
+			poolClient := controlplanev1.NewPoolServiceClient(conn)
 			client := controlplanev1.NewBalancerServiceClient(conn)
 			ctx := context.Background()
+
+			_, err := poolClient.ApplyPoolV1(ctx, &controlplanev1.ApplyPoolV1Request{
+				Metadata: &controlplanev1.Metadata{Name: "pool-2"},
+				Spec: &controlplanev1.PoolSpecV1{
+					Title:   "Pool 2",
+					Type:    "static",
+					Members: []*controlplanev1.PoolMember{{ProxyId: "p1"}},
+				},
+			})
+			require.NoError(t, err)
 
 			r1, err := client.ApplyBalancerV1(ctx, &controlplanev1.ApplyBalancerV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "balancer-a"},

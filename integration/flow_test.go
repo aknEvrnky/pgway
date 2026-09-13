@@ -34,9 +34,9 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 
 	// 2. Pool (references proxy)
 	pool, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
-		Title:    "test-pool",
-		Type:     "static",
-		ProxyIds: []string{proxy.Id},
+		Title:   "test-pool",
+		Type:    "static",
+		Members: []poolv1.PoolMemberSpec{{ProxyId: proxy.Id}},
 	})
 	require.NoError(t, err)
 

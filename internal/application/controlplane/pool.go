@@ -29,6 +29,12 @@ func (s *Service) ApplyPoolV1(ctx context.Context, meta schema.Metadata, spec po
 		return nil, fmt.Errorf("domain validation: %w", err)
 	}
 
+	if pool.Type != domain.PoolTypeStatic {
+		if err := s.rejectIfWeightedBalancersReference(ctx, pool.Id); err != nil {
+			return nil, err
+		}
+	}
+
 	now := time.Now()
 	if existing, err := s.poolRepo.Find(ctx, pool.Id); err == nil {
 		pool.CreatedAt = existing.CreatedAt
@@ -86,7 +92,13 @@ func poolFromSpecV1(meta schema.Metadata, spec poolv1.PoolSpecV1) *domain.Pool {
 
 	switch pool.Type {
 	case domain.PoolTypeStatic:
-		pool.ProxyIds = spec.ProxyIds
+		pool.Members = make([]domain.PoolMember, 0, len(spec.Members))
+		for _, m := range spec.Members {
+			pool.Members = append(pool.Members, domain.PoolMember{
+				ProxyId: m.ProxyId,
+				Weight:  m.ResolvedWeight(),
+			})
+		}
 	case domain.PoolTypeDynamic:
 		pool.Selector = &domain.LabelSelector{
 			Allow: spec.Selector.Allow,
@@ -94,4 +106,18 @@ func poolFromSpecV1(meta schema.Metadata, spec poolv1.PoolSpecV1) *domain.Pool {
 	}
 
 	return pool
+}
+
+func (s *Service) rejectIfWeightedBalancersReference(ctx context.Context, poolID string) error {
+	result, err := s.lbRepo.List(ctx, domain.ListParams{PageSize: domain.DefaultMaxPageSize}, domain.BalancerFilter{
+		PoolId: poolID,
+		Type:   string(domain.BalancerTypeWeighted),
+	})
+	if err != nil {
+		return fmt.Errorf("checking weighted balancers for pool %q: %w", poolID, err)
+	}
+	if len(result.Items) > 0 {
+		return fmt.Errorf("pool %q is referenced by weighted balancer %q; change or delete the balancer before making the pool non-static", poolID, result.Items[0].Id)
+	}
+	return nil
 }

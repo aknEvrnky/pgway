@@ -20,7 +20,7 @@ func NewTestPool() *domain.Pool {
 		Id:       "pool-1",
 		Title:    "test-pool",
 		Type:     domain.PoolTypeStatic,
-		ProxyIds: []string{"p1"},
+		Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}},
 	}
 }
 

@@ -60,9 +60,22 @@ func (c *Client) DeletePool(ctx context.Context, name string) error {
 
 func poolSpecToProto(spec poolv1.PoolSpecV1) *controlplanev1.PoolSpecV1 {
 	pb := &controlplanev1.PoolSpecV1{
-		Title:    spec.Title,
-		Type:     spec.Type,
-		ProxyIds: spec.ProxyIds,
+		Title: spec.Title,
+		Type:  spec.Type,
+	}
+
+	if len(spec.Members) > 0 {
+		pb.Members = make([]*controlplanev1.PoolMember, 0, len(spec.Members))
+		for _, m := range spec.Members {
+			weight := int32(0)
+			if m.Weight != nil {
+				weight = int32(*m.Weight)
+			}
+			pb.Members = append(pb.Members, &controlplanev1.PoolMember{
+				ProxyId: m.ProxyId,
+				Weight:  weight,
+			})
+		}
 	}
 
 	if spec.Selector != nil {
@@ -80,11 +93,24 @@ func poolFromProto(pb *controlplanev1.Pool) *domain.Pool {
 	}
 
 	pool := &domain.Pool{
-		Id:       pb.Id,
-		Title:    pb.Title,
-		Type:     domain.PoolType(pb.Type),
-		Labels:   pb.Labels,
-		ProxyIds: pb.ProxyIds,
+		Id:     pb.Id,
+		Title:  pb.Title,
+		Type:   domain.PoolType(pb.Type),
+		Labels: pb.Labels,
+	}
+
+	if len(pb.Members) > 0 {
+		pool.Members = make([]domain.PoolMember, 0, len(pb.Members))
+		for _, m := range pb.Members {
+			weight := int(m.Weight)
+			if weight == 0 {
+				weight = 1
+			}
+			pool.Members = append(pool.Members, domain.PoolMember{
+				ProxyId: m.ProxyId,
+				Weight:  weight,
+			})
+		}
 	}
 
 	if pb.Selector != nil {

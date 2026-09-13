@@ -93,20 +93,30 @@ func poolSpecFromProto(pb *controlplanev1.PoolSpecV1) poolv1.PoolSpecV1 {
 		return poolv1.PoolSpecV1{}
 	}
 
-	return poolv1.PoolSpecV1{
-		Title:    pb.Title,
-		Type:     pb.Type,
-		ProxyIds: pb.ProxyIds,
-		Selector: func() *poolv1.SelectorSpec {
-			if pb.Selector == nil {
-				return nil
-			}
-
-			return &poolv1.SelectorSpec{
-				Allow: pb.Selector.Allow,
-			}
-		}(),
+	spec := poolv1.PoolSpecV1{
+		Title: pb.Title,
+		Type:  pb.Type,
 	}
+
+	if len(pb.Members) > 0 {
+		spec.Members = make([]poolv1.PoolMemberSpec, 0, len(pb.Members))
+		for _, m := range pb.Members {
+			ms := poolv1.PoolMemberSpec{ProxyId: m.ProxyId}
+			if m.Weight != 0 {
+				w := int(m.Weight)
+				ms.Weight = &w
+			}
+			spec.Members = append(spec.Members, ms)
+		}
+	}
+
+	if pb.Selector != nil {
+		spec.Selector = &poolv1.SelectorSpec{
+			Allow: pb.Selector.Allow,
+		}
+	}
+
+	return spec
 }
 
 func poolToProto(pool *domain.Pool) *controlplanev1.Pool {
@@ -114,17 +124,27 @@ func poolToProto(pool *domain.Pool) *controlplanev1.Pool {
 		return nil
 	}
 
-	return &controlplanev1.Pool{
+	pb := &controlplanev1.Pool{
 		Id:        pool.Id,
 		Title:     pool.Title,
 		Type:      string(pool.Type),
 		Labels:    pool.Labels,
-		ProxyIds:  pool.ProxyIds,
 		Selector:  selectorToProto(pool.Selector),
 		CreatedAt: timestamppb.New(pool.CreatedAt),
 		UpdatedAt: timestamppb.New(pool.UpdatedAt),
 	}
 
+	if len(pool.Members) > 0 {
+		pb.Members = make([]*controlplanev1.PoolMember, 0, len(pool.Members))
+		for _, m := range pool.Members {
+			pb.Members = append(pb.Members, &controlplanev1.PoolMember{
+				ProxyId: m.ProxyId,
+				Weight:  int32(m.Weight),
+			})
+		}
+	}
+
+	return pb
 }
 
 func selectorToProto(selector *domain.LabelSelector) *controlplanev1.SelectorSpec {
