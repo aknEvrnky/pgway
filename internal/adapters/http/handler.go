@@ -17,8 +17,17 @@ const copyBufSize = 32 * 1024
 
 var copyBufPool = sync.Pool{
 	New: func() any {
-		return make([]byte, copyBufSize)
+		b := make([]byte, copyBufSize)
+		return &b
 	},
+}
+
+func getCopyBuf() *[]byte {
+	return copyBufPool.Get().(*[]byte)
+}
+
+func putCopyBuf(b *[]byte) {
+	copyBufPool.Put(b)
 }
 
 type closeWriter interface {
@@ -119,18 +128,18 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	g, _ := errgroup.WithContext(r.Context())
 
 	g.Go(func() error {
-		buf := copyBufPool.Get().([]byte)
-		defer copyBufPool.Put(buf)
-		_, err := io.CopyBuffer(dst, src, buf)
+		bufp := getCopyBuf()
+		defer putCopyBuf(bufp)
+		_, err := io.CopyBuffer(dst, src, *bufp)
 		closeWrite(dst)
 		return err
 	})
 
 	g.Go(func() error {
-		buf := copyBufPool.Get().([]byte)
-		defer copyBufPool.Put(buf)
+		bufp := getCopyBuf()
+		defer putCopyBuf(bufp)
 		// Downstream only: upstream → client
-		n, err := io.CopyBuffer(src, dst, buf)
+		n, err := io.CopyBuffer(src, dst, *bufp)
 		*transferred = n
 		closeWrite(src)
 		return err
@@ -166,9 +175,9 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	h.removeHopHeaders(resp.Header)
 	h.copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	buf := copyBufPool.Get().([]byte)
-	defer copyBufPool.Put(buf)
-	n, err := io.CopyBuffer(w, resp.Body, buf)
+	bufp := getCopyBuf()
+	defer putCopyBuf(bufp)
+	n, err := io.CopyBuffer(w, resp.Body, *bufp)
 	*transferred = n
 	if err != nil {
 		zap.L().Error("copy response body", zap.Error(err))

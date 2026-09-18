@@ -40,9 +40,9 @@ func BenchmarkCopyBufferPool(b *testing.B) {
 		var dst nopWriter
 		for b.Loop() {
 			br.Reset(payload)
-			buf := copyBufPool.Get().([]byte)
-			_, _ = io.CopyBuffer(dst, src, buf)
-			copyBufPool.Put(buf)
+			bufp := getCopyBuf()
+			_, _ = io.CopyBuffer(dst, src, *bufp)
+			putCopyBuf(bufp)
 		}
 	})
 }
