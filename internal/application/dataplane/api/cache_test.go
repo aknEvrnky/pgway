@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -162,4 +163,33 @@ func TestResourceCache_Reload(t *testing.T) {
 	assert.Equal(t, entrypoints[0], ep)
 	assert.Equal(t, flows[0], f)
 	assert.Equal(t, routers[0], r)
+}
+
+func TestResourceCache_Reload_CompilesPathRegex(t *testing.T) {
+	cache := NewResourceCache()
+
+	routers := []*domain.Router{
+		{
+			Id: "regex-router",
+			Rules: []*domain.RouterRule{
+				{
+					Id:     "r1",
+					Match:  domain.RouterMatch{Type: domain.MatchTypePathRegex, Value: `^/v\d+/`},
+					Target: "lb-1",
+				},
+			},
+		},
+	}
+
+	cache.Reload(nil, nil, routers)
+
+	r, err := cache.GetRouter("regex-router")
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/v2/x", nil)
+	require.NoError(t, err)
+
+	target, found := r.Resolve(req)
+	require.True(t, found)
+	assert.Equal(t, "lb-1", target)
 }

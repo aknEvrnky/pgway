@@ -192,12 +192,48 @@ func TestRouter_Validate(t *testing.T) {
 			},
 			expectedErr: `rule "r1": target is required`,
 		},
+		{
+			name: "invalid path_regex shorthand",
+			router: Router{
+				Rules: []*RouterRule{
+					{Id: "r1", Match: RouterMatch{Type: MatchTypePathRegex, Value: `(`}, Target: "pool-a"},
+				},
+			},
+			expectedErr: `rule "r1": path_regex:`,
+		},
+		{
+			name: "invalid path_regex in all",
+			router: Router{
+				Rules: []*RouterRule{
+					{
+						Id: "r1",
+						Match: RouterMatch{
+							All: []RouterCondition{
+								{Type: MatchTypePathRegex, Value: `[`},
+							},
+						},
+						Target: "pool-a",
+					},
+				},
+			},
+			expectedErr: `rule "r1": all: path_regex:`,
+		},
+		{
+			name: "valid path_regex compiles",
+			router: Router{
+				Rules: []*RouterRule{
+					{Id: "r1", Match: RouterMatch{Type: MatchTypePathRegex, Value: `^/v\d+/`}, Target: "pool-a"},
+				},
+			},
+			expectedErr: "",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.router.Validate()
 
 			if tt.expectedErr != "" {
-				assert.EqualError(t, err, tt.expectedErr)
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -460,10 +496,44 @@ func TestRouterMatch_Evaluate(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.match.Evaluate(tt.req)
+			match := tt.match
+			router := Router{Rules: []*RouterRule{{Id: "t", Match: match, Target: "x"}}}
+			require.NoError(t, router.Compile())
+
+			result := router.Rules[0].Match.Evaluate(tt.req)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestRouterMatch_Evaluate_PathRegexUncompiled(t *testing.T) {
+	match := RouterMatch{Type: MatchTypePathRegex, Value: `^/v\d+/`}
+	req := newReq("GET", "http://x.com/v2/resource", nil)
+
+	assert.False(t, match.Evaluate(req))
+}
+
+func TestRouter_Compile_CompositePathRegex(t *testing.T) {
+	router := Router{
+		Rules: []*RouterRule{
+			{
+				Id: "r1",
+				Match: RouterMatch{
+					All: []RouterCondition{
+						{Type: MatchTypePathRegex, Value: `^/api/`},
+						{Type: MatchTypeMethod, Value: "GET"},
+					},
+				},
+				Target: "pool-a",
+			},
+		},
+	}
+	require.NoError(t, router.Compile())
+
+	req := newReq("GET", "http://x.com/api/v1", nil)
+	target, found := router.Resolve(req)
+	require.True(t, found)
+	assert.Equal(t, "pool-a", target)
 }
 
 func TestRouter_Resolve_FirstMatchWins(t *testing.T) {

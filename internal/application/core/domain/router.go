@@ -37,6 +37,9 @@ func (m MatchType) IsValid() bool {
 type RouterCondition struct {
 	Type  MatchType `json:"type" yaml:"type"`
 	Value string    `json:"value" yaml:"value"`
+
+	// re holds a pre-compiled path_regex. Not persisted.
+	re *regexp.Regexp `json:"-" yaml:"-"`
 }
 
 type RouterMatch struct {
@@ -48,6 +51,9 @@ type RouterMatch struct {
 	All []RouterCondition `json:"all,omitempty" yaml:"all,omitempty"` // AND
 	Any []RouterCondition `json:"any,omitempty" yaml:"any,omitempty"` // OR
 	Not *RouterCondition  `json:"not,omitempty" yaml:"not,omitempty"`
+
+	// re holds a pre-compiled shorthand path_regex. Not persisted.
+	re *regexp.Regexp `json:"-" yaml:"-"`
 }
 
 type RouterRule struct {
@@ -76,8 +82,8 @@ func (m *RouterMatch) HasNot() bool {
 	return m.Not != nil
 }
 
-// Validate checks all rules in the router for configuration errors.
-// Called at startup, before serving traffic.
+// Validate checks all rules in the router for configuration errors and
+// pre-compiles path_regex patterns. Called on apply and before serving traffic.
 func (r *Router) Validate() error {
 	for _, rule := range r.Rules {
 		if err := rule.validateRule(); err != nil {
@@ -85,6 +91,57 @@ func (r *Router) Validate() error {
 		}
 	}
 
+	return r.Compile()
+}
+
+// Compile pre-compiles all path_regex patterns on this router.
+// Safe to call after deserialization (re fields are not persisted).
+// Does not panic; returns a wrapped error on invalid patterns.
+func (r *Router) Compile() error {
+	for _, rule := range r.Rules {
+		if err := rule.Match.compile(); err != nil {
+			return fmt.Errorf("rule %q: %w", rule.Id, err)
+		}
+	}
+	return nil
+}
+
+func (m *RouterMatch) compile() error {
+	if m.Type == MatchTypePathRegex {
+		re, err := regexp.Compile(m.Value)
+		if err != nil {
+			return fmt.Errorf("path_regex: %w", err)
+		}
+		m.re = re
+	}
+
+	for i := range m.All {
+		if err := m.All[i].compile(); err != nil {
+			return fmt.Errorf("all: %w", err)
+		}
+	}
+	for i := range m.Any {
+		if err := m.Any[i].compile(); err != nil {
+			return fmt.Errorf("any: %w", err)
+		}
+	}
+	if m.Not != nil {
+		if err := m.Not.compile(); err != nil {
+			return fmt.Errorf("not: %w", err)
+		}
+	}
+	return nil
+}
+
+func (c *RouterCondition) compile() error {
+	if c.Type != MatchTypePathRegex {
+		return nil
+	}
+	re, err := regexp.Compile(c.Value)
+	if err != nil {
+		return fmt.Errorf("path_regex: %w", err)
+	}
+	c.re = re
 	return nil
 }
 
@@ -153,6 +210,7 @@ func (m *RouterMatch) Evaluate(r *http.Request) bool {
 		cond := RouterCondition{
 			Type:  m.Type,
 			Value: m.Value,
+			re:    m.re,
 		}
 
 		return cond.evaluate(r)
@@ -215,13 +273,10 @@ func (c *RouterCondition) evaluate(r *http.Request) bool {
 		return strings.HasPrefix(r.URL.Path, c.Value)
 
 	case MatchTypePathRegex:
-		matched, err := regexp.MatchString(c.Value, r.URL.Path)
-
-		if err != nil {
+		if c.re == nil {
 			return false
 		}
-
-		return matched
+		return c.re.MatchString(r.URL.Path)
 
 	case MatchTypeMethod:
 		return strings.EqualFold(r.Method, c.Value)
