@@ -13,10 +13,10 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/consumer"
-	"github.com/aknEvrnky/pgway/internal/application/core/agenthost"
-	"github.com/aknEvrnky/pgway/internal/application/core/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/agenthost"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	"go.uber.org/zap"
@@ -83,7 +83,7 @@ func main() {
 	cpClient.SetToken(boot.AgentToken)
 	zap.L().Info("agent ready", zap.String("agent_id", boot.AgentID))
 
-	app := api.NewApplication(cpClient, cpClient)
+	app := api.NewApplication(cpClient, cpClient, zap.L())
 	ctx := context.Background()
 
 	if err := app.Bootstrap(ctx); err != nil {
@@ -97,7 +97,7 @@ func main() {
 	}
 
 	localBus := memory.NewPubSub(10)
-	eventConsumer := consumer.NewConsumer(localBus, app, httpAdapter)
+	eventConsumer := consumer.NewConsumer(zap.L(), localBus, app, httpAdapter)
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -113,7 +113,7 @@ func main() {
 	}()
 
 	go func() {
-		hbErr <- agenthost.RunHeartbeat(sigCtx, cpClient, cfg.HeartbeatInterval)
+		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.HeartbeatInterval)
 	}()
 
 	go func() {
@@ -121,7 +121,7 @@ func main() {
 	}()
 
 	go func() {
-		watchErr <- agenthost.RunWatch(sigCtx, changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
+		watchErr <- agenthost.RunWatch(sigCtx, zap.L(), changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
 			return app.Bootstrap(c)
 		})
 	}()

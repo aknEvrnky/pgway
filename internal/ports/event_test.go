@@ -1,4 +1,4 @@
-package event
+package ports
 
 import (
 	"testing"
@@ -29,7 +29,6 @@ func TestResourceType_IsValid(t *testing.T) {
 			rtype := ResourceType(tt.resourceType)
 			assert.Equal(t, tt.isValid, rtype.IsValid())
 		})
-
 	}
 }
 
@@ -56,7 +55,6 @@ func TestChangeKind_IsValid(t *testing.T) {
 			kind := ChangeKind(tt.kind)
 			assert.Equal(t, tt.isValid, kind.IsValid())
 		})
-
 	}
 }
 

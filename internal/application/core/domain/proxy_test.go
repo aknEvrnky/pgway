@@ -57,7 +57,7 @@ func TestNewProxyFromURL(t *testing.T) {
 			name:          "invalid proxy url can not be parsed",
 			proxyUrl:      "https://user:pass:127.0.0.1:8080",
 			expectedProxy: nil,
-			expectedError: "parsing host:port:",
+			expectedError: "url parse:",
 		},
 		{
 			name:          "invalid port can not be parsed",

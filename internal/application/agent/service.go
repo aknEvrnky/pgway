@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
@@ -72,7 +71,7 @@ func (s *Service) Heartbeat(ctx context.Context) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	rawToken, ok := auth.TokenFromContext(ctx)
+	rawToken, ok := ports.TokenFromContext(ctx)
 	if !ok || rawToken == "" {
 		return time.Time{}, ErrTokenRequired
 	}
@@ -142,7 +141,7 @@ func (s *Service) DeleteAgent(ctx context.Context, name string) error {
 }
 
 func agentFromContext(ctx context.Context) (*domain.Agent, error) {
-	principal, ok := auth.PrincipalFromContext(ctx)
+	principal, ok := ports.PrincipalFromContext(ctx)
 	if !ok || principal == nil || principal.Agent == nil {
 		return nil, ErrAgentRequired
 	}

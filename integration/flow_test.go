@@ -6,11 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aknEvrnky/pgway/internal/application/core/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
@@ -65,7 +67,7 @@ func TestFlow_BootstrapAndExecute(t *testing.T) {
 	require.NoError(t, err)
 
 	// Bootstrap Application from real DB
-	app := api.NewApplication(svc, svc)
+	app := api.NewApplication(svc, svc, zap.NewNop())
 	err = app.Bootstrap(ctx)
 	require.NoError(t, err)
 

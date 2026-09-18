@@ -4,18 +4,19 @@ import (
 	"context"
 	"sync"
 
-	"github.com/aknEvrnky/pgway/internal/application/event"
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/google/uuid"
 )
 
 type PubSub struct {
 	bufferSize int
 	mu         sync.Mutex
-	subs       map[string]chan event.ChangeEvent
+	subs       map[string]chan ports.ChangeEvent
 }
 
 func NewPubSub(bufferSize int) *PubSub {
-	subs := make(map[string]chan event.ChangeEvent, bufferSize)
+	subs := make(map[string]chan ports.ChangeEvent, bufferSize)
 
 	return &PubSub{
 		bufferSize: bufferSize,
@@ -24,7 +25,7 @@ func NewPubSub(bufferSize int) *PubSub {
 	}
 }
 
-func (p *PubSub) Publish(ctx context.Context, event event.ChangeEvent) error {
+func (p *PubSub) Publish(ctx context.Context, event ports.ChangeEvent) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for _, ch := range p.subs {
@@ -37,8 +38,8 @@ func (p *PubSub) Publish(ctx context.Context, event event.ChangeEvent) error {
 	return nil
 }
 
-func (p *PubSub) Subscribe(ctx context.Context) <-chan event.ChangeEvent {
-	ch := make(chan event.ChangeEvent, p.bufferSize)
+func (p *PubSub) Subscribe(ctx context.Context) <-chan ports.ChangeEvent {
+	ch := make(chan ports.ChangeEvent, p.bufferSize)
 	chId := uuid.New().String()
 	p.mu.Lock()
 	p.subs[chId] = ch

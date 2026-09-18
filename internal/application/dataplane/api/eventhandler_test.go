@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,10 +23,10 @@ func TestApplication_HandleEvent_WarmupCache(t *testing.T) {
 	cp.entrypoints = append(cp.entrypoints, testEP)
 
 	// create a mock event
-	mockEvent := event.ChangeEvent{
+	mockEvent := ports.ChangeEvent{
 		ID:           testEP.Id,
-		ResourceType: event.ResourceTypeEntrypoint,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeEntrypoint,
+		ChangeKind:   ports.ChangeKindSaved,
 	}
 
 	err = app.HandleEvent(context.Background(), mockEvent)
@@ -72,10 +73,10 @@ func TestApplication_HandleEvent_BootstrapApplication(t *testing.T) {
 	cp.pools["pool-1"] = newTestPool
 
 	// handle change event
-	changeEvent := event.ChangeEvent{
+	changeEvent := ports.ChangeEvent{
 		ID:           newTestProxy.Id,
-		ResourceType: event.ResourceTypeProxy,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeProxy,
+		ChangeKind:   ports.ChangeKindSaved,
 	}
 
 	err = app.HandleEvent(context.Background(), changeEvent)
@@ -103,10 +104,10 @@ func TestApplication_HandleEvent_DeletedRemovesFromCache(t *testing.T) {
 	// upstream no longer has the entrypoint
 	cp.entrypoints = []*domain.Entrypoint{}
 
-	err = app.HandleEvent(context.Background(), event.ChangeEvent{
+	err = app.HandleEvent(context.Background(), ports.ChangeEvent{
 		ID:           testEP.Id,
-		ResourceType: event.ResourceTypeEntrypoint,
-		ChangeKind:   event.ChangeKindDeleted,
+		ResourceType: ports.ResourceTypeEntrypoint,
+		ChangeKind:   ports.ChangeKindDeleted,
 	})
 	require.NoError(t, err)
 
@@ -138,10 +139,10 @@ func TestApplication_HandleEvent_TopologyEventKeepsBalancerState(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, testProxy, proxy)
 
-	err = app.HandleEvent(context.Background(), event.ChangeEvent{
+	err = app.HandleEvent(context.Background(), ports.ChangeEvent{
 		ID:           testEP.Id,
-		ResourceType: event.ResourceTypeEntrypoint,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeEntrypoint,
+		ChangeKind:   ports.ChangeKindSaved,
 	})
 	require.NoError(t, err)
 
@@ -166,10 +167,10 @@ func TestApplication_HandleEvent_BalancerEventKeepsTopologyCache(t *testing.T) {
 	secondEP := &domain.Entrypoint{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, FlowId: "flow-1"}
 	cp.entrypoints = []*domain.Entrypoint{testEP, secondEP}
 
-	err := app.HandleEvent(context.Background(), event.ChangeEvent{
+	err := app.HandleEvent(context.Background(), ports.ChangeEvent{
 		ID:           testProxy.Id,
-		ResourceType: event.ResourceTypeProxy,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeProxy,
+		ChangeKind:   ports.ChangeKindSaved,
 	})
 	require.NoError(t, err)
 

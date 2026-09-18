@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/balancer"
+	"go.uber.org/zap"
+
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -176,7 +178,7 @@ var (
 )
 
 func newApp(cp *mockControlPlane) *Application {
-	return NewApplication(cp, cp)
+	return NewApplication(cp, cp, zap.NewNop())
 }
 
 // --- tests ---

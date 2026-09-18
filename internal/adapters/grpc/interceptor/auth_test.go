@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
@@ -65,12 +67,12 @@ func TestUnaryAuth(t *testing.T) {
 		ctx, err := callUnary(t, ctxWithAuthHeader("Bearer pgw_valid"), protectedMethod)
 		require.NoError(t, err)
 
-		principal, ok := auth.PrincipalFromContext(ctx)
+		principal, ok := ports.PrincipalFromContext(ctx)
 		require.True(t, ok)
 		assert.Equal(t, domain.PrincipalKindUser, principal.Kind())
 		assert.Equal(t, "alice", principal.User.Id)
 
-		token, ok := auth.TokenFromContext(ctx)
+		token, ok := ports.TokenFromContext(ctx)
 		require.True(t, ok)
 		assert.Equal(t, "pgw_valid", token)
 	})
@@ -79,7 +81,7 @@ func TestUnaryAuth(t *testing.T) {
 		agentPrincipal := &domain.Principal{Agent: &domain.Agent{Id: "edge-1"}}
 		ctx, err := callUnaryAs(t, agentPrincipal, ctxWithAuthHeader("Bearer pgw_valid"), agentHeartbeatMethod)
 		require.NoError(t, err)
-		principal, ok := auth.PrincipalFromContext(ctx)
+		principal, ok := ports.PrincipalFromContext(ctx)
 		require.True(t, ok)
 		assert.Equal(t, domain.PrincipalKindAgent, principal.Kind())
 	})

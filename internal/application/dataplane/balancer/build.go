@@ -3,7 +3,7 @@ package balancer
 import (
 	"fmt"
 
-	"github.com/aknEvrnky/pgway/internal/application/balancer/algorithm"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer/algorithm"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 )
 

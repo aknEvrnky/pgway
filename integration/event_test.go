@@ -5,11 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/consumer"
-	"github.com/aknEvrnky/pgway/internal/application/core/api"
-	"github.com/aknEvrnky/pgway/internal/application/event"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	v1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	"github.com/stretchr/testify/assert"
@@ -22,17 +25,17 @@ func TestApplication_Event_Handler(t *testing.T) {
 	pubSub := memory.NewPubSub(10)
 	spy := &testutil.SpyHandler{}
 	svc := testutil.NewSvc(t, pubSub)
-	app := api.NewApplication(svc, svc)
+	app := api.NewApplication(svc, svc, zap.NewNop())
 
 	// init the consumer
-	eventConsumer := consumer.NewConsumer(pubSub, app, spy)
+	eventConsumer := consumer.NewConsumer(zap.NewNop(), pubSub, app, spy)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = eventConsumer.ConsumeEvents(ctx) }()
 
 	// gate: wait until subscriber starts to consume
 	require.Eventually(t, func() bool {
-		_ = pubSub.Publish(ctx, event.ChangeEvent{ID: "sentinel"})
+		_ = pubSub.Publish(ctx, ports.ChangeEvent{ID: "sentinel"})
 		return spy.Count() > 0
 	}, 2*time.Second, 10*time.Millisecond)
 

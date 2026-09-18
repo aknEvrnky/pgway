@@ -11,7 +11,10 @@ import (
 // RunWatch reconnects forever until ctx is canceled. onConnect runs before
 // each stream (full reload to close missed-event gaps). Transient failures
 // back off; Unauthenticated is fatal.
-func RunWatch(ctx context.Context, watch ports.AgentChangeWatcher, onConnect func(context.Context) error) error {
+func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatcher, onConnect func(context.Context) error) error {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	backoff := time.Second
 	const maxBackoff = 30 * time.Second
 
@@ -25,7 +28,7 @@ func RunWatch(ctx context.Context, watch ports.AgentChangeWatcher, onConnect fun
 				if isAuthRejected(err) {
 					return fatalAuthError(err)
 				}
-				zap.L().Warn("watch reconnect reload failed", zap.Error(err))
+				log.Warn("watch reconnect reload failed", zap.Error(err))
 				if !sleepBackoff(ctx, &backoff, maxBackoff) {
 					return ctx.Err()
 				}
@@ -41,7 +44,7 @@ func RunWatch(ctx context.Context, watch ports.AgentChangeWatcher, onConnect fun
 			return fatalAuthError(err)
 		}
 		if err != nil {
-			zap.L().Warn("watch stream ended", zap.Error(err))
+			log.Warn("watch stream ended", zap.Error(err))
 		}
 
 		backoff = time.Second

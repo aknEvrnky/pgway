@@ -7,8 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,13 +40,13 @@ func (l *callLog) snapshot() []string {
 	return append([]string(nil), l.calls...)
 }
 
-func (h *recordingHandler) HandleEvent(_ context.Context, _ event.ChangeEvent) error {
+func (h *recordingHandler) HandleEvent(_ context.Context, _ ports.ChangeEvent) error {
 	h.log.append(h.name)
 	return h.err
 }
 
-func testEvent() event.ChangeEvent {
-	return event.ChangeEvent{ID: "x", ResourceType: event.ResourceTypeEntrypoint, ChangeKind: event.ChangeKindSaved}
+func testEvent() ports.ChangeEvent {
+	return ports.ChangeEvent{ID: "x", ResourceType: ports.ResourceTypeEntrypoint, ChangeKind: ports.ChangeKindSaved}
 }
 
 func TestConsumer_ConsumeEvents_CallsHandlersInOrder(t *testing.T) {
@@ -52,7 +55,7 @@ func TestConsumer_ConsumeEvents_CallsHandlersInOrder(t *testing.T) {
 	first := &recordingHandler{name: "first", log: log}
 	second := &recordingHandler{name: "second", log: log}
 
-	consumer := NewConsumer(ps, first, second)
+	consumer := NewConsumer(zap.NewNop(), ps, first, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -89,7 +92,7 @@ func TestConsumer_ConsumeEvents_ContinuesAfterHandlerError(t *testing.T) {
 	failing := &recordingHandler{name: "failing", err: errors.New("boom"), log: log}
 	second := &recordingHandler{name: "second", log: log}
 
-	consumer := NewConsumer(ps, failing, second)
+	consumer := NewConsumer(zap.NewNop(), ps, failing, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -119,7 +122,7 @@ func TestConsumer_ConsumeEvents_ContinuesAfterHandlerError(t *testing.T) {
 
 func TestConsumer_ConsumeEvents_ReturnsNilOnCtxCancel(t *testing.T) {
 	ps := memory.NewPubSub(10)
-	consumer := NewConsumer(ps, &recordingHandler{name: "h", log: &callLog{}})
+	consumer := NewConsumer(zap.NewNop(), ps, &recordingHandler{name: "h", log: &callLog{}})
 
 	ctx, cancel := context.WithCancel(context.Background())
 

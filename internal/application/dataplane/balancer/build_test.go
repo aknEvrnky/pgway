@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/balancer/algorithm"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer/algorithm"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

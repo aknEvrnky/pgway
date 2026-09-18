@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose a new capability or improvement
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and the outcome you want. Implementation ideas are welcome but optional.
+        Dashboard/REST work is experimental — call that out if the request is UI-only.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What is hard or missing today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should pgway do? Include YAML/API sketches if useful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Control Plane (config, gRPC, auth, agents)
+        - Data Plane (proxying, routing, balancers)
+        - CLI (pgctl)
+        - Schema / YAML resources
+        - Dashboard / REST (experimental)
+        - Docs / DX
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues / roadmap items for overlap
+          required: true

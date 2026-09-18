@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
-	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,13 +52,13 @@ func (m *mockManagers) Login(_ context.Context, _, _ string, _ time.Duration, _ 
 func (m *mockManagers) Logout(_ context.Context, _ string) error { return nil }
 
 func ctxWithUser(role domain.Role, id string) context.Context {
-	return auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+	return ports.ContextWithPrincipal(context.Background(), &domain.Principal{
 		User: &domain.User{Id: id, Role: role},
 	})
 }
 
 func ctxWithAgent(id string) context.Context {
-	return auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+	return ports.ContextWithPrincipal(context.Background(), &domain.Principal{
 		Agent: &domain.Agent{Id: id},
 	})
 }
@@ -182,7 +183,7 @@ func TestAuthServer_Logout(t *testing.T) {
 	})
 
 	t.Run("with token in context", func(t *testing.T) {
-		ctx := auth.ContextWithToken(context.Background(), "pgw_token")
+		ctx := ports.ContextWithToken(context.Background(), "pgw_token")
 		_, err := srv.Logout(ctx, &controlplanev1.LogoutRequest{})
 		assert.NoError(t, err)
 	})

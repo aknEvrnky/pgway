@@ -12,7 +12,10 @@ import (
 // RunHeartbeat ticks until ctx is canceled. Transient errors are logged;
 // Unauthenticated is fatal (token revoked/expired — admin must mint a new
 // registration token).
-func RunHeartbeat(ctx context.Context, hb ports.AgentHeartbeater, interval time.Duration) error {
+func RunHeartbeat(ctx context.Context, log *zap.Logger, hb ports.AgentHeartbeater, interval time.Duration) error {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	if interval <= 0 {
 		interval = 10 * time.Second
 	}
@@ -33,10 +36,10 @@ func RunHeartbeat(ctx context.Context, hb ports.AgentHeartbeater, interval time.
 				if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 					return err
 				}
-				zap.L().Warn("agent heartbeat failed", zap.Error(err))
+				log.Warn("agent heartbeat failed", zap.Error(err))
 				continue
 			}
-			zap.L().Info("agent heartbeat ok",
+			log.Info("agent heartbeat ok",
 				zap.Time("token_expires_at", expiresAt),
 			)
 		}

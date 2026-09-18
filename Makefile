@@ -1,4 +1,4 @@
-.PHONY: proto build test
+.PHONY: proto build test tools
 
 build:
 	go build -o build/pgway ./cmd/pgway
@@ -6,8 +6,12 @@ build:
 	go build -o build/pgway-dp ./cmd/pgway-dp
 	go build -o build/pgctl ./cmd/pgctl
 
-test:
-	go test -race ./...
+# Dev tools (GOBIN / $(go env GOPATH)/bin must be on PATH)
+tools:
+	go install gotest.tools/gotestsum@latest
+
+test: tools
+	gotestsum -- -race ./...
 
 proto:
 	protoc \

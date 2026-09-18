@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ func (f *fakeAPI) ExecuteFlow(_ context.Context, _ string, _ *http.Request) (*do
 
 func (f *fakeAPI) Release(_ context.Context, _ string, _ domain.BalancerResult) error { return nil }
 
-func (f *fakeAPI) HandleEvent(_ context.Context, _ event.ChangeEvent) error { return nil }
+func (f *fakeAPI) HandleEvent(_ context.Context, _ ports.ChangeEvent) error { return nil }
 
 func testEntrypoint(id string, port uint16) *domain.Entrypoint {
 	return &domain.Entrypoint{
@@ -88,12 +89,12 @@ func waitNotListening(t *testing.T, addr string) {
 	}, 2*time.Second, 20*time.Millisecond, "expected %s to refuse connections", addr)
 }
 
-func savedEvent(id string) event.ChangeEvent {
-	return event.ChangeEvent{ID: id, ResourceType: event.ResourceTypeEntrypoint, ChangeKind: event.ChangeKindSaved}
+func savedEvent(id string) ports.ChangeEvent {
+	return ports.ChangeEvent{ID: id, ResourceType: ports.ResourceTypeEntrypoint, ChangeKind: ports.ChangeKindSaved}
 }
 
-func deletedEvent(id string) event.ChangeEvent {
-	return event.ChangeEvent{ID: id, ResourceType: event.ResourceTypeEntrypoint, ChangeKind: event.ChangeKindDeleted}
+func deletedEvent(id string) ports.ChangeEvent {
+	return ports.ChangeEvent{ID: id, ResourceType: ports.ResourceTypeEntrypoint, ChangeKind: ports.ChangeKindDeleted}
 }
 
 // --- HandleEvent -----------------------------------------------------------
@@ -179,7 +180,7 @@ func TestAdapter_HandleEvent_IgnoresOtherResourceTypes(t *testing.T) {
 	adapter, err := NewHttpAdapter(context.Background(), api, nil)
 	require.NoError(t, err)
 
-	e := event.ChangeEvent{ID: "p-1", ResourceType: event.ResourceTypeProxy, ChangeKind: event.ChangeKindSaved}
+	e := ports.ChangeEvent{ID: "p-1", ResourceType: ports.ResourceTypeProxy, ChangeKind: ports.ChangeKindSaved}
 	require.NoError(t, adapter.HandleEvent(context.Background(), e))
 
 	adapter.mu.Lock()
