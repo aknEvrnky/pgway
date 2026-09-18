@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -10,10 +11,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type handlerFakeAPI struct {
@@ -163,4 +166,173 @@ func TestHandler_CONNECT_IgnoresBodyLimit(t *testing.T) {
 	assert.NotEqual(t, http.StatusRequestEntityTooLarge, rec.Code)
 	assert.Equal(t, int32(1), api.executeCalls.Load())
 	assert.Equal(t, int32(0), tr.roundTripCalls.Load())
+}
+
+type closeWriteStub struct {
+	net.Conn
+	calls atomic.Int32
+}
+
+func (c *closeWriteStub) CloseWrite() error {
+	c.calls.Add(1)
+	if tc, ok := c.Conn.(*net.TCPConn); ok {
+		return tc.CloseWrite()
+	}
+	return nil
+}
+
+func TestCloseWrite_Soft(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no-op when unsupported", func(t *testing.T) {
+		a, b := net.Pipe()
+		t.Cleanup(func() { _ = a.Close(); _ = b.Close() })
+		assert.NotPanics(t, func() { closeWrite(a) })
+	})
+
+	t.Run("calls CloseWrite when present", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = ln.Close() })
+
+		accepted := make(chan net.Conn, 1)
+		go func() {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			accepted <- c
+		}()
+
+		client, err := net.Dial("tcp", ln.Addr().String())
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = client.Close() })
+
+		server := <-accepted
+		t.Cleanup(func() { _ = server.Close() })
+
+		stub := &closeWriteStub{Conn: server}
+		closeWrite(stub)
+		assert.Equal(t, int32(1), stub.calls.Load())
+	})
+}
+
+type hijackResponse struct {
+	header http.Header
+	code   int
+	conn   net.Conn
+}
+
+func (h *hijackResponse) Header() http.Header {
+	if h.header == nil {
+		h.header = make(http.Header)
+	}
+	return h.header
+}
+
+func (h *hijackResponse) Write(b []byte) (int, error) { return len(b), nil }
+
+func (h *hijackResponse) WriteHeader(code int) { h.code = code }
+
+func (h *hijackResponse) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return h.conn, bufio.NewReadWriter(bufio.NewReader(h.conn), bufio.NewWriter(h.conn)), nil
+}
+
+type tunnelFakeTransport struct {
+	dst       net.Conn
+	dialCalls atomic.Int32
+}
+
+func (t *tunnelFakeTransport) RoundTrip(context.Context, *domain.Proxy, *http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func (t *tunnelFakeTransport) Dial(context.Context, *domain.Proxy, string) (net.Conn, error) {
+	t.dialCalls.Add(1)
+	return t.dst, nil
+}
+
+func TestHandler_CONNECT_HalfCloseAndTransfer(t *testing.T) {
+	// Upstream echo server (what Dial returns a connection to).
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = upLn.Close() })
+
+	go func() {
+		c, err := upLn.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		buf := make([]byte, 64)
+		n, err := c.Read(buf)
+		if err != nil {
+			return
+		}
+		_, _ = c.Write(buf[:n])
+		if tc, ok := c.(*net.TCPConn); ok {
+			_ = tc.CloseWrite()
+		}
+	}()
+
+	upConn, err := net.Dial("tcp", upLn.Addr().String())
+	require.NoError(t, err)
+	upStub := &closeWriteStub{Conn: upConn}
+
+	// Client side of the hijacked connection.
+	clientLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clientLn.Close() })
+
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		c, err := clientLn.Accept()
+		if err != nil {
+			return
+		}
+		accepted <- c
+	}()
+
+	peer, err := net.Dial("tcp", clientLn.Addr().String())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = peer.Close() })
+
+	hijacked := <-accepted
+	clientStub := &closeWriteStub{Conn: hijacked}
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &tunnelFakeTransport{dst: upStub}
+	h := NewHandler(api, tr, 0)
+
+	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
+	req.Host = "example.com:443"
+	req = withEntrypoint(req, "ep1")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		h.ServeHTTP(&hijackResponse{conn: clientStub}, req)
+	}()
+
+	payload := []byte("ping-tunnel")
+	_, err = peer.Write(payload)
+	require.NoError(t, err)
+
+	got := make([]byte, len(payload))
+	require.NoError(t, peer.SetReadDeadline(time.Now().Add(2*time.Second)))
+	_, err = io.ReadFull(peer, got)
+	require.NoError(t, err)
+	assert.Equal(t, payload, got)
+
+	_ = peer.Close()
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("tunnel did not finish after client close")
+	}
+
+	assert.GreaterOrEqual(t, upStub.calls.Load(), int32(1))
+	assert.GreaterOrEqual(t, clientStub.calls.Load(), int32(1))
+	assert.Equal(t, int32(1), tr.dialCalls.Load())
 }

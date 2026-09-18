@@ -3,12 +3,34 @@ package http
 import (
 	"errors"
 	"io"
+	"net"
 	"net/http"
+	"sync"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
+
+const copyBufSize = 32 * 1024
+
+var copyBufPool = sync.Pool{
+	New: func() any {
+		return make([]byte, copyBufSize)
+	},
+}
+
+type closeWriter interface {
+	CloseWrite() error
+}
+
+// closeWrite half-closes c when supported; otherwise it is a no-op.
+func closeWrite(c net.Conn) {
+	if cw, ok := c.(closeWriter); ok {
+		_ = cw.CloseWrite()
+	}
+}
 
 type Handler struct {
 	app          ports.Application
@@ -94,19 +116,28 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	}
 	defer src.Close()
 
-	errc := make(chan error, 1)
-	go func() {
-		_, err := io.Copy(dst, src)
-		errc <- err
-	}()
-	// Downstream only: upstream → client
-	n, err := io.Copy(src, dst)
-	*transferred = n
-	if err != nil {
-		zap.L().Debug("tunnel copy dst→src", zap.Error(err))
-	}
-	if err := <-errc; err != nil {
-		zap.L().Debug("tunnel copy src→dst", zap.Error(err))
+	g, _ := errgroup.WithContext(r.Context())
+
+	g.Go(func() error {
+		buf := copyBufPool.Get().([]byte)
+		defer copyBufPool.Put(buf)
+		_, err := io.CopyBuffer(dst, src, buf)
+		closeWrite(dst)
+		return err
+	})
+
+	g.Go(func() error {
+		buf := copyBufPool.Get().([]byte)
+		defer copyBufPool.Put(buf)
+		// Downstream only: upstream → client
+		n, err := io.CopyBuffer(src, dst, buf)
+		*transferred = n
+		closeWrite(src)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		zap.L().Debug("tunnel copy", zap.Error(err))
 	}
 }
 
@@ -135,7 +166,9 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	h.removeHopHeaders(resp.Header)
 	h.copyHeaders(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-	n, err := io.Copy(w, resp.Body)
+	buf := copyBufPool.Get().([]byte)
+	defer copyBufPool.Put(buf)
+	n, err := io.CopyBuffer(w, resp.Body, buf)
 	*transferred = n
 	if err != nil {
 		zap.L().Error("copy response body", zap.Error(err))
