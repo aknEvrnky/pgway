@@ -46,6 +46,8 @@ type AgentHeartbeater interface {
 }
 
 // AgentChangeWatcher opens a change stream until it fails or ctx is canceled.
+// afterConnect runs once the stream is established (subscription active) and
+// before events are consumed — typically a full Bootstrap resync.
 type AgentChangeWatcher interface {
-	Watch(ctx context.Context) error
+	Watch(ctx context.Context, afterConnect func(context.Context) error) error
 }
