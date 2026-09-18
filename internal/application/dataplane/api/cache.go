@@ -80,6 +80,10 @@ func (c *ResourceCache) GetRouter(id string) (*domain.Router, error) {
 }
 
 func (c *ResourceCache) SetRouter(id string, ep *domain.Router) {
+	// Best-effort: CP apply already rejects invalid patterns. After
+	// deserialization re is nil — compile for the hot path without
+	// failing the process if something unexpected slips through.
+	_ = ep.Compile()
 	c.routers.Store(id, ep)
 }
 
