@@ -5,15 +5,15 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/aknEvrnky/pgway/internal/application/event"
+	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
 type SpyPublisher struct {
 	mu     sync.Mutex
-	Events []event.ChangeEvent
+	Events []ports.ChangeEvent
 }
 
-func (s *SpyPublisher) Publish(ctx context.Context, e event.ChangeEvent) error {
+func (s *SpyPublisher) Publish(ctx context.Context, e ports.ChangeEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Events = append(s.Events, e)
@@ -23,7 +23,7 @@ func (s *SpyPublisher) Publish(ctx context.Context, e event.ChangeEvent) error {
 
 type SpyHandler struct {
 	mu     sync.Mutex
-	events []event.ChangeEvent
+	events []ports.ChangeEvent
 }
 
 func (s *SpyHandler) Count() int {
@@ -32,7 +32,7 @@ func (s *SpyHandler) Count() int {
 	return len(s.events)
 }
 
-func (s *SpyHandler) HandleEvent(ctx context.Context, e event.ChangeEvent) error {
+func (s *SpyHandler) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, e)
@@ -44,6 +44,6 @@ func (s *SpyHandler) HandleEvent(ctx context.Context, e event.ChangeEvent) error
 // publishing is best-effort: a broken publisher must never fail a write.
 type FailingPublisher struct{}
 
-func (FailingPublisher) Publish(_ context.Context, _ event.ChangeEvent) error {
+func (FailingPublisher) Publish(_ context.Context, _ ports.ChangeEvent) error {
 	return errors.New("publish failed")
 }

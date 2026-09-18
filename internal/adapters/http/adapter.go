@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -35,9 +34,9 @@ type Adapter struct {
 // definition (if any) and, on save, builds and starts a server for the new
 // one. It reads entrypoints through the application cache, so it must run
 // after the cache-refreshing handler in the consumer chain.
-func (a *Adapter) HandleEvent(ctx context.Context, e event.ChangeEvent) error {
+func (a *Adapter) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
 	// skip if no modification on entrypoint
-	if e.ResourceType != event.ResourceTypeEntrypoint {
+	if e.ResourceType != ports.ResourceTypeEntrypoint {
 		return nil
 	}
 
@@ -58,7 +57,7 @@ func (a *Adapter) HandleEvent(ctx context.Context, e event.ChangeEvent) error {
 		}
 	}
 
-	if e.ChangeKind != event.ChangeKindSaved {
+	if e.ChangeKind != ports.ChangeKindSaved {
 		return nil
 	}
 

@@ -4,23 +4,24 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/event"
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 )
 
 func TestChangeEventProtoRoundTrip(t *testing.T) {
-	in := event.ChangeEvent{
+	in := ports.ChangeEvent{
 		ID:           "ep-1",
-		ResourceType: event.ResourceTypeEntrypoint,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeEntrypoint,
+		ChangeKind:   ports.ChangeKindSaved,
 	}
 	out := changeEventFromProto(changeEventToProto(in))
 	assert.Equal(t, in, out)
 }
 
 func TestChangeEventFromProtoNil(t *testing.T) {
-	assert.Equal(t, event.ChangeEvent{}, changeEventFromProto(nil))
+	assert.Equal(t, ports.ChangeEvent{}, changeEventFromProto(nil))
 }
 
 func TestGracefulStopWithTimeoutEmptyServer(t *testing.T) {

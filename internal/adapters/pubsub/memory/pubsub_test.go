@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/event"
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,10 +19,10 @@ func TestPubSub_Publish_Subscribes(t *testing.T) {
 	// create a listener
 	ch := ps.Subscribe(ctx)
 
-	chEvent := event.ChangeEvent{
+	chEvent := ports.ChangeEvent{
 		ID:           "1",
-		ResourceType: event.ResourceTypeBalancer,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeBalancer,
+		ChangeKind:   ports.ChangeKindSaved,
 	}
 
 	err := ps.Publish(ctx, chEvent)
@@ -43,16 +44,16 @@ func TestPubSub_Publish_Publishes_To_Multiple_Subscribers(t *testing.T) {
 	ch1 := ps.Subscribe(ctx)
 	ch2 := ps.Subscribe(ctx)
 
-	chEvent := event.ChangeEvent{
+	chEvent := ports.ChangeEvent{
 		ID:           "1",
-		ResourceType: event.ResourceTypeBalancer,
-		ChangeKind:   event.ChangeKindSaved,
+		ResourceType: ports.ResourceTypeBalancer,
+		ChangeKind:   ports.ChangeKindSaved,
 	}
 
 	err := ps.Publish(ctx, chEvent)
 	require.NoError(t, err)
 
-	for i, ch := range []<-chan event.ChangeEvent{ch1, ch2} {
+	for i, ch := range []<-chan ports.ChangeEvent{ch1, ch2} {
 		select {
 		case got := <-ch:
 			assert.Equal(t, chEvent, got)
@@ -72,10 +73,10 @@ func TestPubSub_Concurrent(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = ps.Publish(context.Background(), event.ChangeEvent{
+			_ = ps.Publish(context.Background(), ports.ChangeEvent{
 				ID:           "router-1",
-				ResourceType: event.ResourceTypeRouter,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeRouter,
+				ChangeKind:   ports.ChangeKindSaved,
 			})
 		}()
 	}

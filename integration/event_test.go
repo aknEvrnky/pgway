@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/application/consumer"
 	"github.com/aknEvrnky/pgway/internal/application/core/api"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	v1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func TestApplication_Event_Handler(t *testing.T) {
 
 	// gate: wait until subscriber starts to consume
 	require.Eventually(t, func() bool {
-		_ = pubSub.Publish(ctx, event.ChangeEvent{ID: "sentinel"})
+		_ = pubSub.Publish(ctx, ports.ChangeEvent{ID: "sentinel"})
 		return spy.Count() > 0
 	}, 2*time.Second, 10*time.Millisecond)
 

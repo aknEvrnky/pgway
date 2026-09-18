@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
 )
@@ -40,8 +39,8 @@ func NewService(
 	}
 }
 
-func (s *Service) fireEvent(ctx context.Context, id string, resType event.ResourceType, chKind event.ChangeKind) error {
-	changeEvent := event.ChangeEvent{
+func (s *Service) fireEvent(ctx context.Context, id string, resType ports.ResourceType, chKind ports.ChangeKind) error {
+	changeEvent := ports.ChangeEvent{
 		ID:           id,
 		ResourceType: resType,
 		ChangeKind:   chKind,

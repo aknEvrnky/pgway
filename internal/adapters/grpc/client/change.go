@@ -5,7 +5,6 @@ import (
 	"io"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
@@ -31,13 +30,13 @@ func (c *Client) Watch(ctx context.Context, pub ports.EventPublisherPort) error 
 	}
 }
 
-func changeEventFromProto(pb *controlplanev1.ResourceChanged) event.ChangeEvent {
+func changeEventFromProto(pb *controlplanev1.ResourceChanged) ports.ChangeEvent {
 	if pb == nil {
-		return event.ChangeEvent{}
+		return ports.ChangeEvent{}
 	}
-	return event.ChangeEvent{
+	return ports.ChangeEvent{
 		ID:           pb.Id,
-		ResourceType: event.ResourceType(pb.ResourceType),
-		ChangeKind:   event.ChangeKind(pb.ChangeKind),
+		ResourceType: ports.ResourceType(pb.ResourceType),
+		ChangeKind:   ports.ChangeKind(pb.ChangeKind),
 	}
 }

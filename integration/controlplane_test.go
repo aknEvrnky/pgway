@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/integration/testutil"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -47,10 +48,10 @@ func TestControlPlane_Proxy(t *testing.T) {
 			assert.NotEmpty(t, result.Id, "ULID should be assigned")
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeProxy,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeProxy,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -80,10 +81,10 @@ func TestControlPlane_Proxy(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt must advance on update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeProxy,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeProxy,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"GetProxy returns persisted proxy", func(t *testing.T) {
@@ -133,10 +134,10 @@ func TestControlPlane_Proxy(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-proxy",
-				ResourceType: event.ResourceTypeProxy,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypeProxy,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent proxy returns error", func(t *testing.T) {
@@ -180,10 +181,10 @@ func TestControlPlane_Pool(t *testing.T) {
 			assert.NotEmpty(t, result.Id)
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypePool,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypePool,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -212,10 +213,10 @@ func TestControlPlane_Pool(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypePool,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypePool,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"GetPool returns persisted pool", func(t *testing.T) {
@@ -262,10 +263,10 @@ func TestControlPlane_Pool(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-pool",
-				ResourceType: event.ResourceTypePool,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypePool,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent pool returns error", func(t *testing.T) {
@@ -309,10 +310,10 @@ func TestControlPlane_Balancer(t *testing.T) {
 			assert.NotEmpty(t, result.Id)
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeBalancer,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeBalancer,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -341,10 +342,10 @@ func TestControlPlane_Balancer(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeBalancer,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeBalancer,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[1])
 		}},
 		{"GetBalancer returns persisted balancer", func(t *testing.T) {
@@ -391,10 +392,10 @@ func TestControlPlane_Balancer(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-lb",
-				ResourceType: event.ResourceTypeBalancer,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypeBalancer,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent balancer returns error", func(t *testing.T) {
@@ -545,10 +546,10 @@ func TestControlPlane_Router(t *testing.T) {
 			assert.NotEmpty(t, result.Id)
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeRouter,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeRouter,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -577,10 +578,10 @@ func TestControlPlane_Router(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeRouter,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeRouter,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[1])
 		}},
 		{"GetRouter returns persisted router", func(t *testing.T) {
@@ -628,10 +629,10 @@ func TestControlPlane_Router(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-router",
-				ResourceType: event.ResourceTypeRouter,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypeRouter,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent router returns error", func(t *testing.T) {
@@ -673,10 +674,10 @@ func TestControlPlane_Flow(t *testing.T) {
 			assert.NotEmpty(t, result.Id)
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeFlow,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeFlow,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -705,10 +706,10 @@ func TestControlPlane_Flow(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeFlow,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeFlow,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[1])
 		}},
 		{"GetFlow returns persisted flow", func(t *testing.T) {
@@ -755,10 +756,10 @@ func TestControlPlane_Flow(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-flow",
-				ResourceType: event.ResourceTypeFlow,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypeFlow,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent flow returns error", func(t *testing.T) {
@@ -804,10 +805,10 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			assert.NotEmpty(t, result.Id)
 
 			require.Len(t, spyPub.Events, 1)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeEntrypoint,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeEntrypoint,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[0])
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
@@ -836,10 +837,10 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
-				ResourceType: event.ResourceTypeEntrypoint,
-				ChangeKind:   event.ChangeKindSaved,
+				ResourceType: ports.ResourceTypeEntrypoint,
+				ChangeKind:   ports.ChangeKindSaved,
 			}, spyPub.Events[1])
 		}},
 		{"GetEntrypoint returns persisted entrypoint", func(t *testing.T) {
@@ -888,10 +889,10 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
 			require.Len(t, spyPub.Events, 2)
-			assert.Equal(t, event.ChangeEvent{
+			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-ep",
-				ResourceType: event.ResourceTypeEntrypoint,
-				ChangeKind:   event.ChangeKindDeleted,
+				ResourceType: ports.ResourceTypeEntrypoint,
+				ChangeKind:   ports.ChangeKindDeleted,
 			}, spyPub.Events[1])
 		}},
 		{"Delete non-existent entrypoint returns error", func(t *testing.T) {

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 	"github.com/oklog/ulid/v2"
@@ -41,7 +42,7 @@ func (s *Service) ApplyFlowV1(ctx context.Context, meta schema.Metadata, spec fl
 		return nil, fmt.Errorf("save flow: %w", err)
 	}
 
-	_ = s.fireEvent(ctx, flow.Id, event.ResourceTypeFlow, event.ChangeKindSaved)
+	_ = s.fireEvent(ctx, flow.Id, ports.ResourceTypeFlow, ports.ChangeKindSaved)
 
 	zap.L().Info("flow applied", zap.String("name", flow.Id))
 	return flow, nil
@@ -70,7 +71,7 @@ func (s *Service) DeleteFlow(ctx context.Context, name string) error {
 		return err
 	}
 
-	_ = s.fireEvent(ctx, name, event.ResourceTypeFlow, event.ChangeKindDeleted)
+	_ = s.fireEvent(ctx, name, ports.ResourceTypeFlow, ports.ChangeKindDeleted)
 
 	zap.L().Info("flow deleted", zap.String("name", name))
 	return nil

@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/event"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,13 +38,13 @@ func (l *callLog) snapshot() []string {
 	return append([]string(nil), l.calls...)
 }
 
-func (h *recordingHandler) HandleEvent(_ context.Context, _ event.ChangeEvent) error {
+func (h *recordingHandler) HandleEvent(_ context.Context, _ ports.ChangeEvent) error {
 	h.log.append(h.name)
 	return h.err
 }
 
-func testEvent() event.ChangeEvent {
-	return event.ChangeEvent{ID: "x", ResourceType: event.ResourceTypeEntrypoint, ChangeKind: event.ChangeKindSaved}
+func testEvent() ports.ChangeEvent {
+	return ports.ChangeEvent{ID: "x", ResourceType: ports.ResourceTypeEntrypoint, ChangeKind: ports.ChangeKindSaved}
 }
 
 func TestConsumer_ConsumeEvents_CallsHandlersInOrder(t *testing.T) {
