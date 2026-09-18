@@ -34,13 +34,8 @@ type ControlPlaneReader interface {
 	ListEntrypoints(ctx context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error)
 }
 
-// ProxyResolver resolves pool members for the data plane
-type ProxyResolver interface {
-	GetProxiesByIds(ctx context.Context, ids []string) ([]*domain.Proxy, error)
-	FindProxiesByLabels(ctx context.Context, labels map[string]string) ([]*domain.Proxy, error)
-}
-
-// ControlPlaneWriter is used for write only cp access
+// ControlPlaneWriter is the declarative apply/delete API.
+// Spec types from internal/schema are intentional: Apply* is the CP write edge.
 type ControlPlaneWriter interface {
 	ApplyProxyV1(ctx context.Context, meta schema.Metadata, spec proxyv1.ProxySpecV1) (*domain.Proxy, error)
 	DeleteProxy(ctx context.Context, name string) error
