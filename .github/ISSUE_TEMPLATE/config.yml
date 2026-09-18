@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://pgway.aknevrnky.dev/docs/
+    url: https://pgway.aknevrnky.dev/
     about: Concepts, install, resource reference, and guides
   - name: Contributing guide
-    url: https://pgway.aknevrnky.dev/docs/guides/contributing/
+    url: https://pgway.aknevrnky.dev/guides/contributing/
     about: Architecture notes and contributor expectations

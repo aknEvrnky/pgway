@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to **pgway**. This guide is the practical checklist for working in the code repository. For deeper architecture and “what to watch for,” see the docs site: [Contributing guide](https://pgway.aknevrnky.dev/docs/guides/contributing/).
+Thanks for contributing to **pgway**. This guide is the practical checklist for working in the code repository. For deeper architecture and “what to watch for,” see the docs site: [Contributing guide](https://pgway.aknevrnky.dev/guides/contributing/).
 
 ## Prerequisites
 
