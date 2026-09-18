@@ -83,7 +83,7 @@ A minimal valid flow is `Entrypoint → LoadBalancer → Pool → Proxy`. Multip
 
 ### Prerequisites
 
-- Go **1.25** or newer (`go version`)
+- Go **1.27** or newer (`go version`)
 - Optional, for dashboard development: [Bun](https://bun.sh/) or Node.js 20+
 
 ### From source
@@ -92,6 +92,8 @@ A minimal valid flow is `Entrypoint → LoadBalancer → Pool → Proxy`. Multip
 git clone https://github.com/aknEvrnky/pgway.git
 cd pgway
 make build            # builds all four binaries into ./build/
+make tools            # installs gotestsum (and other make-test helpers)
+make test             # runs tests via gotestsum
 ```
 
 `make build` produces `build/pgway`, `build/pgway-cp`, `build/pgway-dp` and
