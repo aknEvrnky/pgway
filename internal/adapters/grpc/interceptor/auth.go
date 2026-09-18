@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"google.golang.org/grpc"
@@ -108,8 +107,8 @@ func authenticate(ctx context.Context, authenticator ports.TokenAuthenticator, f
 		return nil, status.Error(codes.PermissionDenied, "agent not permitted for this method")
 	}
 
-	ctx = auth.ContextWithPrincipal(ctx, principal)
-	ctx = auth.ContextWithToken(ctx, token)
+	ctx = ports.ContextWithPrincipal(ctx, principal)
+	ctx = ports.ContextWithToken(ctx, token)
 
 	return ctx, nil
 }

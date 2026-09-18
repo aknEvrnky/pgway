@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/ports"
+
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
@@ -143,8 +145,8 @@ func newTestService() (*Service, *mockAgentRepo, *mockCreds) {
 }
 
 func agentCtx(agent *domain.Agent, rawToken string) context.Context {
-	ctx := auth.ContextWithPrincipal(context.Background(), &domain.Principal{Agent: agent})
-	return auth.ContextWithToken(ctx, rawToken)
+	ctx := ports.ContextWithPrincipal(context.Background(), &domain.Principal{Agent: agent})
+	return ports.ContextWithToken(ctx, rawToken)
 }
 
 func TestService_CreateRegistrationToken(t *testing.T) {
@@ -225,17 +227,17 @@ func TestService_Heartbeat(t *testing.T) {
 
 	t.Run("rejects non-agent principal", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		ctx := auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+		ctx := ports.ContextWithPrincipal(context.Background(), &domain.Principal{
 			User: &domain.User{Id: "admin"},
 		})
-		ctx = auth.ContextWithToken(ctx, "pgw_user")
+		ctx = ports.ContextWithToken(ctx, "pgw_user")
 		_, err := svc.Heartbeat(ctx)
 		assert.ErrorIs(t, err, ErrAgentRequired)
 	})
 
 	t.Run("rejects missing bearer token", func(t *testing.T) {
 		svc, _, _ := newTestService()
-		ctx := auth.ContextWithPrincipal(context.Background(), &domain.Principal{
+		ctx := ports.ContextWithPrincipal(context.Background(), &domain.Principal{
 			Agent: &domain.Agent{Id: "edge-1"},
 		})
 		_, err := svc.Heartbeat(ctx)

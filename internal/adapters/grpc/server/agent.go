@@ -95,7 +95,7 @@ func (s *AgentServer) Heartbeat(ctx context.Context, _ *controlplanev1.Heartbeat
 		return nil, mapAgentError("heartbeat", err)
 	}
 
-	if p, ok := auth.PrincipalFromContext(ctx); ok && p.Agent != nil {
+	if p, ok := ports.PrincipalFromContext(ctx); ok && p.Agent != nil {
 		zap.L().Info("agent heartbeat",
 			zap.String("agent_id", p.Agent.Id),
 			zap.Time("token_expires_at", expires),
@@ -168,7 +168,7 @@ func (s *AgentServer) DeleteAgent(ctx context.Context, req *controlplanev1.Delet
 }
 
 func requireAgent(ctx context.Context) error {
-	principal, ok := auth.PrincipalFromContext(ctx)
+	principal, ok := ports.PrincipalFromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "no principal in call context")
 	}
@@ -179,7 +179,7 @@ func requireAgent(ctx context.Context) error {
 }
 
 func requireUser(ctx context.Context) error {
-	principal, ok := auth.PrincipalFromContext(ctx)
+	principal, ok := ports.PrincipalFromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "no principal in call context")
 	}

@@ -63,7 +63,7 @@ func (s *AuthServer) Login(ctx context.Context, req *controlplanev1.LoginRequest
 }
 
 func (s *AuthServer) Logout(ctx context.Context, req *controlplanev1.LogoutRequest) (*controlplanev1.LogoutResponse, error) {
-	token, ok := auth.TokenFromContext(ctx)
+	token, ok := ports.TokenFromContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "no token in call context")
 	}
@@ -151,7 +151,7 @@ func (s *AuthServer) DeleteUser(ctx context.Context, req *controlplanev1.DeleteU
 }
 
 func (s *AuthServer) ChangePassword(ctx context.Context, req *controlplanev1.ChangePasswordRequest) (*controlplanev1.ChangePasswordResponse, error) {
-	principal, ok := auth.PrincipalFromContext(ctx)
+	principal, ok := ports.PrincipalFromContext(ctx)
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "no principal in call context")
 	}
@@ -199,7 +199,7 @@ func (s *AuthServer) ChangePassword(ctx context.Context, req *controlplanev1.Cha
 // --- helpers ---
 
 func requireAdmin(ctx context.Context) error {
-	principal, ok := auth.PrincipalFromContext(ctx)
+	principal, ok := ports.PrincipalFromContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "no principal in call context")
 	}
