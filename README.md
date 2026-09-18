@@ -12,6 +12,8 @@ Full guides (concepts, getting started, resource reference, auth, CLI, and more)
 
 **https://pgway.aknevrnky.dev**
 
+Contributing (architecture, tests, PR expectations): see [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [docs contributing guide](https://pgway.aknevrnky.dev/docs/guides/contributing/).
+
 ```
 Client → pgway (Gateway) → Upstream Proxy Pool → Target Server
 ```
