@@ -11,9 +11,12 @@ import (
 )
 
 type Config struct {
-	BadgerPath     string `mapstructure:"badger_path"`
-	GrpcListenAddr string `mapstructure:"grpc_listen_addr"`
-	RestListenAddr string `mapstructure:"rest_listen_addr"`
+	BadgerPath string `mapstructure:"badger_path"`
+	// BadgerGCInterval is how often value log GC runs (pgway, pgway-cp).
+	// <= 0 disables background GC.
+	BadgerGCInterval time.Duration `mapstructure:"badger_gc_interval"`
+	GrpcListenAddr   string        `mapstructure:"grpc_listen_addr"`
+	RestListenAddr   string        `mapstructure:"rest_listen_addr"`
 	// Token authenticates outgoing control-plane calls (pgctl).
 	// pgway-dp uses an agent token from the state file after registration.
 	Token string `mapstructure:"token"`
@@ -60,6 +63,7 @@ func Load(path string) error {
 	}
 
 	viper.SetDefault("badger_path", "/var/pgway/lib")
+	viper.SetDefault("badger_gc_interval", 5*time.Minute)
 	viper.SetDefault("grpc_listen_addr", ":9090")
 	viper.SetDefault("rest_listen_addr", ":8081")
 	viper.SetDefault("token", "")

@@ -79,6 +79,8 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.BadgerGCInterval, zap.L())
+
 	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, sigCtx, grpcserver.AgentServerConfig{
 		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
 		AgentTokenTTL:        cfg.AgentTokenTTL,
