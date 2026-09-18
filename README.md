@@ -547,4 +547,4 @@ The codebase follows a hexagonal (ports & adapters) layout: `internal/ports` def
 
 ## License
 
-MIT
+[Apache License 2.0](LICENSE)
