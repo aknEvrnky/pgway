@@ -47,5 +47,9 @@ heartbeat_interval: 10s
 # when agent_state_path already holds credentials.
 registration_token: ""
 
+# Max request body for non-CONNECT proxy HTTP. 0 = unlimited.
+# Accepts integers or human sizes (10MiB, 512KiB, 100MB). Also PGWAY_MAX_REQUEST_BODY_BYTES.
+max_request_body_bytes: 10MiB
+
 # Global log level: debug | info | warn | error (also PGWAY_LOG_LEVEL).
 log_level: info

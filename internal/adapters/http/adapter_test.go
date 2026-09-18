@@ -101,7 +101,7 @@ func deletedEvent(id string) ports.ChangeEvent {
 
 func TestAdapter_HandleEvent_SavedStartsNewServer(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,7 +123,7 @@ func TestAdapter_HandleEvent_SavedRestartsExistingServer(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -146,7 +146,7 @@ func TestAdapter_HandleEvent_DeletedStopsServer(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -177,7 +177,7 @@ func TestAdapter_HandleEvent_DeletedStopsServer(t *testing.T) {
 
 func TestAdapter_HandleEvent_IgnoresOtherResourceTypes(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	e := ports.ChangeEvent{ID: "p-1", ResourceType: ports.ResourceTypeProxy, ChangeKind: ports.ChangeKindSaved}
@@ -190,7 +190,7 @@ func TestAdapter_HandleEvent_IgnoresOtherResourceTypes(t *testing.T) {
 
 func TestAdapter_HandleEvent_SavedUnknownEntrypointReturnsError(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	err = adapter.HandleEvent(context.Background(), savedEvent("ghost"))
@@ -205,7 +205,7 @@ func TestAdapter_Run_ReturnsOnContextCancel(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -232,7 +232,7 @@ func TestAdapter_Shutdown_StopsAllServers(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep1, ep2)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

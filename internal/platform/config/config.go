@@ -1,9 +1,12 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
 )
 
@@ -37,6 +40,9 @@ type Config struct {
 	// RegistrationToken is the single-use bootstrap secret for first Register.
 	// Prefer PGWAY_REGISTRATION_TOKEN; never commit this value.
 	RegistrationToken string `mapstructure:"registration_token"`
+	// MaxRequestBodyBytes caps non-CONNECT proxy request bodies.
+	// Accepts bare integers or human sizes (e.g. "10MiB"). 0 disables the limit.
+	MaxRequestBodyBytes ByteSize `mapstructure:"max_request_body_bytes"`
 	// LogLevel sets the global zap log level (debug|info|warn|error).
 	LogLevel string `mapstructure:"log_level"`
 }
@@ -66,6 +72,7 @@ func Load(path string) error {
 	viper.SetDefault("agent_state_path", "/var/lib/pgway/agent.json")
 	viper.SetDefault("heartbeat_interval", 10*time.Second)
 	viper.SetDefault("registration_token", "")
+	viper.SetDefault("max_request_body_bytes", "10MiB")
 	viper.SetDefault("log_level", "info")
 
 	// PGWAY_TOKEN etc. override file values
@@ -77,7 +84,13 @@ func Load(path string) error {
 	}
 
 	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
+	// Custom DecodeHook replaces viper defaults — keep Duration/slice hooks.
+	if err := viper.Unmarshal(&cfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		byteSizeDecodeHook(),
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		mapstructure.TextUnmarshallerHookFunc(),
+	))); err != nil {
 		return err
 	}
 
@@ -98,4 +111,28 @@ func Load(path string) error {
 
 func Get() *Config {
 	return c
+}
+
+func byteSizeDecodeHook() mapstructure.DecodeHookFunc {
+	return func(from, to reflect.Type, data any) (any, error) {
+		if to != reflect.TypeFor[ByteSize]() {
+			return data, nil
+		}
+		switch v := data.(type) {
+		case string:
+			return ParseByteSize(v)
+		case int:
+			return ByteSize(v), nil
+		case int64:
+			return ByteSize(v), nil
+		case uint64:
+			return ByteSize(v), nil
+		case float64:
+			return ByteSize(v), nil
+		case ByteSize:
+			return v, nil
+		default:
+			return nil, fmt.Errorf("byte size: unsupported type %T", data)
+		}
+	}
 }

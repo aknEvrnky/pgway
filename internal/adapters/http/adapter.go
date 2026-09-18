@@ -24,10 +24,11 @@ const entrypointContextKey contextKey = "entry_point_id"
 const serverShutdownTimeout = 10 * time.Second
 
 type Adapter struct {
-	api       ports.Application
-	transport ports.ProxyTransportPort
-	servers   map[string]*http.Server
-	mu        sync.Mutex
+	api          ports.Application
+	transport    ports.ProxyTransportPort
+	maxBodyBytes int64
+	servers      map[string]*http.Server
+	mu           sync.Mutex
 }
 
 // HandleEvent reacts to entrypoint changes: it stops the server for the old
@@ -79,7 +80,7 @@ func (a *Adapter) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
 		return fmt.Errorf("entrypoint not found: %q", e.ID)
 	}
 
-	server := newServer(a.api, ep, a.transport)
+	server := newServer(a.api, ep, a.transport, a.maxBodyBytes)
 
 	a.mu.Lock()
 	a.servers[ep.Id] = server
@@ -90,7 +91,7 @@ func (a *Adapter) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
 	return nil
 }
 
-func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort) (*Adapter, error) {
+func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort, maxBodyBytes int64) (*Adapter, error) {
 	entrypoints, err := api.EntryPoints(ctx)
 	if err != nil {
 		return nil, err
@@ -99,18 +100,19 @@ func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.
 	servers := make(map[string]*http.Server)
 
 	for _, ep := range entrypoints {
-		servers[ep.Id] = newServer(api, ep, transport)
+		servers[ep.Id] = newServer(api, ep, transport, maxBodyBytes)
 	}
 
 	return &Adapter{
-		api:       api,
-		servers:   servers,
-		transport: transport,
+		api:          api,
+		servers:      servers,
+		transport:    transport,
+		maxBodyBytes: maxBodyBytes,
 	}, nil
 }
 
-func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.ProxyTransportPort) *http.Server {
-	handler := NewHandler(api, transport)
+func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.ProxyTransportPort, maxBodyBytes int64) *http.Server {
+	handler := NewHandler(api, transport, maxBodyBytes)
 
 	mw := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), entrypointContextKey, contextKey(ep.Id))
