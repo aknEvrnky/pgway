@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/balancer"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

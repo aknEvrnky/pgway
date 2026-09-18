@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aknEvrnky/pgway/internal/application/core/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"

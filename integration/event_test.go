@@ -9,8 +9,8 @@ import (
 
 	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/consumer"
-	"github.com/aknEvrnky/pgway/internal/application/core/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	v1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 	"github.com/stretchr/testify/assert"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aknEvrnky/pgway/internal/application/balancer"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"golang.org/x/sync/errgroup"
