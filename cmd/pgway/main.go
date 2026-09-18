@@ -100,7 +100,7 @@ func main() {
 	}
 
 	proxyTransport := proxyadapter.NewAdapter()
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport)
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.MaxRequestBodyBytes))
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}

@@ -27,8 +27,8 @@ type changeWatcher struct {
 	pub    *memory.PubSub
 }
 
-func (w changeWatcher) Watch(ctx context.Context) error {
-	return w.client.Watch(ctx, w.pub)
+func (w changeWatcher) Watch(ctx context.Context, afterConnect func(context.Context) error) error {
+	return w.client.Watch(ctx, w.pub, afterConnect)
 }
 
 func main() {
@@ -91,7 +91,7 @@ func main() {
 	}
 
 	proxyTransport := net.NewAdapter()
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport)
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.MaxRequestBodyBytes))
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
@@ -123,7 +123,7 @@ func main() {
 	go func() {
 		watchErr <- agenthost.RunWatch(sigCtx, zap.L(), changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
 			return app.Bootstrap(c)
-		})
+		}, agenthost.WatchOptions{})
 	}()
 
 	select {

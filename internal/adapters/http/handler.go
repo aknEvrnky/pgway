@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"io"
 	"net/http"
 
@@ -10,14 +11,16 @@ import (
 )
 
 type Handler struct {
-	app       ports.Application
-	transport ports.ProxyTransportPort
+	app          ports.Application
+	transport    ports.ProxyTransportPort
+	maxBodyBytes int64
 }
 
-func NewHandler(app ports.Application, t ports.ProxyTransportPort) *Handler {
+func NewHandler(app ports.Application, t ports.ProxyTransportPort, maxBodyBytes int64) *Handler {
 	return &Handler{
-		app:       app,
-		transport: t,
+		app:          app,
+		transport:    t,
+		maxBodyBytes: maxBodyBytes,
 	}
 }
 
@@ -27,6 +30,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		zap.L().Info("missing entrypoint", zap.String("ep", string(entrypointId)))
 
 		http.Error(w, "missing entrypoint", http.StatusInternalServerError)
+		return
+	}
+
+	// Reject oversized bodies before ExecuteFlow so balancer state is not
+	// consumed for requests we will never forward. ContentLength < 0
+	// (chunked / unknown) is handled later via MaxBytesReader.
+	if r.Method != http.MethodConnect && h.maxBodyBytes > 0 && r.ContentLength > h.maxBodyBytes {
+		http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -105,8 +116,17 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	r.RequestURI = ""
 	h.removeHopHeaders(r.Header)
 
+	if h.maxBodyBytes > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
+	}
+
 	resp, err := h.transport.RoundTrip(r.Context(), proxy, r)
 	if err != nil {
+		var maxBytes *http.MaxBytesError
+		if errors.As(err, &maxBytes) {
+			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}

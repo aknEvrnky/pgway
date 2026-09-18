@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,11 +22,11 @@ import (
 )
 
 type clientWatcher struct {
-	watch func(ctx context.Context) error
+	watch func(ctx context.Context, afterConnect func(context.Context) error) error
 }
 
-func (w clientWatcher) Watch(ctx context.Context) error {
-	return w.watch(ctx)
+func (w clientWatcher) Watch(ctx context.Context, afterConnect func(context.Context) error) error {
+	return w.watch(ctx, afterConnect)
 }
 
 // TestWatchHotReload verifies distributed CP→DP reload over ChangeService.Watch
@@ -66,17 +67,29 @@ func TestWatchHotReload(t *testing.T) {
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
+	watchReady := make(chan struct{})
+	var readyOnce sync.Once
+
 	go func() { _ = eventConsumer.ConsumeEvents(runCtx) }()
 	go func() {
 		_ = agenthost.RunWatch(runCtx, zap.NewNop(), clientWatcher{
-			watch: func(c context.Context) error { return agent.Watch(c, localBus) },
+			watch: func(c context.Context, after func(context.Context) error) error {
+				return agent.Watch(c, localBus, after)
+			},
 		}, func(c context.Context) error {
 			return app.Bootstrap(c)
+		}, agenthost.WatchOptions{
+			OnConnected: func() {
+				readyOnce.Do(func() { close(watchReady) })
+			},
 		})
 	}()
 
-	// Allow the Watch stream to connect (onConnect Bootstrap + stream open).
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case <-watchReady:
+	case <-time.After(5 * time.Second):
+		t.Fatal("watch stream did not become ready")
+	}
 
 	_, err = admin.ApplyEntrypointV1(ctx, schema.Metadata{Name: "watched-ep"}, v1.EntrypointSpecV1{
 		Title:    "watched-ep",

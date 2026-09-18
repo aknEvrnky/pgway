@@ -19,8 +19,13 @@ type fakeWatcher struct {
 	block bool
 }
 
-func (f *fakeWatcher) Watch(ctx context.Context) error {
+func (f *fakeWatcher) Watch(ctx context.Context, afterConnect func(context.Context) error) error {
 	f.n.Add(1)
+	if afterConnect != nil {
+		if err := afterConnect(ctx); err != nil {
+			return err
+		}
+	}
 	if f.fail != nil {
 		return f.fail
 	}
@@ -37,7 +42,7 @@ func TestRunWatchStopsOnCancel(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- RunWatch(ctx, zap.NewNop(), w, nil)
+		done <- RunWatch(ctx, zap.NewNop(), w, nil, WatchOptions{})
 	}()
 
 	time.Sleep(30 * time.Millisecond)
@@ -53,12 +58,12 @@ func TestRunWatchFatalUnauthenticated(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := RunWatch(ctx, zap.NewNop(), w, nil)
+	err := RunWatch(ctx, zap.NewNop(), w, nil, WatchOptions{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ports.ErrAgentUnauthenticated)
 }
 
-func TestRunWatchCallsOnConnect(t *testing.T) {
+func TestRunWatchCallsAfterConnect(t *testing.T) {
 	w := &fakeWatcher{block: true}
 	var connects atomic.Int32
 	ctx, cancel := context.WithCancel(context.Background())
@@ -68,11 +73,34 @@ func TestRunWatchCallsOnConnect(t *testing.T) {
 		done <- RunWatch(ctx, zap.NewNop(), w, func(context.Context) error {
 			connects.Add(1)
 			return nil
-		})
+		}, WatchOptions{})
 	}()
 
 	time.Sleep(30 * time.Millisecond)
 	cancel()
 	<-done
 	assert.GreaterOrEqual(t, connects.Load(), int32(1))
+}
+
+func TestRunWatchOnConnectedAfterAfterConnect(t *testing.T) {
+	w := &fakeWatcher{block: true}
+	steps := make(chan string, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan error, 1)
+	go func() {
+		done <- RunWatch(ctx, zap.NewNop(), w, func(context.Context) error {
+			steps <- "afterConnect"
+			return nil
+		}, WatchOptions{
+			OnConnected: func() {
+				steps <- "onConnected"
+			},
+		})
+	}()
+
+	require.Equal(t, "afterConnect", <-steps)
+	require.Equal(t, "onConnected", <-steps)
+	cancel()
+	<-done
 }

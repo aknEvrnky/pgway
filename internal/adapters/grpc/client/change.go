@@ -8,12 +8,19 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
-// Watch opens ChangeService.Watch and republishes each hint onto pub until
-// the stream ends or ctx is canceled.
-func (c *Client) Watch(ctx context.Context, pub ports.EventPublisherPort) error {
+// Watch opens ChangeService.Watch. Once the stream is established (server
+// subscription active), afterConnect runs — typically a Bootstrap resync —
+// then each hint is republished onto pub until the stream ends or ctx cancels.
+func (c *Client) Watch(ctx context.Context, pub ports.EventPublisherPort, afterConnect func(context.Context) error) error {
 	stream, err := c.change.Watch(ctx, &controlplanev1.WatchRequest{})
 	if err != nil {
 		return mapAgentAuth(err)
+	}
+
+	if afterConnect != nil {
+		if err := afterConnect(ctx); err != nil {
+			return mapAgentAuth(err)
+		}
 	}
 
 	for {

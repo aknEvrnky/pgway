@@ -8,10 +8,23 @@ import (
 	"go.uber.org/zap"
 )
 
-// RunWatch reconnects forever until ctx is canceled. onConnect runs before
-// each stream (full reload to close missed-event gaps). Transient failures
-// back off; Unauthenticated is fatal.
-func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatcher, onConnect func(context.Context) error) error {
+// WatchOptions tunes RunWatch. Zero value is fine for production.
+type WatchOptions struct {
+	// OnConnected is invoked after the watch stream is established and
+	// afterConnect (bootstrap) has succeeded — useful for test handshakes.
+	OnConnected func()
+}
+
+// RunWatch reconnects forever until ctx is canceled.
+//
+// Per connection the sequence is:
+//  1. Open the authenticated watch stream (server registers the subscriber)
+//  2. afterConnect — typically a full Bootstrap to close missed-event gaps
+//  3. OnConnected (optional)
+//  4. Consume change hints until the stream ends
+//
+// Transient failures back off; Unauthenticated is fatal.
+func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatcher, afterConnect func(context.Context) error, opts WatchOptions) error {
 	if log == nil {
 		log = zap.NewNop()
 	}
@@ -23,20 +36,17 @@ func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatch
 			return ctx.Err()
 		}
 
-		if onConnect != nil {
-			if err := onConnect(ctx); err != nil {
-				if isAuthRejected(err) {
-					return fatalAuthError(err)
+		err := watch.Watch(ctx, func(c context.Context) error {
+			if afterConnect != nil {
+				if err := afterConnect(c); err != nil {
+					return err
 				}
-				log.Warn("watch reconnect reload failed", zap.Error(err))
-				if !sleepBackoff(ctx, &backoff, maxBackoff) {
-					return ctx.Err()
-				}
-				continue
 			}
-		}
-
-		err := watch.Watch(ctx)
+			if opts.OnConnected != nil {
+				opts.OnConnected()
+			}
+			return nil
+		})
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
