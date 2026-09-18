@@ -4,12 +4,11 @@ import (
 	"context"
 
 	"github.com/aknEvrnky/pgway/internal/ports"
-
 	"go.uber.org/zap"
 )
 
 func (a *Application) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
-	zap.L().Info("event received",
+	a.log.Info("event received",
 		zap.String("id", e.ID),
 		zap.String("resource_type", string(e.ResourceType)),
 		zap.String("change_kind", string(e.ChangeKind)),

@@ -14,12 +14,17 @@ import (
 type Consumer struct {
 	subscriber ports.EventSubscriberPort
 	handlers   []ports.EventHandler
+	log        *zap.Logger
 }
 
-func NewConsumer(subscriber ports.EventSubscriberPort, handlers ...ports.EventHandler) *Consumer {
+func NewConsumer(log *zap.Logger, subscriber ports.EventSubscriberPort, handlers ...ports.EventHandler) *Consumer {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	return &Consumer{
 		subscriber: subscriber,
 		handlers:   handlers,
+		log:        log,
 	}
 }
 
@@ -32,7 +37,7 @@ func (c *Consumer) ConsumeEvents(ctx context.Context) error {
 	for e := range ch {
 		for _, handler := range c.handlers {
 			if err := handler.HandleEvent(ctx, e); err != nil {
-				zap.L().Warn("handle event failed",
+				c.log.Warn("handle event failed",
 					zap.Error(err),
 					zap.String("id", e.ID),
 					zap.String("resource_type", string(e.ResourceType)),

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/aknEvrnky/pgway/internal/ports"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
@@ -53,7 +55,7 @@ func TestConsumer_ConsumeEvents_CallsHandlersInOrder(t *testing.T) {
 	first := &recordingHandler{name: "first", log: log}
 	second := &recordingHandler{name: "second", log: log}
 
-	consumer := NewConsumer(ps, first, second)
+	consumer := NewConsumer(zap.NewNop(), ps, first, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -90,7 +92,7 @@ func TestConsumer_ConsumeEvents_ContinuesAfterHandlerError(t *testing.T) {
 	failing := &recordingHandler{name: "failing", err: errors.New("boom"), log: log}
 	second := &recordingHandler{name: "second", log: log}
 
-	consumer := NewConsumer(ps, failing, second)
+	consumer := NewConsumer(zap.NewNop(), ps, failing, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -120,7 +122,7 @@ func TestConsumer_ConsumeEvents_ContinuesAfterHandlerError(t *testing.T) {
 
 func TestConsumer_ConsumeEvents_ReturnsNilOnCtxCancel(t *testing.T) {
 	ps := memory.NewPubSub(10)
-	consumer := NewConsumer(ps, &recordingHandler{name: "h", log: &callLog{}})
+	consumer := NewConsumer(zap.NewNop(), ps, &recordingHandler{name: "h", log: &callLog{}})
 
 	ctx, cancel := context.WithCancel(context.Background())
 

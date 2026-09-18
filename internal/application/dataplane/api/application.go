@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/ports"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -14,16 +15,22 @@ type Application struct {
 	cache           *ResourceCache
 	controlPlane    ports.ControlPlaneReader
 	balancerService *balancer.Service
+	log             *zap.Logger
 }
 
 func NewApplication(
 	cp ports.ControlPlaneReader,
 	resolver ports.ProxyResolver,
+	log *zap.Logger,
 ) *Application {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	return &Application{
 		cache:           NewResourceCache(),
 		balancerService: balancer.NewService(cp, resolver),
 		controlPlane:    cp,
+		log:             log,
 	}
 }
 

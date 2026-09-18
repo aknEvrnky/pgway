@@ -5,15 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/aknEvrnky/pgway/integration/testutil"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/agenthost"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
-	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	v1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 )
@@ -50,7 +52,7 @@ func TestWatchHotReload(t *testing.T) {
 	require.NoError(t, err)
 
 	agent := newAuthedClient(t, addr, agentToken)
-	app := api.NewApplication(agent, agent)
+	app := api.NewApplication(agent, agent, zap.NewNop())
 	require.NoError(t, app.Bootstrap(ctx))
 
 	eps, err := app.EntryPoints(ctx)
@@ -59,14 +61,14 @@ func TestWatchHotReload(t *testing.T) {
 
 	localBus := memory.NewPubSub(10)
 	spy := &testutil.SpyHandler{}
-	eventConsumer := consumer.NewConsumer(localBus, app, spy)
+	eventConsumer := consumer.NewConsumer(zap.NewNop(), localBus, app, spy)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
 	go func() { _ = eventConsumer.ConsumeEvents(runCtx) }()
 	go func() {
-		_ = agenthost.RunWatch(runCtx, clientWatcher{
+		_ = agenthost.RunWatch(runCtx, zap.NewNop(), clientWatcher{
 			watch: func(c context.Context) error { return agent.Watch(c, localBus) },
 		}, func(c context.Context) error {
 			return app.Bootstrap(c)

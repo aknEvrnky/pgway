@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +37,7 @@ func TestRunWatchStopsOnCancel(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- RunWatch(ctx, w, nil)
+		done <- RunWatch(ctx, zap.NewNop(), w, nil)
 	}()
 
 	time.Sleep(30 * time.Millisecond)
@@ -51,7 +53,7 @@ func TestRunWatchFatalUnauthenticated(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := RunWatch(ctx, w, nil)
+	err := RunWatch(ctx, zap.NewNop(), w, nil)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ports.ErrAgentUnauthenticated)
 }
@@ -63,7 +65,7 @@ func TestRunWatchCallsOnConnect(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- RunWatch(ctx, w, func(context.Context) error {
+		done <- RunWatch(ctx, zap.NewNop(), w, func(context.Context) error {
 			connects.Add(1)
 			return nil
 		})

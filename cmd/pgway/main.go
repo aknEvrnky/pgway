@@ -17,9 +17,9 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
-	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	badgerdb "github.com/dgraph-io/badger/v4"
@@ -93,7 +93,7 @@ func main() {
 	}
 
 	// Data Plane — cpService as read only service
-	app := api.NewApplication(cpService, cpService)
+	app := api.NewApplication(cpService, cpService, zap.L())
 
 	if err := app.Bootstrap(ctx); err != nil {
 		zap.L().Fatal("bootstrap", zap.Error(err))
@@ -110,7 +110,7 @@ func main() {
 
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
-	eventConsumer := consumer.NewConsumer(pubSub, app, httpAdapter)
+	eventConsumer := consumer.NewConsumer(zap.L(), pubSub, app, httpAdapter)
 
 	runErr := make(chan error, 4)
 
