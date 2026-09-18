@@ -17,7 +17,7 @@ jobs:
           cache: false
       - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11.3
+          version: v2.13.2
 
   proto:
     runs-on: ubuntu-latest
