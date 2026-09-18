@@ -6,6 +6,9 @@
 # BadgerDB data directory (pgway, pgway-cp).
 badger_path: /var/pgway/lib
 
+# How often to run Badger value log GC (pgway, pgway-cp). 0 disables.
+badger_gc_interval: 5m
+
 # gRPC listen address for the control plane. pgway-dp / pgctl dial this address.
 grpc_listen_addr: ":9090"
 
