@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyProxyV1(ctx context.Context, req *controlplane
 
 	proxy, err := s.cp.ApplyProxyV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply proxy: %v", err)
+		return nil, mapResourceError("apply proxy", err)
 	}
 
 	return &controlplanev1.ApplyProxyV1Response{

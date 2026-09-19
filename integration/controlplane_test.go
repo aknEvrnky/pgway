@@ -21,6 +21,22 @@ import (
 	routerv1 "github.com/aknEvrnky/pgway/internal/schema/router/v1"
 )
 
+func lastChangeEvent(t *testing.T, events []ports.ChangeEvent) ports.ChangeEvent {
+	t.Helper()
+	require.NotEmpty(t, events)
+	return events[len(events)-1]
+}
+
+func changeEventsFor(events []ports.ChangeEvent, id string) []ports.ChangeEvent {
+	out := make([]ports.ChangeEvent, 0)
+	for _, e := range events {
+		if e.ID == id {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
 // ---------------------------------------------------------------------------
 // Proxy
 // ---------------------------------------------------------------------------
@@ -47,12 +63,11 @@ func TestControlPlane_Proxy(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id, "ULID should be assigned")
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeProxy,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -85,7 +100,7 @@ func TestControlPlane_Proxy(t *testing.T) {
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeProxy,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"GetProxy returns persisted proxy", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -133,12 +148,13 @@ func TestControlPlane_Proxy(t *testing.T) {
 			_, err = svc.GetProxy(ctx, "test-proxy")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-proxy")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-proxy",
 				ResourceType: ports.ResourceTypeProxy,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent proxy returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -163,9 +179,9 @@ func TestControlPlane_Pool(t *testing.T) {
 	t.Parallel()
 
 	poolSpec := poolv1.PoolSpecV1{
-		Title:   "test-pool",
-		Type:    "static",
-		Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+		Title:    "test-pool",
+		Type:     "dynamic",
+		Selector: &poolv1.SelectorSpec{Allow: map[string]string{"env": "test"}},
 	}
 
 	for _, tt := range []struct {
@@ -180,12 +196,11 @@ func TestControlPlane_Pool(t *testing.T) {
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id)
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypePool,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -217,7 +232,7 @@ func TestControlPlane_Pool(t *testing.T) {
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypePool,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"GetPool returns persisted pool", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -262,12 +277,13 @@ func TestControlPlane_Pool(t *testing.T) {
 			_, err = svc.GetPool(ctx, "test-pool")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-pool")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-pool",
 				ResourceType: ports.ResourceTypePool,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent pool returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -304,21 +320,22 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"Apply creates new with ULID when name empty", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 
 			result, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: ""}, lbSpec)
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id)
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeBalancer,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 
 			before := time.Now()
 			result, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "test-lb"}, lbSpec)
@@ -329,6 +346,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 			meta := schema.Metadata{Name: "test-lb"}
 
 			result, err := svc.ApplyBalancerV1(ctx, meta, lbSpec)
@@ -341,16 +359,18 @@ func TestControlPlane_Balancer(t *testing.T) {
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, result.Id)
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeBalancer,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"GetBalancer returns persisted balancer", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 
 			_, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "test-lb"}, lbSpec)
 			require.NoError(t, err)
@@ -363,6 +383,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"ListBalancers returns all applied balancers", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 
 			_, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-a"}, lbSpec)
 			require.NoError(t, err)
@@ -382,6 +403,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"DeleteBalancer removes balancer", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughPool(t, svc)
 
 			_, err := svc.ApplyBalancerV1(ctx, schema.Metadata{Name: "test-lb"}, lbSpec)
 			require.NoError(t, err)
@@ -391,12 +413,13 @@ func TestControlPlane_Balancer(t *testing.T) {
 			_, err = svc.GetBalancer(ctx, "test-lb")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-lb")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-lb",
 				ResourceType: ports.ResourceTypeBalancer,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent balancer returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -426,6 +449,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"weighted apply succeeds for static pool", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustApplyProxy(t, svc, "p1")
 
 			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "static-pool"}, poolv1.PoolSpecV1{
 				Title:   "static",
@@ -445,6 +469,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"least-bytes apply stores reset_interval", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustApplyProxy(t, svc, "p1")
 
 			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-lb"}, poolv1.PoolSpecV1{
 				Title:   "static",
@@ -466,6 +491,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"least-bytes apply defaults reset_interval to 1m", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustApplyProxy(t, svc, "p1")
 
 			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-lb2"}, poolv1.PoolSpecV1{
 				Title:   "static",
@@ -485,6 +511,7 @@ func TestControlPlane_Balancer(t *testing.T) {
 		{"pool cannot become dynamic while weighted balancer references it", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustApplyProxy(t, svc, "p1")
 
 			_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "static-pool"}, poolv1.PoolSpecV1{
 				Title:   "static",
@@ -540,21 +567,22 @@ func TestControlPlane_Router(t *testing.T) {
 		{"Apply creates new with ULID when name empty", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			result, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: ""}, routerSpec)
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id)
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeRouter,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			before := time.Now()
 			result, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: "test-router"}, routerSpec)
@@ -565,6 +593,7 @@ func TestControlPlane_Router(t *testing.T) {
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 			meta := schema.Metadata{Name: "test-router"}
 
 			result, err := svc.ApplyRouterV1(ctx, meta, routerSpec)
@@ -577,16 +606,18 @@ func TestControlPlane_Router(t *testing.T) {
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, result.Id)
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeRouter,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"GetRouter returns persisted router", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: "test-router"}, routerSpec)
 			require.NoError(t, err)
@@ -600,6 +631,7 @@ func TestControlPlane_Router(t *testing.T) {
 		{"ListRouters returns all applied routers", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: "router-a"}, routerSpec)
 			require.NoError(t, err)
@@ -619,6 +651,7 @@ func TestControlPlane_Router(t *testing.T) {
 		{"DeleteRouter removes router", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyRouterV1(ctx, schema.Metadata{Name: "test-router"}, routerSpec)
 			require.NoError(t, err)
@@ -628,12 +661,13 @@ func TestControlPlane_Router(t *testing.T) {
 			_, err = svc.GetRouter(ctx, "test-router")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-router")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-router",
 				ResourceType: ports.ResourceTypeRouter,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent router returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -668,21 +702,22 @@ func TestControlPlane_Flow(t *testing.T) {
 		{"Apply creates new with ULID when name empty", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			result, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: ""}, flowSpec)
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id)
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeFlow,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			before := time.Now()
 			result, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "test-flow"}, flowSpec)
@@ -693,6 +728,7 @@ func TestControlPlane_Flow(t *testing.T) {
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 			meta := schema.Metadata{Name: "test-flow"}
 
 			result, err := svc.ApplyFlowV1(ctx, meta, flowSpec)
@@ -705,16 +741,18 @@ func TestControlPlane_Flow(t *testing.T) {
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, result.Id)
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeFlow,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"GetFlow returns persisted flow", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "test-flow"}, flowSpec)
 			require.NoError(t, err)
@@ -727,6 +765,7 @@ func TestControlPlane_Flow(t *testing.T) {
 		{"ListFlows returns all applied flows", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "flow-a"}, flowSpec)
 			require.NoError(t, err)
@@ -746,6 +785,7 @@ func TestControlPlane_Flow(t *testing.T) {
 		{"DeleteFlow removes flow", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughBalancer(t, svc)
 
 			_, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "test-flow"}, flowSpec)
 			require.NoError(t, err)
@@ -755,12 +795,13 @@ func TestControlPlane_Flow(t *testing.T) {
 			_, err = svc.GetFlow(ctx, "test-flow")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-flow")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-flow",
 				ResourceType: ports.ResourceTypeFlow,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent flow returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
@@ -799,21 +840,22 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 		{"Apply creates new with ULID when name empty", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 
 			result, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: ""}, epSpec)
 			require.NoError(t, err)
 			assert.NotEmpty(t, result.Id)
 
-			require.Len(t, spyPub.Events, 1)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeEntrypoint,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[0])
+			}, lastChangeEvent(t, spyPub.Events))
 		}},
 		{"Apply creates new — timestamps set", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 
 			before := time.Now()
 			result, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "test-ep"}, epSpec)
@@ -824,6 +866,7 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 		{"Apply updates existing — CreatedAt preserved, UpdatedAt advances", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 			meta := schema.Metadata{Name: "test-ep"}
 
 			result, err := svc.ApplyEntrypointV1(ctx, meta, epSpec)
@@ -836,16 +879,18 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			assert.True(t, result.CreatedAt.Equal(result2.CreatedAt), "CreatedAt must be preserved on update")
 			assert.True(t, result2.UpdatedAt.After(result.UpdatedAt), "UpdatedAt should advance after update")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, result.Id)
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           result.Id,
 				ResourceType: ports.ResourceTypeEntrypoint,
 				ChangeKind:   ports.ChangeKindSaved,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"GetEntrypoint returns persisted entrypoint", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 
 			_, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "test-ep"}, epSpec)
 			require.NoError(t, err)
@@ -860,6 +905,7 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 		{"ListEntrypoints returns all applied entrypoints", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 
 			_, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "ep-a"}, epSpec)
 			require.NoError(t, err)
@@ -879,6 +925,7 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 		{"DeleteEntrypoint removes entrypoint", func(t *testing.T) {
 			svc, spyPub := testutil.NewSvcWithPublisher(t)
 			ctx := context.Background()
+			testutil.MustSeedThroughFlow(t, svc)
 
 			_, err := svc.ApplyEntrypointV1(ctx, schema.Metadata{Name: "test-ep"}, epSpec)
 			require.NoError(t, err)
@@ -888,12 +935,13 @@ func TestControlPlane_Entrypoint(t *testing.T) {
 			_, err = svc.GetEntrypoint(ctx, "test-ep")
 			assert.ErrorContains(t, err, "not found", "get after delete should return error")
 
-			require.Len(t, spyPub.Events, 2)
+			evs := changeEventsFor(spyPub.Events, "test-ep")
+			require.Len(t, evs, 2)
 			assert.Equal(t, ports.ChangeEvent{
 				ID:           "test-ep",
 				ResourceType: ports.ResourceTypeEntrypoint,
 				ChangeKind:   ports.ChangeKindDeleted,
-			}, spyPub.Events[1])
+			}, evs[1])
 		}},
 		{"Delete non-existent entrypoint returns error", func(t *testing.T) {
 			svc, _ := testutil.NewSvcWithPublisher(t)

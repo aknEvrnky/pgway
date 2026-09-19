@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyRouterV1(ctx context.Context, req *controlplan
 
 	router, err := s.cp.ApplyRouterV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply router: %v", err)
+		return nil, mapResourceError("apply router", err)
 	}
 
 	return &controlplanev1.ApplyRouterV1Response{

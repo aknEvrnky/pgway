@@ -30,6 +30,17 @@ func (s *Service) ApplyFlowV1(ctx context.Context, meta schema.Metadata, spec fl
 		BalancerId: spec.BalancerId,
 	}
 
+	if flow.RouterId != "" {
+		if err := s.requireRouter(ctx, string(ports.ResourceTypeFlow), flow.Id, flow.RouterId); err != nil {
+			return nil, err
+		}
+	}
+	if flow.BalancerId != "" {
+		if err := s.requireBalancer(ctx, string(ports.ResourceTypeFlow), flow.Id, flow.BalancerId); err != nil {
+			return nil, err
+		}
+	}
+
 	now := time.Now()
 	if existing, err := s.flowRepo.Find(ctx, flow.Id); err == nil {
 		flow.CreatedAt = existing.CreatedAt

@@ -14,5 +14,9 @@ func mapResourceError(op string, err error) error {
 	if errors.As(err, &inUse) {
 		return status.Errorf(codes.FailedPrecondition, "%s: %v", op, err)
 	}
+	var missing *controlplane.ResourceMissingRefError
+	if errors.As(err, &missing) {
+		return status.Errorf(codes.FailedPrecondition, "%s: %v", op, err)
+	}
 	return status.Errorf(codes.Internal, "%s: %v", op, err)
 }

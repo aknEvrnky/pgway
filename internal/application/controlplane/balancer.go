@@ -39,10 +39,13 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 		lb.ResetInterval = spec.ResolvedResetInterval()
 	}
 
+	if err := s.requirePool(ctx, string(ports.ResourceTypeBalancer), lb.Id, lb.PoolId); err != nil {
+		return nil, err
+	}
 	if lb.Type == domain.BalancerTypeWeighted {
 		pool, err := s.poolRepo.Find(ctx, lb.PoolId)
 		if err != nil {
-			return nil, fmt.Errorf("weighted balancer requires pool %q: %w", lb.PoolId, err)
+			return nil, newResourceMissingRef(string(ports.ResourceTypeBalancer), lb.Id, string(ports.ResourceTypePool), lb.PoolId)
 		}
 		if pool.Type != domain.PoolTypeStatic {
 			return nil, fmt.Errorf("weighted balancer requires static pool %q (got %q)", lb.PoolId, pool.Type)

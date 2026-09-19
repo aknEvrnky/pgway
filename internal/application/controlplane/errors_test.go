@@ -38,3 +38,15 @@ func TestResourceInUseError_Error(t *testing.T) {
 		assert.Equal(t, "p", inUse.Name)
 	})
 }
+
+func TestResourceMissingRefError_Error(t *testing.T) {
+	t.Parallel()
+
+	err := newResourceMissingRef("flow", "edge", "balancer", "lb-1")
+	assert.Equal(t, `cannot apply flow "edge": balancer "lb-1" not found`, err.Error())
+
+	var missing *ResourceMissingRefError
+	require.True(t, errors.As(error(err), &missing))
+	assert.Equal(t, "balancer", missing.MissingType)
+	assert.Equal(t, "lb-1", missing.MissingName)
+}

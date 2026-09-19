@@ -18,7 +18,11 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/schema"
+	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	v1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
+	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
+	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
+	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 )
 
 type clientWatcher struct {
@@ -90,6 +94,21 @@ func TestWatchHotReload(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("watch stream did not become ready")
 	}
+
+	_, err = admin.ApplyProxyV1(ctx, schema.Metadata{Name: "p1"}, proxyv1.ProxySpecV1{
+		Protocol: "http", Host: "127.0.0.1", Port: 8080,
+	})
+	require.NoError(t, err)
+	_, err = admin.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
+		Title: "s", Type: "static", Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
+	})
+	require.NoError(t, err)
+	_, err = admin.ApplyBalancerV1(ctx, schema.Metadata{Name: "lb-1"}, balancerv1.BalancerSpecV1{
+		Title: "lb", Type: "round-robin", PoolId: "pool-1",
+	})
+	require.NoError(t, err)
+	_, err = admin.ApplyFlowV1(ctx, schema.Metadata{Name: "any-flow"}, flowv1.FlowSpecV1{BalancerId: "lb-1"})
+	require.NoError(t, err)
 
 	_, err = admin.ApplyEntrypointV1(ctx, schema.Metadata{Name: "watched-ep"}, v1.EntrypointSpecV1{
 		Title:    "watched-ep",

@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyBalancerV1(ctx context.Context, req *controlpl
 
 	balancer, err := s.cp.ApplyBalancerV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply balancer: %v", err)
+		return nil, mapResourceError("apply balancer", err)
 	}
 
 	return &controlplanev1.ApplyBalancerV1Response{
