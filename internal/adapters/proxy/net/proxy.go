@@ -8,25 +8,49 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"golang.org/x/net/proxy"
 )
 
+// dialKeepAlive is the TCP keepalive period for upstream dials (not configurable).
+const dialKeepAlive = 30 * time.Second
+
+// TransportConfig configures per-proxy http.Transport pool and dialer settings.
+type TransportConfig struct {
+	MaxIdleConns        int
+	MaxIdleConnsPerHost int
+	IdleConnTimeout     time.Duration
+	DialTimeout         time.Duration
+}
+
 // Adapter is a secondary adapter that opens connections to upstream proxies.
 // Each proxy gets its own http.Transport, isolating connection pools and DNS caches.
 type Adapter struct {
 	transports sync.Map
+	cfg        TransportConfig
+	dialer     *net.Dialer
 }
 
-func NewAdapter() *Adapter {
-	return &Adapter{}
+func NewAdapter(cfg TransportConfig) *Adapter {
+	return &Adapter{
+		cfg: cfg,
+		dialer: &net.Dialer{
+			Timeout:   cfg.DialTimeout,
+			KeepAlive: dialKeepAlive,
+		},
+	}
 }
 
 // transport returns the http.Transport for the given proxy, creating one if it doesn't exist.
 func (a *Adapter) transport(p *domain.Proxy) *http.Transport {
 	t := &http.Transport{
-		Proxy: http.ProxyURL(p.URL()),
+		Proxy:               http.ProxyURL(p.URL()),
+		MaxIdleConns:        a.cfg.MaxIdleConns,
+		MaxIdleConnsPerHost: a.cfg.MaxIdleConnsPerHost,
+		IdleConnTimeout:     a.cfg.IdleConnTimeout,
+		DialContext:         a.dialer.DialContext,
 	}
 
 	actual, _ := a.transports.LoadOrStore(p.Id, t)
@@ -53,7 +77,7 @@ func (a *Adapter) Dial(ctx context.Context, p *domain.Proxy, target string) (net
 
 // dialHTTPProxy opens a CONNECT tunnel through an HTTP proxy.
 func (a *Adapter) dialHTTPProxy(ctx context.Context, p *domain.Proxy, target string) (net.Conn, error) {
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", p.Addr())
+	conn, err := a.dialer.DialContext(ctx, "tcp", p.Addr())
 
 	if err != nil {
 		return nil, fmt.Errorf("dial proxy %s: %w", p.Addr(), err)

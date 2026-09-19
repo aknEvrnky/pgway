@@ -60,6 +60,10 @@ token_ttl: 1h`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -84,6 +88,10 @@ token_ttl: 1h`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -109,6 +117,10 @@ token_ttl: 1h`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -136,6 +148,10 @@ agent_heartbeat_threshold: 15s`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -166,6 +182,10 @@ registration_token: reg-secret`,
 				HeartbeatInterval:       5 * time.Second,
 				RegistrationToken:       "reg-secret",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -192,6 +212,10 @@ registration_token: file-reg`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "env-reg",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -218,6 +242,10 @@ log_level: warn`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "debug",
 			},
 		},
@@ -244,6 +272,10 @@ max_request_body_bytes: 2KiB`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(4 << 10),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -269,6 +301,10 @@ max_request_body_bytes: 10MiB`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -295,6 +331,10 @@ grpc_keepalive_timeout: 10s`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -320,6 +360,10 @@ grpc_keepalive_interval: 0`,
 				HeartbeatInterval:       10 * time.Second,
 				RegistrationToken:       "",
 				MaxRequestBodyBytes:     ByteSize(10 << 20),
+				ProxyMaxIdleConns:       1024,
+				ProxyMaxIdleConnsPerHost: 128,
+				ProxyIdleConnTimeout:    90 * time.Second,
+				ProxyDialTimeout:        10 * time.Second,
 				LogLevel:                "info",
 			},
 		},
@@ -354,5 +398,57 @@ grpc_keepalive_interval: 1m
 grpc_keepalive_timeout: 0`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "grpc_keepalive_timeout")
+}
+
+func TestLoad_ProxyTransportValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		file    string
+		wantErr string
+	}{
+		{
+			name: "per_host zero rejected",
+			file: `badger_path: /data/pgway
+proxy_max_idle_conns_per_host: 0`,
+			wantErr: "proxy_max_idle_conns_per_host",
+		},
+		{
+			name: "dial timeout zero rejected",
+			file: `badger_path: /data/pgway
+proxy_dial_timeout: 0`,
+			wantErr: "proxy_dial_timeout",
+		},
+		{
+			name: "negative max idle rejected",
+			file: `badger_path: /data/pgway
+proxy_max_idle_conns: -1`,
+			wantErr: "proxy_max_idle_conns",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			err := Load(writeConfig(t, tt.file))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestLoad_ProxyTransportFromFile(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `badger_path: /data/pgway
+proxy_max_idle_conns: 512
+proxy_max_idle_conns_per_host: 64
+proxy_idle_conn_timeout: 30s
+proxy_dial_timeout: 5s`)))
+
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.Equal(t, 512, cfg.ProxyMaxIdleConns)
+	assert.Equal(t, 64, cfg.ProxyMaxIdleConnsPerHost)
+	assert.Equal(t, 30*time.Second, cfg.ProxyIdleConnTimeout)
+	assert.Equal(t, 5*time.Second, cfg.ProxyDialTimeout)
 }
 

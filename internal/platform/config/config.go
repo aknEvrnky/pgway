@@ -52,6 +52,16 @@ type Config struct {
 	// MaxRequestBodyBytes caps non-CONNECT proxy request bodies.
 	// Accepts bare integers or human sizes (e.g. "10MiB"). 0 disables the limit.
 	MaxRequestBodyBytes ByteSize `mapstructure:"max_request_body_bytes"`
+	// ProxyMaxIdleConns is the global idle connection limit across all hosts
+	// on each per-proxy http.Transport. 0 means unlimited.
+	ProxyMaxIdleConns int `mapstructure:"proxy_max_idle_conns"`
+	// ProxyMaxIdleConnsPerHost caps idle connections per upstream host.
+	// Must be > 0 (Go treats 0 as DefaultMaxIdleConnsPerHost=2).
+	ProxyMaxIdleConnsPerHost int `mapstructure:"proxy_max_idle_conns_per_host"`
+	// ProxyIdleConnTimeout is how long an idle connection stays in the pool.
+	ProxyIdleConnTimeout time.Duration `mapstructure:"proxy_idle_conn_timeout"`
+	// ProxyDialTimeout is the TCP dial timeout for upstream proxy connections.
+	ProxyDialTimeout time.Duration `mapstructure:"proxy_dial_timeout"`
 	// LogLevel sets the global zap log level (debug|info|warn|error).
 	LogLevel string `mapstructure:"log_level"`
 }
@@ -85,6 +95,10 @@ func Load(path string) error {
 	viper.SetDefault("heartbeat_interval", 10*time.Second)
 	viper.SetDefault("registration_token", "")
 	viper.SetDefault("max_request_body_bytes", "10MiB")
+	viper.SetDefault("proxy_max_idle_conns", 1024)
+	viper.SetDefault("proxy_max_idle_conns_per_host", 128)
+	viper.SetDefault("proxy_idle_conn_timeout", 90*time.Second)
+	viper.SetDefault("proxy_dial_timeout", 10*time.Second)
 	viper.SetDefault("log_level", "info")
 
 	// PGWAY_TOKEN etc. override file values
@@ -118,6 +132,18 @@ func Load(path string) error {
 	}
 	if cfg.GRPCKeepaliveInterval > 0 && cfg.GRPCKeepaliveTimeout <= 0 {
 		return fmt.Errorf("grpc_keepalive_timeout must be > 0 when grpc_keepalive_interval is enabled")
+	}
+	if cfg.ProxyMaxIdleConns < 0 {
+		return fmt.Errorf("proxy_max_idle_conns must be >= 0")
+	}
+	if cfg.ProxyMaxIdleConnsPerHost <= 0 {
+		return fmt.Errorf("proxy_max_idle_conns_per_host must be > 0")
+	}
+	if cfg.ProxyIdleConnTimeout < 0 {
+		return fmt.Errorf("proxy_idle_conn_timeout must be >= 0")
+	}
+	if cfg.ProxyDialTimeout <= 0 {
+		return fmt.Errorf("proxy_dial_timeout must be > 0")
 	}
 
 	c = &cfg
