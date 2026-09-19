@@ -15,7 +15,7 @@ func newInitCmd(d *Deps) *cobra.Command {
 		Short: "Create the first admin user with the server's bootstrap token",
 		Long: `Initializes pgway by creating the first admin user.
 
-The bootstrap token is printed to the server log on first start. Pass it via
+The bootstrap token is printed to the server **stderr** on first start (not in structured logs). Pass it via
 --bootstrap-token or the PGWAY_BOOTSTRAP_TOKEN environment variable.`,
 		Example: "  pgctl init --bootstrap-token pgw_...",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -58,7 +58,7 @@ The bootstrap token is printed to the server log on first start. Pass it via
 		},
 	}
 
-	cmd.Flags().StringVar(&bootstrapToken, "bootstrap-token", "", "one-time bootstrap token from the server log")
+	cmd.Flags().StringVar(&bootstrapToken, "bootstrap-token", "", "one-time bootstrap token from server stderr")
 	cmd.Flags().StringVar(&username, "username", "", "admin username (prompted when omitted)")
 	cmd.Flags().StringVar(&password, "password", "", "admin password (prompted when omitted)")
 

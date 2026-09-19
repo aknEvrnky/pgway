@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -69,7 +70,10 @@ func (s *Service) Bootstrap(ctx context.Context) error {
 	s.bootstrapToken = token
 	s.mu.Unlock()
 
-	zap.L().Warn("no users found — initialize with: pgctl init --bootstrap-token <token> (token is not logged; use status/BootstrapToken)")
+	// Print once to stderr for the operator; do not put the secret in structured logs
+	// (log aggregators retain zap fields).
+	_, _ = fmt.Fprintf(os.Stderr, "pgway: no users found — initialize with:\n  pgctl init --bootstrap-token %s\n", token)
+	zap.L().Warn("no users found — initialize with pgctl init (bootstrap token written to stderr only)")
 
 	return nil
 }
