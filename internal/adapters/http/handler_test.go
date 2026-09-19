@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -47,6 +48,7 @@ type handlerFakeTransport struct {
 	dialCalls      atomic.Int32
 	lastBody       []byte
 	roundTripErr   error
+	dialErr        error
 }
 
 func (t *handlerFakeTransport) RoundTrip(_ context.Context, _ *domain.Proxy, r *http.Request) (*http.Response, error) {
@@ -68,6 +70,9 @@ func (t *handlerFakeTransport) RoundTrip(_ context.Context, _ *domain.Proxy, r *
 
 func (t *handlerFakeTransport) Dial(_ context.Context, _ *domain.Proxy, _ string) (net.Conn, error) {
 	t.dialCalls.Add(1)
+	if t.dialErr != nil {
+		return nil, t.dialErr
+	}
 	c1, c2 := net.Pipe()
 	_ = c2.Close()
 	return c1, nil
@@ -76,6 +81,39 @@ func (t *handlerFakeTransport) Dial(_ context.Context, _ *domain.Proxy, _ string
 func withEntrypoint(r *http.Request, id string) *http.Request {
 	ctx := context.WithValue(r.Context(), entrypointContextKey, contextKey(id))
 	return r.WithContext(ctx)
+}
+
+func TestHandler_RoundTripTimeout_Returns504(t *testing.T) {
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &handlerFakeTransport{roundTripErr: timeoutError{}}
+	h := NewHandler(api, tr, 0)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusGatewayTimeout, rec.Code)
+	assert.Contains(t, rec.Body.String(), "gateway timeout")
+	assert.Equal(t, int32(1), tr.roundTripCalls.Load())
+}
+
+func TestHandler_DialRefused_Returns502(t *testing.T) {
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1", Host: "127.0.0.1", Port: 1}, balancerID: "lb1"}
+	tr := &handlerFakeTransport{dialErr: syscall.ECONNREFUSED}
+	h := NewHandler(api, tr, 0)
+
+	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
+	req.Host = "example.com:443"
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadGateway, rec.Code)
+	assert.Contains(t, rec.Body.String(), "connection refused")
+	assert.Equal(t, int32(1), tr.dialCalls.Load())
 }
 
 func TestHandler_ContentLengthOverLimit_Returns413(t *testing.T) {
