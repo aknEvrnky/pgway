@@ -51,7 +51,7 @@ func (r *TokenRepository) Find(ctx context.Context, hash string) (*domain.Token,
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(tokenKey(hash))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("token not found")
+			return fmt.Errorf("token not found: %w", domain.ErrNotFound)
 		}
 
 		if err != nil {
@@ -97,7 +97,7 @@ func (r *TokenRepository) Delete(ctx context.Context, hash string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(tokenKey(hash))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("token not found")
+			return fmt.Errorf("token not found: %w", domain.ErrNotFound)
 		}
 		if err != nil {
 			return err

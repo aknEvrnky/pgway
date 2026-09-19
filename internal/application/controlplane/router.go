@@ -40,10 +40,14 @@ func (s *Service) ApplyRouterV1(ctx context.Context, meta schema.Metadata, spec 
 	}
 
 	now := time.Now()
-	if existing, err := s.routerRepo.Find(ctx, router.Id); err == nil {
-		router.CreatedAt = existing.CreatedAt
-	} else {
-		router.CreatedAt = now
+	existing, err := s.routerRepo.Find(ctx, router.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	router.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find router: %w", err)
 	}
 	router.UpdatedAt = now
 

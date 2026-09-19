@@ -76,7 +76,7 @@ func (r *AgentRepository) Find(ctx context.Context, id string) (*domain.Agent, e
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(agentKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("agent %q not found", id)
+			return errNotFound("agent", id)
 		}
 
 		if err != nil {
@@ -131,7 +131,7 @@ func (r *AgentRepository) Delete(ctx context.Context, id string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(agentKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("agent %q not found", id)
+			return errNotFound("agent", id)
 		}
 		if err != nil {
 			return err

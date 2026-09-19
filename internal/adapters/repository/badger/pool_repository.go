@@ -88,7 +88,7 @@ func (r *PoolRepository) Find(ctx context.Context, id string) (*domain.Pool, err
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(poolKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("pool %q not found", id)
+			return errNotFound("pool", id)
 		}
 
 		if err != nil {
@@ -123,7 +123,7 @@ func (r *PoolRepository) Delete(ctx context.Context, id string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(poolKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("pool %q not found", id)
+			return errNotFound("pool", id)
 		}
 		if err != nil {
 			return err

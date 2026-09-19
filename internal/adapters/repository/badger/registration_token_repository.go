@@ -75,7 +75,7 @@ func (r *RegistrationTokenRepository) Consume(ctx context.Context, hash string) 
 	err := r.db.Update(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(registrationTokenKey(hash))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("registration token not found")
+			return fmt.Errorf("registration token not found: %w", domain.ErrNotFound)
 		}
 		if err != nil {
 			return err

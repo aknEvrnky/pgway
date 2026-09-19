@@ -42,10 +42,14 @@ func (s *Service) ApplyFlowV1(ctx context.Context, meta schema.Metadata, spec fl
 	}
 
 	now := time.Now()
-	if existing, err := s.flowRepo.Find(ctx, flow.Id); err == nil {
-		flow.CreatedAt = existing.CreatedAt
-	} else {
-		flow.CreatedAt = now
+	existing, err := s.flowRepo.Find(ctx, flow.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	flow.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find flow: %w", err)
 	}
 	flow.UpdatedAt = now
 

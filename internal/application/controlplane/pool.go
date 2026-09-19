@@ -45,10 +45,14 @@ func (s *Service) ApplyPoolV1(ctx context.Context, meta schema.Metadata, spec po
 	}
 
 	now := time.Now()
-	if existing, err := s.poolRepo.Find(ctx, pool.Id); err == nil {
-		pool.CreatedAt = existing.CreatedAt
-	} else {
-		pool.CreatedAt = now
+	existing, err := s.poolRepo.Find(ctx, pool.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	pool.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find pool: %w", err)
 	}
 	pool.UpdatedAt = now
 
