@@ -45,6 +45,8 @@ type UserRepositoryPort interface {
 	List(ctx context.Context, params domain.ListParams, filter domain.UserFilter) (domain.ListResult[domain.User], error)
 	Find(ctx context.Context, id string) (*domain.User, error)
 	Count(ctx context.Context) (int, error)
+	// Create inserts a new user; must fail if the username already exists.
+	Create(ctx context.Context, user *domain.User) error
 	Save(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id string) error
 }
