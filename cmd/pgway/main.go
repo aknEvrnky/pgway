@@ -125,7 +125,10 @@ func main() {
 
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
-	eventConsumer := consumer.NewConsumer(zap.L(), pubSub, app, httpAdapter)
+	eventConsumer := consumer.NewConsumer(zap.L(), pubSub, consumer.CoalesceConfig{
+		Window:    cfg.Dataplane.EventCoalesceWindow,
+		MaxBuffer: cfg.Dataplane.EventCoalesceMaxBuffer,
+	}, app, httpAdapter)
 
 	runErr := make(chan error, 4)
 

@@ -66,6 +66,10 @@ func defaultWant(host string) Config {
 				TTL:     5 * time.Minute,
 			},
 		},
+		Dataplane: DataplaneConfig{
+			EventCoalesceWindow:    100 * time.Millisecond,
+			EventCoalesceMaxBuffer: 256,
+		},
 	}
 }
 
@@ -307,6 +311,40 @@ rate_limit_rps = 0
 				return w
 			}(),
 		},
+		{
+			name: "reads dataplane event coalesce from file",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+event_coalesce_window = "50ms"
+event_coalesce_max_buffer = 128
+`,
+			want: func() Config {
+				w := defaultWant(host)
+				w.Badger.Path = "/data/pgway"
+				w.Dataplane.EventCoalesceWindow = 50 * time.Millisecond
+				w.Dataplane.EventCoalesceMaxBuffer = 128
+				return w
+			}(),
+		},
+		{
+			name: "dataplane event coalesce window 0 disables",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+event_coalesce_window = "0"
+`,
+			want: func() Config {
+				w := defaultWant(host)
+				w.Badger.Path = "/data/pgway"
+				w.Dataplane.EventCoalesceWindow = 0
+				return w
+			}(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -357,6 +395,20 @@ rate_limit_burst = 0
 `))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "grpc.rate_limit_burst")
+}
+
+func TestLoad_EventCoalesceMaxBufferRequiredWhenEnabled(t *testing.T) {
+	viper.Reset()
+	err := Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+event_coalesce_window = "100ms"
+event_coalesce_max_buffer = 0
+`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "dataplane.event_coalesce_max_buffer")
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {

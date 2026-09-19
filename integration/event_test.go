@@ -28,7 +28,7 @@ func TestApplication_Event_Handler(t *testing.T) {
 	app := api.NewApplication(svc, svc, zap.NewNop())
 
 	// init the consumer
-	eventConsumer := consumer.NewConsumer(zap.NewNop(), pubSub, app, spy)
+	eventConsumer := consumer.NewConsumer(zap.NewNop(), pubSub, consumer.CoalesceConfig{}, app, spy)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() { _ = eventConsumer.ConsumeEvents(ctx) }()
