@@ -9,10 +9,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// HeartbeatOptions tunes RunHeartbeat. Zero value is fine for production.
+type HeartbeatOptions struct {
+	// OnSuccess is invoked after a successful Heartbeat RPC (e.g. LinkState.TouchHeartbeat).
+	OnSuccess func()
+}
+
 // RunHeartbeat ticks until ctx is canceled. Transient errors are logged;
 // Unauthenticated is fatal (token revoked/expired — admin must mint a new
 // registration token).
-func RunHeartbeat(ctx context.Context, log *zap.Logger, hb ports.AgentHeartbeater, interval time.Duration) error {
+func RunHeartbeat(ctx context.Context, log *zap.Logger, hb ports.AgentHeartbeater, interval time.Duration, opts HeartbeatOptions) error {
 	if log == nil {
 		log = zap.NewNop()
 	}
@@ -38,6 +44,9 @@ func RunHeartbeat(ctx context.Context, log *zap.Logger, hb ports.AgentHeartbeate
 				}
 				log.Warn("agent heartbeat failed", zap.Error(err))
 				continue
+			}
+			if opts.OnSuccess != nil {
+				opts.OnSuccess()
 			}
 			log.Info("agent heartbeat ok",
 				zap.Time("token_expires_at", expiresAt),

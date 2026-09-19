@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -18,80 +17,95 @@ type contextKey string
 
 const entrypointContextKey contextKey = "entry_point_id"
 
-// serverShutdownTimeout bounds how long HandleEvent waits for an old server
-// to drain before replacing it. Without a bound a slow connection would block
-// the event consumer loop indefinitely.
+// serverShutdownTimeout bounds how long ReconcileListeners waits for an old
+// server to drain before replacing it. Without a bound a slow connection
+// would block the event consumer / resync path indefinitely.
 const serverShutdownTimeout = 10 * time.Second
 
 type Adapter struct {
 	api          ports.Application
 	transport    ports.ProxyTransportPort
+	link         ports.CPLinkStatus // optional; nil disables fail_closed gate
 	maxBodyBytes int64
 	servers      map[string]*http.Server
 	mu           sync.Mutex
 }
 
-// HandleEvent reacts to entrypoint changes: it stops the server for the old
-// definition (if any) and, on save, builds and starts a server for the new
-// one. It reads entrypoints through the application cache, so it must run
-// after the cache-refreshing handler in the consumer chain.
+var _ ports.ListenerReconciler = (*Adapter)(nil)
+
+// HandleEvent reacts to entrypoint change hints by reconciling all listeners
+// against the application cache (same path as Watch/periodic Resync). It must
+// run after the cache-refreshing handler in the consumer chain.
 func (a *Adapter) HandleEvent(ctx context.Context, e ports.ChangeEvent) error {
-	// skip if no modification on entrypoint
 	if e.ResourceType != ports.ResourceTypeEntrypoint {
 		return nil
 	}
+	return a.ReconcileListeners(ctx)
+}
 
-	// stop and forget the old server, if one is running
-	a.mu.Lock()
-	oldServer, ok := a.servers[e.ID]
-	delete(a.servers, e.ID)
-	a.mu.Unlock()
-
-	if ok {
-		shutdownCtx, cancel := context.WithTimeout(ctx, serverShutdownTimeout)
-		defer cancel()
-
-		// best effort: a drain timeout must not prevent the new server from
-		// starting; a bind conflict, if any, is logged by startServer
-		if err := oldServer.Shutdown(shutdownCtx); err != nil {
-			zap.L().Warn("shutting down old server", zap.Error(err), zap.String("entrypoint", e.ID))
-		}
-	}
-
-	if e.ChangeKind != ports.ChangeKindSaved {
-		return nil
-	}
-
-	// create / update: build the server from the refreshed cache and start it
+// ReconcileListeners brings running entrypoint servers in line with the
+// application cache. Bind-address changes start the new listener before
+// draining the old one (ports differ, so there is no bind conflict). Removals
+// and replacements shut down in parallel.
+func (a *Adapter) ReconcileListeners(ctx context.Context) error {
 	eps, err := a.api.EntryPoints(ctx)
 	if err != nil {
 		return err
 	}
 
-	var ep *domain.Entrypoint
-	for _, entrypoint := range eps {
-		if entrypoint.Id == e.ID {
-			ep = entrypoint
-			break
+	desired := make(map[string]*domain.Entrypoint, len(eps))
+	for _, ep := range eps {
+		desired[ep.Id] = ep
+	}
+
+	a.mu.Lock()
+	var toStop []*http.Server
+	var toStart []*http.Server
+
+	// Removals and address changes → schedule stop of the old server.
+	for id, srv := range a.servers {
+		ep, ok := desired[id]
+		if !ok || srv.Addr != ep.ListenAddr() {
+			toStop = append(toStop, srv)
+			delete(a.servers, id)
 		}
 	}
 
-	if ep == nil {
-		return fmt.Errorf("entrypoint not found: %q", e.ID)
+	// Additions and replacements → start new servers while old ones still drain.
+	for id, ep := range desired {
+		if _, ok := a.servers[id]; ok {
+			continue
+		}
+		srv := newServer(a.api, ep, a.transport, a.link, a.maxBodyBytes)
+		a.servers[id] = srv
+		toStart = append(toStart, srv)
 	}
-
-	server := newServer(a.api, ep, a.transport, a.maxBodyBytes)
-
-	a.mu.Lock()
-	a.servers[ep.Id] = server
 	a.mu.Unlock()
 
-	a.startServer(server)
+	for _, srv := range toStart {
+		a.startServer(srv)
+	}
 
+	if len(toStop) == 0 {
+		return nil
+	}
+
+	g, gctx := errgroup.WithContext(ctx)
+	for _, srv := range toStop {
+		g.Go(func() error {
+			shutdownCtx, cancel := context.WithTimeout(gctx, serverShutdownTimeout)
+			defer cancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				zap.L().Warn("reconcile shutdown", zap.Error(err), zap.String("addr", srv.Addr))
+			}
+			return nil // best-effort; never fail the whole reconcile
+		})
+	}
+	_ = g.Wait()
 	return nil
 }
 
-func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort, maxBodyBytes int64) (*Adapter, error) {
+func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.ProxyTransportPort, maxBodyBytes int64, link ports.CPLinkStatus) (*Adapter, error) {
 	entrypoints, err := api.EntryPoints(ctx)
 	if err != nil {
 		return nil, err
@@ -100,19 +114,20 @@ func NewHttpAdapter(ctx context.Context, api ports.Application, transport ports.
 	servers := make(map[string]*http.Server)
 
 	for _, ep := range entrypoints {
-		servers[ep.Id] = newServer(api, ep, transport, maxBodyBytes)
+		servers[ep.Id] = newServer(api, ep, transport, link, maxBodyBytes)
 	}
 
 	return &Adapter{
 		api:          api,
 		servers:      servers,
 		transport:    transport,
+		link:         link,
 		maxBodyBytes: maxBodyBytes,
 	}, nil
 }
 
-func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.ProxyTransportPort, maxBodyBytes int64) *http.Server {
-	handler := NewHandler(api, transport, maxBodyBytes)
+func newServer(api ports.Application, ep *domain.Entrypoint, transport ports.ProxyTransportPort, link ports.CPLinkStatus, maxBodyBytes int64) *http.Server {
+	handler := NewHandler(api, transport, maxBodyBytes, link)
 
 	mw := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), entrypointContextKey, contextKey(ep.Id))

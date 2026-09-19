@@ -11,8 +11,12 @@ import (
 // WatchOptions tunes RunWatch. Zero value is fine for production.
 type WatchOptions struct {
 	// OnConnected is invoked after the watch stream is established and
-	// afterConnect (bootstrap) has succeeded — useful for test handshakes.
+	// afterConnect (bootstrap) has succeeded — useful for test handshakes
+	// and LinkState.MarkWatchUp.
 	OnConnected func()
+	// OnDisconnected is invoked when a watch session ends (before backoff),
+	// including after a successful session — useful for LinkState.MarkWatchDown.
+	OnDisconnected func()
 
 	// InitialBackoff is the first reconnect delay (default 1s).
 	InitialBackoff time.Duration
@@ -61,6 +65,9 @@ func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatch
 			}
 			return nil
 		})
+		if opts.OnDisconnected != nil {
+			opts.OnDisconnected()
+		}
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

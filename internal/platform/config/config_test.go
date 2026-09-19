@@ -67,8 +67,12 @@ func defaultWant(host string) Config {
 			},
 		},
 		Dataplane: DataplaneConfig{
-			EventCoalesceWindow:    100 * time.Millisecond,
-			EventCoalesceMaxBuffer: 256,
+			EventCoalesceWindow:              100 * time.Millisecond,
+			EventCoalesceMaxBuffer:           256,
+			CPDisconnectStrategy:             "fail_open",
+			CPDisconnectUnreachableThreshold: 30 * time.Second,
+			CPDisconnectRecoverThreshold:     0,
+			EventResyncInterval:              5 * time.Minute,
 		},
 	}
 }
@@ -409,6 +413,56 @@ event_coalesce_max_buffer = 0
 `))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "dataplane.event_coalesce_max_buffer")
+}
+
+func TestLoad_CPDisconnectValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		file    string
+		wantErr string
+	}{
+		{
+			name: "bad strategy",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+cp_disconnect_strategy = "panic"
+`,
+			wantErr: "cp_disconnect_strategy",
+		},
+		{
+			name: "negative unreachable threshold",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+cp_disconnect_unreachable_threshold = "-1s"
+`,
+			wantErr: "cp_disconnect_unreachable_threshold",
+		},
+		{
+			name: "negative recover threshold",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[dataplane]
+cp_disconnect_recover_threshold = "-5s"
+`,
+			wantErr: "cp_disconnect_recover_threshold",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			err := Load(writeConfig(t, tt.file))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {

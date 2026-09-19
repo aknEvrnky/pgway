@@ -18,6 +18,7 @@ import (
 	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
 	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/agenthost"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
@@ -115,7 +116,7 @@ func main() {
 		DNSCacheEnabled:     cfg.Proxy.DNSCache.Enabled,
 		DNSCacheTTL:         cfg.Proxy.DNSCache.TTL,
 	})
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes))
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes), nil)
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
@@ -153,6 +154,23 @@ func main() {
 			runErr <- err
 		}
 	}()
+
+	if cfg.Dataplane.EventResyncInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(cfg.Dataplane.EventResyncInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-sigCtx.Done():
+					return
+				case <-ticker.C:
+					if err := agenthost.Resync(sigCtx, app, httpAdapter); err != nil {
+						zap.L().Warn("periodic resync", zap.Error(err))
+					}
+				}
+			}
+		}()
+	}
 
 	select {
 	case <-sigCtx.Done():

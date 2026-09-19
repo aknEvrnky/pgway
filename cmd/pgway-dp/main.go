@@ -89,6 +89,13 @@ func main() {
 	app := api.NewApplication(cpClient, cpClient, zap.L())
 	ctx := context.Background()
 
+	link := agenthost.NewLinkState(agenthost.LinkStateConfig{
+		Strategy:             cfg.Dataplane.CPDisconnectStrategy,
+		UnreachableThreshold: cfg.Dataplane.CPDisconnectUnreachableThreshold,
+		RecoverThreshold:     cfg.Dataplane.CPDisconnectRecoverThreshold,
+		Log:                  zap.L(),
+	})
+
 	if err := app.Bootstrap(ctx); err != nil {
 		zap.L().Fatal("bootstrap", zap.Error(err))
 	}
@@ -101,7 +108,7 @@ func main() {
 		DNSCacheEnabled:     cfg.Proxy.DNSCache.Enabled,
 		DNSCacheTTL:         cfg.Proxy.DNSCache.TTL,
 	})
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes))
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes), link)
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
@@ -126,7 +133,9 @@ func main() {
 	}()
 
 	go func() {
-		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.Agent.HeartbeatInterval)
+		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.Agent.HeartbeatInterval, agenthost.HeartbeatOptions{
+			OnSuccess: link.TouchHeartbeat,
+		})
 	}()
 
 	go func() {
@@ -135,8 +144,11 @@ func main() {
 
 	go func() {
 		watchErr <- agenthost.RunWatch(sigCtx, zap.L(), changeWatcher{client: cpClient, pub: localBus}, func(c context.Context) error {
-			return app.Bootstrap(c)
-		}, agenthost.WatchOptions{})
+			return agenthost.Resync(c, app, httpAdapter)
+		}, agenthost.WatchOptions{
+			OnConnected:    link.MarkWatchUp,
+			OnDisconnected: link.MarkWatchDown,
+		})
 	}()
 
 	select {
