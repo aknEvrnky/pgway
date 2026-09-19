@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -246,7 +247,9 @@ func (c *RouterCondition) evaluate(r *http.Request) bool {
 		return true
 
 	case MatchTypeHost:
-		matched, err := filepath.Match(c.Value, r.Host)
+		host := hostWithoutPort(r.Host)
+		// filepath.Match enables documented glob patterns (e.g. *.example.com).
+		matched, err := filepath.Match(c.Value, host)
 		if err != nil {
 			return false
 		}
@@ -254,12 +257,7 @@ func (c *RouterCondition) evaluate(r *http.Request) bool {
 		return matched
 
 	case MatchTypeHostSuffix:
-		host := r.Host
-
-		// remove port if exists
-		if idx := strings.LastIndex(host, ":"); idx != -1 {
-			host = host[:idx]
-		}
+		host := hostWithoutPort(r.Host)
 
 		// normalize the suffix
 		suffix := c.Value
@@ -292,4 +290,14 @@ func (c *RouterCondition) evaluate(r *http.Request) bool {
 	}
 
 	return false
+}
+
+// hostWithoutPort strips a trailing :port from an HTTP Host value.
+// Bare hostnames without a port are returned unchanged.
+func hostWithoutPort(hostport string) string {
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		return hostport
+	}
+	return host
 }
