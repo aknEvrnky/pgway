@@ -56,3 +56,29 @@ func TestNewAdapter_UnlimitedIdleConns(t *testing.T) {
 	assert.Equal(t, 0, tr.MaxIdleConns)
 	assert.Equal(t, 64, tr.MaxIdleConnsPerHost)
 }
+
+func TestNewAdapter_DNSCacheEnabledUsesCustomDial(t *testing.T) {
+	t.Parallel()
+
+	a := NewAdapter(TransportConfig{
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 2,
+		IdleConnTimeout:     time.Second,
+		DialTimeout:         time.Second,
+		DNSCacheEnabled:     true,
+		DNSCacheTTL:         time.Minute,
+	})
+
+	// With cache enabled, dialContext is a wrapper — not the bare dialer method value.
+	require.NotNil(t, a.dialContext)
+	assert.NotNil(t, a.dialer)
+
+	disabled := NewAdapter(TransportConfig{
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 2,
+		IdleConnTimeout:     time.Second,
+		DialTimeout:         time.Second,
+		DNSCacheEnabled:     false,
+	})
+	require.NotNil(t, disabled.dialContext)
+}

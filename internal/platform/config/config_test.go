@@ -59,6 +59,10 @@ func defaultWant(host string) Config {
 			MaxIdleConnsPerHost: 128,
 			IdleConnTimeout:     90 * time.Second,
 			DialTimeout:         10 * time.Second,
+			DNSCache: DNSCacheConfig{
+				Enabled: true,
+				TTL:     5 * time.Minute,
+			},
 		},
 	}
 }
@@ -344,6 +348,18 @@ max_idle_conns = -1
 `,
 			wantErr: "proxy.max_idle_conns",
 		},
+		{
+			name: "dns cache ttl zero rejected when enabled",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[proxy.dns_cache]
+enabled = true
+ttl = "0"
+`,
+			wantErr: "proxy.dns_cache.ttl",
+		},
 	}
 
 	for _, tt := range tests {
@@ -375,4 +391,39 @@ dial_timeout = "5s"
 	assert.Equal(t, 64, cfg.Proxy.MaxIdleConnsPerHost)
 	assert.Equal(t, 30*time.Second, cfg.Proxy.IdleConnTimeout)
 	assert.Equal(t, 5*time.Second, cfg.Proxy.DialTimeout)
+}
+
+func TestLoad_DNSCacheFromFileAndEnv(t *testing.T) {
+	viper.Reset()
+	t.Setenv("PGWAY_PROXY_DNS_CACHE_TTL", "2m")
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[proxy.dns_cache]
+enabled = false
+ttl = "10m"
+`)))
+
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.False(t, cfg.Proxy.DNSCache.Enabled)
+	assert.Equal(t, 2*time.Minute, cfg.Proxy.DNSCache.TTL)
+}
+
+func TestLoad_DNSCacheDisabledIgnoresZeroTTL(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[proxy.dns_cache]
+enabled = false
+ttl = "0"
+`)))
+
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.False(t, cfg.Proxy.DNSCache.Enabled)
+	assert.Equal(t, time.Duration(0), cfg.Proxy.DNSCache.TTL)
 }

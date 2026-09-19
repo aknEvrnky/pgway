@@ -90,6 +90,15 @@ type ProxyConfig struct {
 	IdleConnTimeout time.Duration `mapstructure:"idle_conn_timeout"`
 	// DialTimeout is the TCP dial timeout for upstream proxy connections.
 	DialTimeout time.Duration `mapstructure:"dial_timeout"`
+	DNSCache    DNSCacheConfig `mapstructure:"dns_cache"`
+}
+
+// DNSCacheConfig controls fixed-TTL caching of upstream proxy hostname lookups.
+type DNSCacheConfig struct {
+	// Enabled turns on the DNS cache. When false, dials use the default resolver.
+	Enabled bool `mapstructure:"enabled"`
+	// TTL is how long successful lookups are reused. Must be > 0 when Enabled.
+	TTL time.Duration `mapstructure:"ttl"`
 }
 
 var c *Config
@@ -127,6 +136,8 @@ func Load(path string) error {
 	viper.SetDefault("proxy.max_idle_conns_per_host", 128)
 	viper.SetDefault("proxy.idle_conn_timeout", 90*time.Second)
 	viper.SetDefault("proxy.dial_timeout", 10*time.Second)
+	viper.SetDefault("proxy.dns_cache.enabled", true)
+	viper.SetDefault("proxy.dns_cache.ttl", 5*time.Minute)
 
 	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
@@ -172,6 +183,9 @@ func Load(path string) error {
 	}
 	if cfg.Proxy.DialTimeout <= 0 {
 		return fmt.Errorf("proxy.dial_timeout must be > 0")
+	}
+	if cfg.Proxy.DNSCache.Enabled && cfg.Proxy.DNSCache.TTL <= 0 {
+		return fmt.Errorf("proxy.dns_cache.ttl must be > 0 when proxy.dns_cache.enabled is true")
 	}
 
 	c = &cfg
