@@ -36,10 +36,10 @@ func main() {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
 
-	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badgerrepo.NewBadgerLogger())
+	opts := badgerdb.DefaultOptions(cfg.Badger.Path).WithLogger(badgerrepo.NewBadgerLogger())
 	db, err := badgerdb.Open(opts)
 	if err != nil {
-		zap.L().Fatal("open badger", zap.Error(err), zap.String("path", cfg.BadgerPath))
+		zap.L().Fatal("open badger", zap.Error(err), zap.String("path", cfg.Badger.Path))
 	}
 	defer db.Close()
 
@@ -67,10 +67,10 @@ func main() {
 	tokenRepo := badgerrepo.NewTokenRepository(db)
 	regTokenRepo := badgerrepo.NewRegistrationTokenRepository(db)
 
-	authService := auth.NewService(userRepo, tokenRepo, cfg.TokenTTL)
+	authService := auth.NewService(userRepo, tokenRepo, cfg.Auth.TokenTTL)
 	authenticator := auth.NewAuthenticator(userRepo, agentRepo, tokenRepo)
 	agentCreds := auth.NewAgentCredentialService(tokenRepo, regTokenRepo)
-	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.AgentTokenTTL)
+	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.Auth.AgentTokenTTL)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
@@ -79,26 +79,26 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.BadgerGCInterval, zap.L())
+	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.Badger.GCInterval, zap.L())
 
 	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, sigCtx, grpcserver.AgentServerConfig{
-		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
-		AgentTokenTTL:        cfg.AgentTokenTTL,
-		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
+		HeartbeatThreshold:   cfg.Agent.HeartbeatThreshold,
+		AgentTokenTTL:        cfg.Auth.AgentTokenTTL,
+		RegistrationTokenTTL: cfg.Auth.RegistrationTokenTTL,
 	}, grpcserver.KeepaliveConfig{
-		Interval: cfg.GRPCKeepaliveInterval,
-		Timeout:  cfg.GRPCKeepaliveTimeout,
+		Interval: cfg.GRPC.KeepaliveInterval,
+		Timeout:  cfg.GRPC.KeepaliveTimeout,
 	})
 
-	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)
+	lis, err := net.Listen("tcp", cfg.GRPC.ListenAddr)
 	if err != nil {
-		zap.L().Fatal("listen", zap.Error(err), zap.String("grpc_listen_addr", cfg.GrpcListenAddr))
+		zap.L().Fatal("listen", zap.Error(err), zap.String("grpc_listen_addr", cfg.GRPC.ListenAddr))
 	}
 
-	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
+	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
 
 	go func() {
-		zap.L().Info("control plane started", zap.String("grpc", cfg.GrpcListenAddr))
+		zap.L().Info("control plane started", zap.String("grpc", cfg.GRPC.ListenAddr))
 		err := grpcServer.Serve(lis)
 		if err != nil {
 			zap.L().Fatal("grpc serve", zap.Error(err))

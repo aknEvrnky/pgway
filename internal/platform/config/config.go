@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-viper/mapstructure/v2"
@@ -11,21 +12,42 @@ import (
 )
 
 type Config struct {
-	BadgerPath string `mapstructure:"badger_path"`
-	// BadgerGCInterval is how often value log GC runs (pgway, pgway-cp).
-	// <= 0 disables background GC.
-	BadgerGCInterval time.Duration `mapstructure:"badger_gc_interval"`
-	GrpcListenAddr   string        `mapstructure:"grpc_listen_addr"`
-	// GRPCKeepaliveInterval is how often idle gRPC connections send pings.
-	// <= 0 disables keepalive on both server and client.
-	GRPCKeepaliveInterval time.Duration `mapstructure:"grpc_keepalive_interval"`
-	// GRPCKeepaliveTimeout is how long to wait for a keepalive ping ACK.
-	// Required to be > 0 when GRPCKeepaliveInterval is enabled.
-	GRPCKeepaliveTimeout time.Duration `mapstructure:"grpc_keepalive_timeout"`
-	RestListenAddr       string        `mapstructure:"rest_listen_addr"`
+	// LogLevel sets the global zap log level (debug|info|warn|error).
+	LogLevel string `mapstructure:"log_level"`
 	// Token authenticates outgoing control-plane calls (pgctl).
 	// pgway-dp uses an agent token from the state file after registration.
 	Token string `mapstructure:"token"`
+
+	Badger BadgerConfig `mapstructure:"badger"`
+	GRPC   GRPCConfig   `mapstructure:"grpc"`
+	Rest   RestConfig   `mapstructure:"rest"`
+	Auth   AuthConfig   `mapstructure:"auth"`
+	Agent  AgentConfig  `mapstructure:"agent"`
+	Proxy  ProxyConfig  `mapstructure:"proxy"`
+}
+
+type BadgerConfig struct {
+	Path string `mapstructure:"path"`
+	// GCInterval is how often value log GC runs (pgway, pgway-cp).
+	// <= 0 disables background GC.
+	GCInterval time.Duration `mapstructure:"gc_interval"`
+}
+
+type GRPCConfig struct {
+	ListenAddr string `mapstructure:"listen_addr"`
+	// KeepaliveInterval is how often idle gRPC connections send pings.
+	// <= 0 disables keepalive on both server and client.
+	KeepaliveInterval time.Duration `mapstructure:"keepalive_interval"`
+	// KeepaliveTimeout is how long to wait for a keepalive ping ACK.
+	// Required to be > 0 when KeepaliveInterval is enabled.
+	KeepaliveTimeout time.Duration `mapstructure:"keepalive_timeout"`
+}
+
+type RestConfig struct {
+	ListenAddr string `mapstructure:"listen_addr"`
+}
+
+type AuthConfig struct {
 	// TokenTTL is the default lifetime of login-issued tokens.
 	TokenTTL time.Duration `mapstructure:"token_ttl"`
 	// RegistrationTokenTTL is the default lifetime of single-use agent
@@ -34,36 +56,40 @@ type Config struct {
 	// AgentTokenTTL is the sliding window granted at agent token issue and
 	// every heartbeat.
 	AgentTokenTTL time.Duration `mapstructure:"agent_token_ttl"`
-	// AgentHeartbeatThreshold is the active/disconnected boundary used when
-	// deriving agent status at read time (≈3× heartbeat interval).
-	AgentHeartbeatThreshold time.Duration `mapstructure:"agent_heartbeat_threshold"`
-	// AgentName is the unique agent identity registered with the CP (DP).
+}
+
+type AgentConfig struct {
+	// Name is the unique agent identity registered with the CP (DP).
 	// Empty defaults to the host name.
-	AgentName string `mapstructure:"agent_name"`
-	// AgentLabels are operator-declared labels advertised at Register (DP).
-	AgentLabels map[string]string `mapstructure:"agent_labels"`
-	// AgentStatePath is the DP credentials file (agent_id + agent_token).
-	AgentStatePath string `mapstructure:"agent_state_path"`
+	Name string `mapstructure:"name"`
+	// Labels are operator-declared labels advertised at Register (DP).
+	Labels map[string]string `mapstructure:"labels"`
+	// StatePath is the DP credentials file (agent_id + agent_token).
+	StatePath string `mapstructure:"state_path"`
 	// HeartbeatInterval is how often the DP sends Heartbeat RPCs.
 	HeartbeatInterval time.Duration `mapstructure:"heartbeat_interval"`
+	// HeartbeatThreshold is the active/disconnected boundary used when
+	// deriving agent status at read time (≈3× heartbeat interval).
+	HeartbeatThreshold time.Duration `mapstructure:"heartbeat_threshold"`
 	// RegistrationToken is the single-use bootstrap secret for first Register.
-	// Prefer PGWAY_REGISTRATION_TOKEN; never commit this value.
+	// Prefer PGWAY_AGENT_REGISTRATION_TOKEN; never commit this value.
 	RegistrationToken string `mapstructure:"registration_token"`
+}
+
+type ProxyConfig struct {
 	// MaxRequestBodyBytes caps non-CONNECT proxy request bodies.
 	// Accepts bare integers or human sizes (e.g. "10MiB"). 0 disables the limit.
 	MaxRequestBodyBytes ByteSize `mapstructure:"max_request_body_bytes"`
-	// ProxyMaxIdleConns is the global idle connection limit across all hosts
+	// MaxIdleConns is the global idle connection limit across all hosts
 	// on each per-proxy http.Transport. 0 means unlimited.
-	ProxyMaxIdleConns int `mapstructure:"proxy_max_idle_conns"`
-	// ProxyMaxIdleConnsPerHost caps idle connections per upstream host.
+	MaxIdleConns int `mapstructure:"max_idle_conns"`
+	// MaxIdleConnsPerHost caps idle connections per upstream host.
 	// Must be > 0 (Go treats 0 as DefaultMaxIdleConnsPerHost=2).
-	ProxyMaxIdleConnsPerHost int `mapstructure:"proxy_max_idle_conns_per_host"`
-	// ProxyIdleConnTimeout is how long an idle connection stays in the pool.
-	ProxyIdleConnTimeout time.Duration `mapstructure:"proxy_idle_conn_timeout"`
-	// ProxyDialTimeout is the TCP dial timeout for upstream proxy connections.
-	ProxyDialTimeout time.Duration `mapstructure:"proxy_dial_timeout"`
-	// LogLevel sets the global zap log level (debug|info|warn|error).
-	LogLevel string `mapstructure:"log_level"`
+	MaxIdleConnsPerHost int `mapstructure:"max_idle_conns_per_host"`
+	// IdleConnTimeout is how long an idle connection stays in the pool.
+	IdleConnTimeout time.Duration `mapstructure:"idle_conn_timeout"`
+	// DialTimeout is the TCP dial timeout for upstream proxy connections.
+	DialTimeout time.Duration `mapstructure:"dial_timeout"`
 }
 
 var c *Config
@@ -73,36 +99,38 @@ func Load(path string) error {
 		viper.SetConfigFile(path)
 	} else {
 		viper.SetConfigName("config")
+		viper.SetConfigType("toml")
 		viper.AddConfigPath("/etc/pgway/")
 		viper.AddConfigPath("$HOME/.pgway")
 		viper.AddConfigPath(".")
 	}
 
-	viper.SetDefault("badger_path", "/var/pgway/lib")
-	viper.SetDefault("badger_gc_interval", 5*time.Minute)
-	viper.SetDefault("grpc_listen_addr", ":9090")
-	viper.SetDefault("grpc_keepalive_interval", time.Minute)
-	viper.SetDefault("grpc_keepalive_timeout", 20*time.Second)
-	viper.SetDefault("rest_listen_addr", ":8081")
-	viper.SetDefault("token", "")
-	viper.SetDefault("token_ttl", 720*time.Hour)
-	viper.SetDefault("registration_token_ttl", 24*time.Hour)
-	viper.SetDefault("agent_token_ttl", 168*time.Hour)
-	viper.SetDefault("agent_heartbeat_threshold", 30*time.Second)
-	viper.SetDefault("agent_name", "")
-	viper.SetDefault("agent_labels", map[string]string{})
-	viper.SetDefault("agent_state_path", "/var/lib/pgway/agent.json")
-	viper.SetDefault("heartbeat_interval", 10*time.Second)
-	viper.SetDefault("registration_token", "")
-	viper.SetDefault("max_request_body_bytes", "10MiB")
-	viper.SetDefault("proxy_max_idle_conns", 1024)
-	viper.SetDefault("proxy_max_idle_conns_per_host", 128)
-	viper.SetDefault("proxy_idle_conn_timeout", 90*time.Second)
-	viper.SetDefault("proxy_dial_timeout", 10*time.Second)
 	viper.SetDefault("log_level", "info")
+	viper.SetDefault("token", "")
+	viper.SetDefault("badger.path", "/var/pgway/lib")
+	viper.SetDefault("badger.gc_interval", 5*time.Minute)
+	viper.SetDefault("grpc.listen_addr", ":9090")
+	viper.SetDefault("grpc.keepalive_interval", time.Minute)
+	viper.SetDefault("grpc.keepalive_timeout", 20*time.Second)
+	viper.SetDefault("rest.listen_addr", ":8081")
+	viper.SetDefault("auth.token_ttl", 720*time.Hour)
+	viper.SetDefault("auth.registration_token_ttl", 24*time.Hour)
+	viper.SetDefault("auth.agent_token_ttl", 168*time.Hour)
+	viper.SetDefault("agent.name", "")
+	viper.SetDefault("agent.labels", map[string]string{})
+	viper.SetDefault("agent.state_path", "/var/lib/pgway/agent.json")
+	viper.SetDefault("agent.heartbeat_interval", 10*time.Second)
+	viper.SetDefault("agent.heartbeat_threshold", 30*time.Second)
+	viper.SetDefault("agent.registration_token", "")
+	viper.SetDefault("proxy.max_request_body_bytes", "10MiB")
+	viper.SetDefault("proxy.max_idle_conns", 1024)
+	viper.SetDefault("proxy.max_idle_conns_per_host", 128)
+	viper.SetDefault("proxy.idle_conn_timeout", 90*time.Second)
+	viper.SetDefault("proxy.dial_timeout", 10*time.Second)
 
-	// PGWAY_TOKEN etc. override file values
+	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -120,30 +148,30 @@ func Load(path string) error {
 		return err
 	}
 
-	if cfg.AgentName == "" {
+	if cfg.Agent.Name == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
 			return err
 		}
-		cfg.AgentName = hostname
+		cfg.Agent.Name = hostname
 	}
-	if cfg.AgentLabels == nil {
-		cfg.AgentLabels = map[string]string{}
+	if cfg.Agent.Labels == nil {
+		cfg.Agent.Labels = map[string]string{}
 	}
-	if cfg.GRPCKeepaliveInterval > 0 && cfg.GRPCKeepaliveTimeout <= 0 {
-		return fmt.Errorf("grpc_keepalive_timeout must be > 0 when grpc_keepalive_interval is enabled")
+	if cfg.GRPC.KeepaliveInterval > 0 && cfg.GRPC.KeepaliveTimeout <= 0 {
+		return fmt.Errorf("grpc.keepalive_timeout must be > 0 when grpc.keepalive_interval is enabled")
 	}
-	if cfg.ProxyMaxIdleConns < 0 {
-		return fmt.Errorf("proxy_max_idle_conns must be >= 0")
+	if cfg.Proxy.MaxIdleConns < 0 {
+		return fmt.Errorf("proxy.max_idle_conns must be >= 0")
 	}
-	if cfg.ProxyMaxIdleConnsPerHost <= 0 {
-		return fmt.Errorf("proxy_max_idle_conns_per_host must be > 0")
+	if cfg.Proxy.MaxIdleConnsPerHost <= 0 {
+		return fmt.Errorf("proxy.max_idle_conns_per_host must be > 0")
 	}
-	if cfg.ProxyIdleConnTimeout < 0 {
-		return fmt.Errorf("proxy_idle_conn_timeout must be >= 0")
+	if cfg.Proxy.IdleConnTimeout < 0 {
+		return fmt.Errorf("proxy.idle_conn_timeout must be >= 0")
 	}
-	if cfg.ProxyDialTimeout <= 0 {
-		return fmt.Errorf("proxy_dial_timeout must be > 0")
+	if cfg.Proxy.DialTimeout <= 0 {
+		return fmt.Errorf("proxy.dial_timeout must be > 0")
 	}
 
 	c = &cfg

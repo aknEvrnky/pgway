@@ -21,7 +21,7 @@ func (fakeClient) Close() error { return nil }
 
 // TestRootCmdTokenResolution verifies the PersistentPreRunE resolution order
 // (--token flag > config/env token > credentials file) and that --config
-// selects the config file that supplies grpc_listen_addr and the token.
+// selects the config file that supplies grpc.listen_addr and the token.
 func TestRootCmdTokenResolution(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -32,23 +32,34 @@ func TestRootCmdTokenResolution(t *testing.T) {
 		wantAddr    string
 	}{
 		{
-			name:        "flag wins over config and credentials",
-			configBody:  "grpc_listen_addr: \":7001\"\ntoken: config-token",
+			name: "flag wins over config and credentials",
+			configBody: `token = "config-token"
+
+[grpc]
+listen_addr = ":7001"
+`,
 			credentials: "cred-token",
 			tokenFlag:   "flag-token",
 			wantToken:   "flag-token",
 			wantAddr:    ":7001",
 		},
 		{
-			name:        "config token used when no flag",
-			configBody:  "grpc_listen_addr: \":7002\"\ntoken: config-token",
+			name: "config token used when no flag",
+			configBody: `token = "config-token"
+
+[grpc]
+listen_addr = ":7002"
+`,
 			credentials: "cred-token",
 			wantToken:   "config-token",
 			wantAddr:    ":7002",
 		},
 		{
-			name:        "credentials file used when no flag or config token",
-			configBody:  "grpc_listen_addr: \":7003\"",
+			name: "credentials file used when no flag or config token",
+			configBody: `
+[grpc]
+listen_addr = ":7003"
+`,
 			credentials: "cred-token",
 			wantToken:   "cred-token",
 			wantAddr:    ":7003",
@@ -66,7 +77,7 @@ func TestRootCmdTokenResolution(t *testing.T) {
 				require.NoError(t, os.WriteFile(filepath.Join(home, ".pgctl", "credentials"), []byte(tt.credentials), 0o600))
 			}
 
-			configPath := filepath.Join(t.TempDir(), "config.yml")
+			configPath := filepath.Join(t.TempDir(), "config.toml")
 			require.NoError(t, os.WriteFile(configPath, []byte(tt.configBody), 0o600))
 
 			var gotAddr, gotToken string
@@ -101,7 +112,7 @@ func TestRootCmdConfigLoadError(t *testing.T) {
 
 	root := NewRootCmd(func(string, string) (Client, error) { return fakeClient{}, nil })
 	root.AddCommand(&cobra.Command{Use: "noop", RunE: func(*cobra.Command, []string) error { return nil }})
-	root.SetArgs([]string{"noop", "--config", filepath.Join(t.TempDir(), "missing.yml")})
+	root.SetArgs([]string{"noop", "--config", filepath.Join(t.TempDir(), "missing.toml")})
 
 	assert.Error(t, root.Execute())
 }

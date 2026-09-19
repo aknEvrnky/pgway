@@ -15,8 +15,8 @@ func main() {
 	connect := func(addr, token string) (cmd.Client, error) {
 		cfg := config.Get()
 		return grpcclient.NewClient(addr, token, grpcclient.KeepaliveConfig{
-			Interval: cfg.GRPCKeepaliveInterval,
-			Timeout:  cfg.GRPCKeepaliveTimeout,
+			Interval: cfg.GRPC.KeepaliveInterval,
+			Timeout:  cfg.GRPC.KeepaliveTimeout,
 		})
 	}
 

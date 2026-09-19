@@ -40,10 +40,10 @@ func main() {
 	}
 
 	// BadgerDB
-	opts := badgerdb.DefaultOptions(cfg.BadgerPath).WithLogger(badgerrepo.NewBadgerLogger())
+	opts := badgerdb.DefaultOptions(cfg.Badger.Path).WithLogger(badgerrepo.NewBadgerLogger())
 	db, err := badgerdb.Open(opts)
 	if err != nil {
-		zap.L().Fatal("open badger", zap.Error(err), zap.String("path", cfg.BadgerPath))
+		zap.L().Fatal("open badger", zap.Error(err), zap.String("path", cfg.Badger.Path))
 	}
 	defer db.Close()
 
@@ -67,10 +67,10 @@ func main() {
 
 	// Auth — Service owns user accounts/sessions; Authenticator resolves
 	// bearer tokens to principals for the transports.
-	authService := auth.NewService(userRepo, tokenRepo, cfg.TokenTTL)
+	authService := auth.NewService(userRepo, tokenRepo, cfg.Auth.TokenTTL)
 	authenticator := auth.NewAuthenticator(userRepo, agentRepo, tokenRepo)
 	agentCreds := auth.NewAgentCredentialService(tokenRepo, regTokenRepo)
-	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.AgentTokenTTL)
+	agentService := agentapp.NewService(agentRepo, agentCreds, cfg.Auth.AgentTokenTTL)
 
 	if err := authService.Bootstrap(context.Background()); err != nil {
 		zap.L().Fatal("auth bootstrap", zap.Error(err))
@@ -80,21 +80,21 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.BadgerGCInterval, zap.L())
+	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.Badger.GCInterval, zap.L())
 
 	// gRPC server — cli's command bus, auth enforced
 	grpcServer := server.New(cpService, cpService, authService, authService, authenticator, agentService, pubSub, sigCtx, server.AgentServerConfig{
-		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
-		AgentTokenTTL:        cfg.AgentTokenTTL,
-		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
+		HeartbeatThreshold:   cfg.Agent.HeartbeatThreshold,
+		AgentTokenTTL:        cfg.Auth.AgentTokenTTL,
+		RegistrationTokenTTL: cfg.Auth.RegistrationTokenTTL,
 	}, server.KeepaliveConfig{
-		Interval: cfg.GRPCKeepaliveInterval,
-		Timeout:  cfg.GRPCKeepaliveTimeout,
+		Interval: cfg.GRPC.KeepaliveInterval,
+		Timeout:  cfg.GRPC.KeepaliveTimeout,
 	})
 
-	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)
+	lis, err := net.Listen("tcp", cfg.GRPC.ListenAddr)
 	if err != nil {
-		zap.L().Fatal("grpc listen", zap.Error(err), zap.String("addr", cfg.GrpcListenAddr))
+		zap.L().Fatal("grpc listen", zap.Error(err), zap.String("addr", cfg.GRPC.ListenAddr))
 	}
 
 	// Data Plane — cpService as read only service
@@ -105,18 +105,18 @@ func main() {
 	}
 
 	proxyTransport := proxyadapter.NewAdapter(proxyadapter.TransportConfig{
-		MaxIdleConns:        cfg.ProxyMaxIdleConns,
-		MaxIdleConnsPerHost: cfg.ProxyMaxIdleConnsPerHost,
-		IdleConnTimeout:     cfg.ProxyIdleConnTimeout,
-		DialTimeout:         cfg.ProxyDialTimeout,
+		MaxIdleConns:        cfg.Proxy.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.Proxy.MaxIdleConnsPerHost,
+		IdleConnTimeout:     cfg.Proxy.IdleConnTimeout,
+		DialTimeout:         cfg.Proxy.DialTimeout,
 	})
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.MaxRequestBodyBytes))
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes))
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
 	// REST adapter
-	restAdapter := rest.NewRestAdapter(cpService, cfg.RestListenAddr)
+	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
 
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
@@ -125,7 +125,7 @@ func main() {
 	runErr := make(chan error, 4)
 
 	go func() {
-		zap.L().Info("grpc started", zap.String("addr", cfg.GrpcListenAddr))
+		zap.L().Info("grpc started", zap.String("addr", cfg.GRPC.ListenAddr))
 		runErr <- grpcServer.Serve(lis)
 	}()
 

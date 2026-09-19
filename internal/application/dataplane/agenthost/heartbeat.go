@@ -52,6 +52,6 @@ func isAuthRejected(err error) bool {
 
 func fatalAuthError(err error) error {
 	return errors.Join(err, errors.New(
-		"agent token rejected; delete state file and re-register with a fresh PGWAY_REGISTRATION_TOKEN",
+		"agent token rejected; delete state file and re-register with a fresh PGWAY_AGENT_REGISTRATION_TOKEN",
 	))
 }

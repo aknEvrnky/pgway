@@ -72,5 +72,5 @@ func TestBootstrapCredentialsRegistersWhenMissing(t *testing.T) {
 func TestBootstrapCredentialsRequiresRegToken(t *testing.T) {
 	_, err := BootstrapCredentials(context.Background(), &memStore{}, "", domain.Agent{Id: "x"}, &fakeRegistrar{})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "PGWAY_REGISTRATION_TOKEN")
+	assert.Contains(t, err.Error(), "PGWAY_AGENT_REGISTRATION_TOKEN")
 }

@@ -51,7 +51,7 @@ func TestRunHeartbeatFatalOnUnauthenticated(t *testing.T) {
 	err := RunHeartbeat(ctx, zap.NewNop(), hb, 10*time.Millisecond)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ports.ErrAgentUnauthenticated)
-	assert.Contains(t, err.Error(), "PGWAY_REGISTRATION_TOKEN")
+	assert.Contains(t, err.Error(), "PGWAY_AGENT_REGISTRATION_TOKEN")
 }
 
 func TestRunHeartbeatContinuesOnTransient(t *testing.T) {
