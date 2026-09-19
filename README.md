@@ -1,4 +1,5 @@
 [![CI](https://github.com/aknEvrnky/pgway/actions/workflows/ci.yml/badge.svg)](https://github.com/aknEvrnky/pgway/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/aknEvrnky/pgway/graph/badge.svg?token=5STIIF7V68)](https://codecov.io/gh/aknEvrnky/pgway)
 
 # pgway
 
