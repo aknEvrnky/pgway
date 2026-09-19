@@ -38,6 +38,8 @@ func defaultWant(host string) Config {
 			ListenAddr:        ":9090",
 			KeepaliveInterval: time.Minute,
 			KeepaliveTimeout:  20 * time.Second,
+			RateLimitRPS:      100,
+			RateLimitBurst:    200,
 		},
 		Rest: RestConfig{ListenAddr: ":8081"},
 		Auth: AuthConfig{
@@ -271,6 +273,40 @@ keepalive_interval = "0"
 				return w
 			}(),
 		},
+		{
+			name: "reads grpc rate limit from file",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[grpc]
+rate_limit_rps = 50
+rate_limit_burst = 75
+`,
+			want: func() Config {
+				w := defaultWant(host)
+				w.Badger.Path = "/data/pgway"
+				w.GRPC.RateLimitRPS = 50
+				w.GRPC.RateLimitBurst = 75
+				return w
+			}(),
+		},
+		{
+			name: "grpc rate limit rps 0 disables",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[grpc]
+rate_limit_rps = 0
+`,
+			want: func() Config {
+				w := defaultWant(host)
+				w.Badger.Path = "/data/pgway"
+				w.GRPC.RateLimitRPS = 0
+				return w
+			}(),
+		},
 	}
 
 	for _, tt := range tests {
@@ -307,6 +343,20 @@ keepalive_timeout = "0"
 `))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "grpc.keepalive_timeout")
+}
+
+func TestLoad_RateLimitBurstRequiredWhenEnabled(t *testing.T) {
+	viper.Reset()
+	err := Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[grpc]
+rate_limit_rps = 10
+rate_limit_burst = 0
+`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "grpc.rate_limit_burst")
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {

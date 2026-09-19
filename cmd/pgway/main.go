@@ -90,6 +90,9 @@ func main() {
 	}, server.KeepaliveConfig{
 		Interval: cfg.GRPC.KeepaliveInterval,
 		Timeout:  cfg.GRPC.KeepaliveTimeout,
+	}, server.RateLimitConfig{
+		RPS:   cfg.GRPC.RateLimitRPS,
+		Burst: cfg.GRPC.RateLimitBurst,
 	})
 
 	lis, err := net.Listen("tcp", cfg.GRPC.ListenAddr)

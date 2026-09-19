@@ -18,9 +18,9 @@ type AgentServerConfig struct {
 	RegistrationTokenTTL time.Duration
 }
 
-// New builds the control plane gRPC server: auth interceptors installed and
-// every service registered. Single wiring point shared by the binaries and
-// the integration test server.
+// New builds the control plane gRPC server: auth and rate-limit interceptors
+// installed and every service registered. Single wiring point shared by the
+// binaries and the integration test server.
 //
 // shutdown is canceled when the process is stopping; ChangeService.Watch
 // streams exit so GracefulStop can finish.
@@ -35,9 +35,13 @@ func New(
 	shutdown context.Context,
 	agentCfg AgentServerConfig,
 	ka KeepaliveConfig,
+	rl RateLimitConfig,
 ) *grpc.Server {
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(interceptor.UnaryAuth(authenticator)),
+		grpc.ChainUnaryInterceptor(
+			interceptor.UnaryAuth(authenticator),
+			interceptor.UnaryRateLimit(rl.toInterceptor()),
+		),
 		grpc.ChainStreamInterceptor(interceptor.StreamAuth(authenticator)),
 	}
 	opts = append(opts, keepaliveServerOptions(ka)...)
