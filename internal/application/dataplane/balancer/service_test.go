@@ -209,3 +209,27 @@ func TestService_Get(t *testing.T) {
 		assert.ErrorIs(t, err, ErrBalancerNotFound)
 	})
 }
+
+func TestService_Bootstrap_RemovesDeletedBalancers(t *testing.T) {
+	lbGone := &domain.LoadBalancer{Id: "lb-gone", Type: domain.BalancerTypeRoundRobin, PoolId: "pool-1"}
+	cp := &mockControlPlane{
+		lbs:     []*domain.LoadBalancer{testLB, lbGone},
+		pools:   map[string]*domain.Pool{"pool-1": testPool},
+		proxies: []*domain.Proxy{testProxy},
+	}
+	svc := NewService(cp, cp)
+	require.NoError(t, svc.Bootstrap(context.Background()))
+
+	_, err := svc.Get("lb-gone")
+	require.NoError(t, err)
+
+	cp.lbs = []*domain.LoadBalancer{testLB}
+	require.NoError(t, svc.Bootstrap(context.Background()))
+
+	_, err = svc.Get("lb-gone")
+	assert.ErrorIs(t, err, ErrBalancerNotFound)
+
+	_, err = svc.Get(testLB.Id)
+	require.NoError(t, err)
+}
+

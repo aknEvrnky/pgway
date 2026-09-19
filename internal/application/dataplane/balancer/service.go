@@ -28,14 +28,16 @@ func NewService(
 	}
 }
 
-// Bootstrap is a function that gets all load balancers
-// and necessary pools and registers
+// Bootstrap reloads all load balancers from the control plane into a fresh
+// registry (deleted balancers are dropped).
 func (s *Service) Bootstrap(ctx context.Context) error {
 	result, err := s.cp.ListBalancers(ctx, domain.ListParams{}, domain.BalancerFilter{})
 
 	if err != nil {
 		return fmt.Errorf("loading balancers: %w", err)
 	}
+
+	next := make(map[string]LoadBalancer, len(result.Items))
 
 	for _, lb := range result.Items {
 		pool, err := s.cp.GetPool(ctx, lb.PoolId)
@@ -59,10 +61,12 @@ func (s *Service) Bootstrap(ctx context.Context) error {
 			return fmt.Errorf("balancer %q: %w", lb.Id, err)
 		}
 
-		s.mu.Lock()
-		s.registry[lb.Id] = instance
-		s.mu.Unlock()
+		next[lb.Id] = instance
 	}
+
+	s.mu.Lock()
+	s.registry = next
+	s.mu.Unlock()
 
 	return nil
 }
