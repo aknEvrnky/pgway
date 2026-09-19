@@ -34,6 +34,9 @@ func NewApplication(
 	}
 }
 
+var _ ports.Application = (*Application)(nil)
+var _ ports.EventHandler = (*Application)(nil)
+
 func (a *Application) Bootstrap(ctx context.Context) error {
 	// warm up cache
 	if err := a.warmupCache(ctx); err != nil {
@@ -101,16 +104,22 @@ func (a *Application) warmupCache(ctx context.Context) error {
 }
 
 func (a *Application) validateAll(ctx context.Context) error {
-	// validate entrypoints
 	eps, err := a.EntryPoints(ctx)
-
 	if err != nil {
 		return fmt.Errorf("loading entrypoints: %w", err)
 	}
-
 	for _, ep := range eps {
 		if err = ep.Validate(); err != nil {
 			return fmt.Errorf("entrypoint %q: %w", ep.Id, err)
+		}
+	}
+
+	for _, router := range a.cache.AllRouters() {
+		if err := router.Compile(); err != nil {
+			return fmt.Errorf("router %q: %w", router.Id, err)
+		}
+		if err := router.Validate(); err != nil {
+			return fmt.Errorf("router %q: %w", router.Id, err)
 		}
 	}
 

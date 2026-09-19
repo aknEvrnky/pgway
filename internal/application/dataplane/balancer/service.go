@@ -9,7 +9,6 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
-// todo could we use sync.Map?
 type Service struct {
 	cp       ports.ControlPlaneReader
 	resolver ports.ProxyResolver

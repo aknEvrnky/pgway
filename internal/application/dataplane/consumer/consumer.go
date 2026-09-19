@@ -80,7 +80,8 @@ func (c *Consumer) ConsumeEvents(ctx context.Context) error {
 	}
 
 	if c.cfg.Window > 0 {
-		c.flushAll(ctx)
+		// Subscription closed because ctx was canceled; flush with a live context.
+		c.flushAll(context.WithoutCancel(ctx))
 	}
 	return nil
 }

@@ -3,8 +3,9 @@ package domain
 type PrincipalKind string
 
 const (
-	PrincipalKindUser  PrincipalKind = "user"
-	PrincipalKindAgent PrincipalKind = "agent"
+	PrincipalKindUser    PrincipalKind = "user"
+	PrincipalKindAgent   PrincipalKind = "agent"
+	PrincipalKindUnknown PrincipalKind = ""
 )
 
 type Principal struct {
@@ -13,9 +14,14 @@ type Principal struct {
 }
 
 func (p *Principal) Kind() PrincipalKind {
+	if p == nil {
+		return PrincipalKindUnknown
+	}
 	if p.User != nil {
 		return PrincipalKindUser
 	}
-
-	return PrincipalKindAgent
+	if p.Agent != nil {
+		return PrincipalKindAgent
+	}
+	return PrincipalKindUnknown
 }

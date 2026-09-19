@@ -52,8 +52,8 @@ type AgentCredentials interface {
 	// its plaintext.
 	IssueAgentToken(ctx context.Context, agentId string, ttl time.Duration) (string, error)
 	// ExtendAgentToken pushes an agent token's expiry forward by ttl from
-	// now. The token value never changes (sliding TTL).
-	ExtendAgentToken(ctx context.Context, rawToken string, ttl time.Duration) error
+	// now and returns the new expiry. The token value never changes (sliding TTL).
+	ExtendAgentToken(ctx context.Context, rawToken string, ttl time.Duration) (time.Time, error)
 	// RevokeAgentTokens deletes every token bound to the agent.
 	RevokeAgentTokens(ctx context.Context, agentId string) error
 }

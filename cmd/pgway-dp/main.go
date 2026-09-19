@@ -50,12 +50,12 @@ func main() {
 	}
 	defer lock.Close()
 
-	cpClient, err := grpcclient.NewClient(cfg.GRPC.ListenAddr, "", grpcclient.KeepaliveConfig{
+	cpClient, err := grpcclient.NewClient(cfg.GRPC.DialTarget(), "", grpcclient.KeepaliveConfig{
 		Interval: cfg.GRPC.KeepaliveInterval,
 		Timeout:  cfg.GRPC.KeepaliveTimeout,
 	})
 	if err != nil {
-		zap.L().Fatal("connect to control plane", zap.Error(err), zap.String("addr", cfg.GRPC.ListenAddr))
+		zap.L().Fatal("connect to control plane", zap.Error(err), zap.String("addr", cfg.GRPC.DialTarget()))
 	}
 	defer cpClient.Close()
 

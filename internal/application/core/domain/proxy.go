@@ -28,7 +28,7 @@ func (p *Proxy) Addr() string {
 }
 
 func (p *Proxy) HasAuth() bool {
-	return p.Auth != nil && p.Auth.User != ""
+	return p.Auth != nil && (p.Auth.User != "" || p.Auth.Pass != "")
 }
 
 func (p *Proxy) Validate() error {

@@ -126,7 +126,7 @@ func poolFromSpecV1(meta schema.Metadata, spec poolv1.PoolSpecV1) *domain.Pool {
 }
 
 func (s *Service) rejectIfWeightedBalancersReference(ctx context.Context, poolID string) error {
-	result, err := s.lbRepo.List(ctx, domain.ListParams{PageSize: domain.DefaultMaxPageSize}, domain.BalancerFilter{
+	result, err := s.lbRepo.List(ctx, domain.ListParams{PageSize: 0}, domain.BalancerFilter{
 		PoolId: poolID,
 		Type:   string(domain.BalancerTypeWeighted),
 	})
