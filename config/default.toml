@@ -74,3 +74,9 @@ dial_timeout = "10s"
 enabled = true
 # How long successful lookups are reused. Must be > 0 when enabled.
 ttl = "5m"
+
+[dataplane]
+# setTimeout-style change-event coalesce window (pgway, pgway-dp). 0 disables.
+event_coalesce_window = "100ms"
+# Early flush when this many events land in one key before the window ends.
+event_coalesce_max_buffer = 256

@@ -62,7 +62,7 @@ func TestWatchHotReload(t *testing.T) {
 
 	localBus := memory.NewPubSub(10)
 	spy := &testutil.SpyHandler{}
-	eventConsumer := consumer.NewConsumer(zap.NewNop(), localBus, app, spy)
+	eventConsumer := consumer.NewConsumer(zap.NewNop(), localBus, consumer.CoalesceConfig{}, app, spy)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)

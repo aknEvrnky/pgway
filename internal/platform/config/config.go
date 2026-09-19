@@ -18,12 +18,13 @@ type Config struct {
 	// pgway-dp uses an agent token from the state file after registration.
 	Token string `mapstructure:"token"`
 
-	Badger BadgerConfig `mapstructure:"badger"`
-	GRPC   GRPCConfig   `mapstructure:"grpc"`
-	Rest   RestConfig   `mapstructure:"rest"`
-	Auth   AuthConfig   `mapstructure:"auth"`
-	Agent  AgentConfig  `mapstructure:"agent"`
-	Proxy  ProxyConfig  `mapstructure:"proxy"`
+	Badger    BadgerConfig    `mapstructure:"badger"`
+	GRPC      GRPCConfig      `mapstructure:"grpc"`
+	Rest      RestConfig      `mapstructure:"rest"`
+	Auth      AuthConfig      `mapstructure:"auth"`
+	Agent     AgentConfig     `mapstructure:"agent"`
+	Proxy     ProxyConfig     `mapstructure:"proxy"`
+	Dataplane DataplaneConfig `mapstructure:"dataplane"`
 }
 
 type BadgerConfig struct {
@@ -95,7 +96,7 @@ type ProxyConfig struct {
 	// IdleConnTimeout is how long an idle connection stays in the pool.
 	IdleConnTimeout time.Duration `mapstructure:"idle_conn_timeout"`
 	// DialTimeout is the TCP dial timeout for upstream proxy connections.
-	DialTimeout time.Duration `mapstructure:"dial_timeout"`
+	DialTimeout time.Duration  `mapstructure:"dial_timeout"`
 	DNSCache    DNSCacheConfig `mapstructure:"dns_cache"`
 }
 
@@ -105,6 +106,17 @@ type DNSCacheConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 	// TTL is how long successful lookups are reused. Must be > 0 when Enabled.
 	TTL time.Duration `mapstructure:"ttl"`
+}
+
+// DataplaneConfig controls data-plane event handling and related process knobs.
+type DataplaneConfig struct {
+	// EventCoalesceWindow is the setTimeout-style flush delay for change events.
+	// <= 0 disables coalescing (immediate dispatch).
+	EventCoalesceWindow time.Duration `mapstructure:"event_coalesce_window"`
+	// EventCoalesceMaxBuffer triggers an early flush when this many events
+	// accumulate for one coalesce key before the window elapses.
+	// Required to be >= 1 when EventCoalesceWindow is enabled.
+	EventCoalesceMaxBuffer int `mapstructure:"event_coalesce_max_buffer"`
 }
 
 var c *Config
@@ -146,6 +158,8 @@ func Load(path string) error {
 	viper.SetDefault("proxy.dial_timeout", 10*time.Second)
 	viper.SetDefault("proxy.dns_cache.enabled", true)
 	viper.SetDefault("proxy.dns_cache.ttl", 5*time.Minute)
+	viper.SetDefault("dataplane.event_coalesce_window", 100*time.Millisecond)
+	viper.SetDefault("dataplane.event_coalesce_max_buffer", 256)
 
 	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
@@ -197,6 +211,9 @@ func Load(path string) error {
 	}
 	if cfg.Proxy.DNSCache.Enabled && cfg.Proxy.DNSCache.TTL <= 0 {
 		return fmt.Errorf("proxy.dns_cache.ttl must be > 0 when proxy.dns_cache.enabled is true")
+	}
+	if cfg.Dataplane.EventCoalesceWindow > 0 && cfg.Dataplane.EventCoalesceMaxBuffer < 1 {
+		return fmt.Errorf("dataplane.event_coalesce_max_buffer must be >= 1 when dataplane.event_coalesce_window is enabled")
 	}
 
 	c = &cfg

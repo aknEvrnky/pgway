@@ -107,7 +107,10 @@ func main() {
 	}
 
 	localBus := memory.NewPubSub(10)
-	eventConsumer := consumer.NewConsumer(zap.L(), localBus, app, httpAdapter)
+	eventConsumer := consumer.NewConsumer(zap.L(), localBus, consumer.CoalesceConfig{
+		Window:    cfg.Dataplane.EventCoalesceWindow,
+		MaxBuffer: cfg.Dataplane.EventCoalesceMaxBuffer,
+	}, app, httpAdapter)
 
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
