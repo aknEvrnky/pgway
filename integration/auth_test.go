@@ -18,7 +18,7 @@ import (
 
 func newAuthedClient(t *testing.T, addr, token string) *grpcclient.Client {
 	t.Helper()
-	client, err := grpcclient.NewClient(addr, token)
+	client, err := grpcclient.NewClient(addr, token, grpcclient.KeepaliveConfig{})
 	require.NoError(t, err)
 	t.Cleanup(func() { client.Close() })
 	return client

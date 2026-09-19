@@ -16,7 +16,13 @@ type Config struct {
 	// <= 0 disables background GC.
 	BadgerGCInterval time.Duration `mapstructure:"badger_gc_interval"`
 	GrpcListenAddr   string        `mapstructure:"grpc_listen_addr"`
-	RestListenAddr   string        `mapstructure:"rest_listen_addr"`
+	// GRPCKeepaliveInterval is how often idle gRPC connections send pings.
+	// <= 0 disables keepalive on both server and client.
+	GRPCKeepaliveInterval time.Duration `mapstructure:"grpc_keepalive_interval"`
+	// GRPCKeepaliveTimeout is how long to wait for a keepalive ping ACK.
+	// Required to be > 0 when GRPCKeepaliveInterval is enabled.
+	GRPCKeepaliveTimeout time.Duration `mapstructure:"grpc_keepalive_timeout"`
+	RestListenAddr       string        `mapstructure:"rest_listen_addr"`
 	// Token authenticates outgoing control-plane calls (pgctl).
 	// pgway-dp uses an agent token from the state file after registration.
 	Token string `mapstructure:"token"`
@@ -65,6 +71,8 @@ func Load(path string) error {
 	viper.SetDefault("badger_path", "/var/pgway/lib")
 	viper.SetDefault("badger_gc_interval", 5*time.Minute)
 	viper.SetDefault("grpc_listen_addr", ":9090")
+	viper.SetDefault("grpc_keepalive_interval", time.Minute)
+	viper.SetDefault("grpc_keepalive_timeout", 20*time.Second)
 	viper.SetDefault("rest_listen_addr", ":8081")
 	viper.SetDefault("token", "")
 	viper.SetDefault("token_ttl", 720*time.Hour)
@@ -107,6 +115,9 @@ func Load(path string) error {
 	}
 	if cfg.AgentLabels == nil {
 		cfg.AgentLabels = map[string]string{}
+	}
+	if cfg.GRPCKeepaliveInterval > 0 && cfg.GRPCKeepaliveTimeout <= 0 {
+		return fmt.Errorf("grpc_keepalive_timeout must be > 0 when grpc_keepalive_interval is enabled")
 	}
 
 	c = &cfg

@@ -106,7 +106,7 @@ func NewAuthTestServerWithOpts(t *testing.T, opts AuthTestServerOpts) (string, *
 		HeartbeatThreshold:   opts.HeartbeatThreshold,
 		AgentTokenTTL:        opts.AgentTokenTTL,
 		RegistrationTokenTTL: opts.RegistrationTokenTTL,
-	})
+	}, grpcserver.KeepaliveConfig{})
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
