@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyFlowV1(ctx context.Context, req *controlplanev
 
 	flow, err := s.cp.ApplyFlowV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply flow: %v", err)
+		return nil, mapResourceError("apply flow", err)
 	}
 
 	return &controlplanev1.ApplyFlowV1Response{

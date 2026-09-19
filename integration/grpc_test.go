@@ -17,6 +17,10 @@ import (
 func newGrpcEnv(t *testing.T) *grpc.ClientConn {
 	t.Helper()
 	svc, _ := testutil.NewSvcWithPublisher(t)
+	// Seed common forward refs used by pool/balancer/router/flow/entrypoint tests.
+	testutil.MustSeedThroughBalancer(t, svc) // p1, pool-1, lb-1
+	testutil.MustApplyProxy(t, svc, "p2")
+	testutil.MustApplyFlow(t, svc, "flow-1", "lb-1", "")
 	return testutil.NewTestGrpcServer(t, svc, svc)
 }
 
@@ -439,7 +443,7 @@ func TestGRPC_Flow(t *testing.T) {
 
 			r2, err := client.ApplyFlowV1(ctx, &controlplanev1.ApplyFlowV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "flow-b"},
-				Spec:     &controlplanev1.FlowSpecV1{BalancerId: "lb-2"},
+				Spec:     &controlplanev1.FlowSpecV1{BalancerId: "lb-1"},
 			})
 			require.NoError(t, err)
 
@@ -530,7 +534,7 @@ func TestGRPC_Entrypoint(t *testing.T) {
 
 			r2, err := client.ApplyEntrypointV1(ctx, &controlplanev1.ApplyEntrypointV1Request{
 				Metadata: &controlplanev1.Metadata{Name: "ep-b"},
-				Spec:     &controlplanev1.EntrypointSpecV1{Title: "EP B", Protocol: "http", Host: "0.0.0.0", Port: 9092, FlowId: "flow-2"},
+				Spec:     &controlplanev1.EntrypointSpecV1{Title: "EP B", Protocol: "http", Host: "0.0.0.0", Port: 9092, FlowId: "flow-1"},
 			})
 			require.NoError(t, err)
 

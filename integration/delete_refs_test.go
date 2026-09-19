@@ -32,7 +32,8 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 		require.NoError(t, svc.DeleteProxy(ctx, "orphan-proxy"))
 
 		_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "orphan-pool"}, poolv1.PoolSpecV1{
-			Title: "o", Type: "static", Members: []poolv1.PoolMemberSpec{{ProxyId: "x"}},
+			Title: "o", Type: "dynamic",
+			Selector: &poolv1.SelectorSpec{Allow: map[string]string{"env": "x"}},
 		})
 		require.NoError(t, err)
 		require.NoError(t, svc.DeletePool(ctx, "orphan-pool"))
@@ -70,7 +71,9 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 	t.Run("delete pool referenced by balancer rejects", func(t *testing.T) {
 		svc, _ := testutil.NewSvcWithPublisher(t)
-		_, err := svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
+		_, err := svc.ApplyProxyV1(ctx, schema.Metadata{Name: "p1"}, proxySpec)
+		require.NoError(t, err)
+		_, err = svc.ApplyPoolV1(ctx, schema.Metadata{Name: "pool-1"}, poolv1.PoolSpecV1{
 			Title: "s", Type: "static", Members: []poolv1.PoolMemberSpec{{ProxyId: "p1"}},
 		})
 		require.NoError(t, err)

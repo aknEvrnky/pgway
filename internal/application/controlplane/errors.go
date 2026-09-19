@@ -46,3 +46,28 @@ func newResourceInUse(resourceType, name string, deps []ResourceDependent) *Reso
 		Dependents:   deps,
 	}
 }
+
+// ResourceMissingRefError is returned when Apply* references a missing target.
+type ResourceMissingRefError struct {
+	ResourceType string
+	Name         string
+	MissingType  string
+	MissingName  string
+}
+
+func (e *ResourceMissingRefError) Error() string {
+	if e == nil {
+		return "resource missing reference"
+	}
+	return fmt.Sprintf("cannot apply %s %q: %s %q not found",
+		e.ResourceType, e.Name, e.MissingType, e.MissingName)
+}
+
+func newResourceMissingRef(resourceType, name, missingType, missingName string) *ResourceMissingRefError {
+	return &ResourceMissingRefError{
+		ResourceType: resourceType,
+		Name:         name,
+		MissingType:  missingType,
+		MissingName:  missingName,
+	}
+}

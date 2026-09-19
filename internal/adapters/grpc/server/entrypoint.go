@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyEntrypointV1(ctx context.Context, req *control
 
 	ep, err := s.cp.ApplyEntrypointV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply entrypoint: %v", err)
+		return nil, mapResourceError("apply entrypoint", err)
 	}
 
 	return &controlplanev1.ApplyEntrypointV1Response{

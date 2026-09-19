@@ -30,6 +30,15 @@ func (s *Service) ApplyRouterV1(ctx context.Context, meta schema.Metadata, spec 
 		return nil, fmt.Errorf("domain validation: %w", err)
 	}
 
+	for _, rule := range router.Rules {
+		if rule == nil {
+			continue
+		}
+		if err := s.requireBalancer(ctx, string(ports.ResourceTypeRouter), router.Id, rule.Target); err != nil {
+			return nil, err
+		}
+	}
+
 	now := time.Now()
 	if existing, err := s.routerRepo.Find(ctx, router.Id); err == nil {
 		router.CreatedAt = existing.CreatedAt

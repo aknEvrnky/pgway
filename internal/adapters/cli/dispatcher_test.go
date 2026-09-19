@@ -222,3 +222,26 @@ func TestDispatcher_ApplyAll_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"Proxy/v1", "Flow/v1"}, cp.calls)
 }
+
+func TestDispatcher_ApplyAll_SortsReverseOrder(t *testing.T) {
+	t.Parallel()
+	cp := &recordingCP{}
+	d := NewDispatcher(cp)
+
+	err := d.ApplyAll(context.Background(), []schema.RawResource{
+		{
+			Kind: "Entrypoint", Version: "v1", Metadata: schema.Metadata{Name: "ep"},
+			SpecRaw: mustSpec(t, entrypointv1.EntrypointSpecV1{Protocol: "http", Host: "0.0.0.0", Port: 1, FlowId: "f"}),
+		},
+		{
+			Kind: "Flow", Version: "v1", Metadata: schema.Metadata{Name: "f"},
+			SpecRaw: mustSpec(t, flowv1.FlowSpecV1{BalancerId: "lb"}),
+		},
+		{
+			Kind: "Proxy", Version: "v1", Metadata: schema.Metadata{Name: "p"},
+			SpecRaw: mustSpec(t, proxyv1.ProxySpecV1{URL: "http://127.0.0.1:1"}),
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"Proxy/v1", "Flow/v1", "Entrypoint/v1"}, cp.calls)
+}

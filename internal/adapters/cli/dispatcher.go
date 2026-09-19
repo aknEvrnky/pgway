@@ -43,7 +43,8 @@ func (d *Dispatcher) Apply(ctx context.Context, raw schema.RawResource) error {
 }
 
 func (d *Dispatcher) ApplyAll(ctx context.Context, resources []schema.RawResource) error {
-	for i, raw := range resources {
+	ordered := schema.SortByApplyOrder(resources)
+	for i, raw := range ordered {
 		if err := d.Apply(ctx, raw); err != nil {
 			return fmt.Errorf("resource[%d] (%s): %w", i, raw.Key(), err)
 		}

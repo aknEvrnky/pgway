@@ -30,6 +30,14 @@ func (s *Service) ApplyPoolV1(ctx context.Context, meta schema.Metadata, spec po
 		return nil, fmt.Errorf("domain validation: %w", err)
 	}
 
+	if pool.Type == domain.PoolTypeStatic {
+		for _, m := range pool.Members {
+			if err := s.requireProxy(ctx, string(ports.ResourceTypePool), pool.Id, m.ProxyId); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	if pool.Type != domain.PoolTypeStatic {
 		if err := s.rejectIfWeightedBalancersReference(ctx, pool.Id); err != nil {
 			return nil, err

@@ -21,7 +21,7 @@ func (s *ControlPlaneServer) ApplyPoolV1(ctx context.Context, req *controlplanev
 
 	pool, err := s.cp.ApplyPoolV1(ctx, meta, spec)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "apply pool: %v", err)
+		return nil, mapResourceError("apply pool", err)
 	}
 
 	return &controlplanev1.ApplyPoolV1Response{

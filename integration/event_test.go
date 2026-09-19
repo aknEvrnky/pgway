@@ -44,6 +44,8 @@ func TestApplication_Event_Handler(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, eps, 0)
 
+	testutil.MustSeedThroughFlow(t, svc)
+	// MustSeedThroughFlow creates flow-1; retarget entrypoint to it.
 	_, err = svc.ApplyEntrypointV1(ctx, schema.Metadata{
 		Name: "test-ep",
 	}, v1.EntrypointSpecV1{
@@ -51,7 +53,7 @@ func TestApplication_Event_Handler(t *testing.T) {
 		Protocol: "http",
 		Host:     "0.0.0.0",
 		Port:     18080,
-		FlowId:   "test-flow",
+		FlowId:   "flow-1",
 	})
 
 	require.NoError(t, err)
