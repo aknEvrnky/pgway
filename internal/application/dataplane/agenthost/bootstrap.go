@@ -34,7 +34,7 @@ func BootstrapCredentials(
 	}
 
 	if regToken == "" {
-		return nil, fmt.Errorf("no agent state and PGWAY_REGISTRATION_TOKEN is empty")
+		return nil, fmt.Errorf("no agent state and PGWAY_AGENT_REGISTRATION_TOKEN is empty")
 	}
 
 	registered, agentToken, err := reg.Register(ctx, regToken, agent)

@@ -33,7 +33,7 @@ func NewRootCmd(connect ConnectFunc) *cobra.Command {
 				token = readCredentials()
 			}
 
-			client, err := connect(cfg.GrpcListenAddr, token)
+			client, err := connect(cfg.GRPC.ListenAddr, token)
 			if err != nil {
 				return err
 			}

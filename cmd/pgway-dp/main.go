@@ -44,25 +44,25 @@ func main() {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
 
-	lock, err := agentstate.NewLock(cfg.AgentStatePath).Acquire()
+	lock, err := agentstate.NewLock(cfg.Agent.StatePath).Acquire()
 	if err != nil {
 		zap.L().Fatal("acquire agent lock", zap.Error(err))
 	}
 	defer lock.Close()
 
-	cpClient, err := grpcclient.NewClient(cfg.GrpcListenAddr, "", grpcclient.KeepaliveConfig{
-		Interval: cfg.GRPCKeepaliveInterval,
-		Timeout:  cfg.GRPCKeepaliveTimeout,
+	cpClient, err := grpcclient.NewClient(cfg.GRPC.ListenAddr, "", grpcclient.KeepaliveConfig{
+		Interval: cfg.GRPC.KeepaliveInterval,
+		Timeout:  cfg.GRPC.KeepaliveTimeout,
 	})
 	if err != nil {
-		zap.L().Fatal("connect to control plane", zap.Error(err), zap.String("addr", cfg.GrpcListenAddr))
+		zap.L().Fatal("connect to control plane", zap.Error(err), zap.String("addr", cfg.GRPC.ListenAddr))
 	}
 	defer cpClient.Close()
 
 	agent := domain.Agent{
-		Id:      cfg.AgentName,
+		Id:      cfg.Agent.Name,
 		Version: "dev",
-		Labels:  cfg.AgentLabels,
+		Labels:  cfg.Agent.Labels,
 	}
 	if agent.Hostname == "" {
 		hostname, err := os.Hostname()
@@ -72,11 +72,11 @@ func main() {
 		agent.Hostname = hostname
 	}
 
-	store := agentstate.NewStore(cfg.AgentStatePath)
+	store := agentstate.NewStore(cfg.Agent.StatePath)
 	boot, err := agenthost.BootstrapCredentials(
 		context.Background(),
 		store,
-		cfg.RegistrationToken,
+		cfg.Agent.RegistrationToken,
 		agent,
 		cpClient,
 	)
@@ -94,12 +94,12 @@ func main() {
 	}
 
 	proxyTransport := net.NewAdapter(net.TransportConfig{
-		MaxIdleConns:        cfg.ProxyMaxIdleConns,
-		MaxIdleConnsPerHost: cfg.ProxyMaxIdleConnsPerHost,
-		IdleConnTimeout:     cfg.ProxyIdleConnTimeout,
-		DialTimeout:         cfg.ProxyDialTimeout,
+		MaxIdleConns:        cfg.Proxy.MaxIdleConns,
+		MaxIdleConnsPerHost: cfg.Proxy.MaxIdleConnsPerHost,
+		IdleConnTimeout:     cfg.Proxy.IdleConnTimeout,
+		DialTimeout:         cfg.Proxy.DialTimeout,
 	})
-	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.MaxRequestBodyBytes))
+	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes))
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
@@ -121,7 +121,7 @@ func main() {
 	}()
 
 	go func() {
-		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.HeartbeatInterval)
+		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.Agent.HeartbeatInterval)
 	}()
 
 	go func() {

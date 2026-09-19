@@ -44,7 +44,7 @@ func newAgentTokenCreateCmd(d *Deps) *cobra.Command {
   pgctl agent token create --ttl 2h`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ttl <= 0 {
-				ttl = config.Get().RegistrationTokenTTL
+				ttl = config.Get().Auth.RegistrationTokenTTL
 			}
 
 			token, err := d.Client.CreateRegistrationToken(cmd.Context(), ttl)
@@ -58,7 +58,7 @@ func newAgentTokenCreateCmd(d *Deps) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().DurationVar(&ttl, "ttl", 0, "token lifetime (default: registration_token_ttl from config)")
+	cmd.Flags().DurationVar(&ttl, "ttl", 0, "token lifetime (default: auth.registration_token_ttl from config)")
 
 	return cmd
 }
@@ -87,7 +87,7 @@ func newAgentListCmd(d *Deps) *cobra.Command {
 				return nil
 			}
 
-			threshold := config.Get().AgentHeartbeatThreshold
+			threshold := config.Get().Agent.HeartbeatThreshold
 			now := time.Now()
 			rows := make([]agentListRow, 0, len(result.Items))
 			for _, a := range result.Items {

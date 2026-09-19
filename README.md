@@ -23,7 +23,7 @@ Requires **Go 1.27+**.
 ```bash
 git clone https://github.com/aknEvrnky/pgway.git
 cd pgway
-cp config/default.yml ./config.yml
+cp config/default.toml ./config.toml
 make build
 
 ./build/pgway
@@ -35,7 +35,7 @@ curl -x http://localhost:8080 https://example.com
 ```
 
 Binaries: `pgway` (all-in-one), `pgway-cp`, `pgway-dp`, `pgctl`.  
-More install options, YAML examples, and operations: **[docs](https://pgway.aknevrnky.dev/)**.
+More install options, configuration, and operations: **[docs](https://pgway.aknevrnky.dev/)**.
 
 ## Contributing
 

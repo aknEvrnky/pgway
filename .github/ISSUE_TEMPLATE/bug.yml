@@ -23,7 +23,7 @@ body:
       label: Steps to reproduce
       description: Minimal steps, commands, or YAML (sanitized).
       placeholder: |
-        1. make build && ./build/pgway -config config.yml
+        1. make build && ./build/pgway -config config.toml
         2. pgctl apply -f ...
         3. curl ...
     validations:
