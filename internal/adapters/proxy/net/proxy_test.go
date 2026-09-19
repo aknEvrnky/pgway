@@ -1,6 +1,8 @@
 package net
 
 import (
+	"context"
+	"net"
 	"testing"
 	"time"
 
@@ -69,7 +71,6 @@ func TestNewAdapter_DNSCacheEnabledUsesCustomDial(t *testing.T) {
 		DNSCacheTTL:         time.Minute,
 	})
 
-	// With cache enabled, dialContext is a wrapper — not the bare dialer method value.
 	require.NotNil(t, a.dialContext)
 	assert.NotNil(t, a.dialer)
 
@@ -81,4 +82,31 @@ func TestNewAdapter_DNSCacheEnabledUsesCustomDial(t *testing.T) {
 		DNSCacheEnabled:     false,
 	})
 	require.NotNil(t, disabled.dialContext)
+}
+
+func TestNewAdapter_DNSCacheDialReachesListener(t *testing.T) {
+	t.Parallel()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+	go func() {
+		c, err := ln.Accept()
+		if err == nil {
+			_ = c.Close()
+		}
+	}()
+
+	a := NewAdapter(TransportConfig{
+		MaxIdleConns:        10,
+		MaxIdleConnsPerHost: 2,
+		IdleConnTimeout:     time.Second,
+		DialTimeout:         time.Second,
+		DNSCacheEnabled:     true,
+		DNSCacheTTL:         time.Minute,
+	})
+
+	conn, err := a.dialContext(context.Background(), "tcp", ln.Addr().String())
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
 }
