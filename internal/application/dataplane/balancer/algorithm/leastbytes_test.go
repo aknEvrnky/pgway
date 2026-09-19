@@ -36,7 +36,7 @@ func TestNewLeastBytes(t *testing.T) {
 
 	lb, err := NewLeastBytes(lbTestPool("a", "b"), 0)
 	require.NoError(t, err)
-	assert.Equal(t, time.Minute, lb.resetInterval)
+	assert.Equal(t, domain.DefaultLeastBytesResetInterval, lb.resetInterval)
 }
 
 func TestLeastBytes_SelectsMinimum(t *testing.T) {

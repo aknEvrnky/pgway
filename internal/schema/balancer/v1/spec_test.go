@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +67,7 @@ func TestBalancerSpecV1_Validate(t *testing.T) {
 }
 
 func TestBalancerSpecV1_ResolvedResetInterval(t *testing.T) {
-	assert.Equal(t, time.Minute, BalancerSpecV1{}.ResolvedResetInterval())
+	assert.Equal(t, domain.DefaultLeastBytesResetInterval, BalancerSpecV1{}.ResolvedResetInterval())
 	assert.Equal(t, 30*time.Second, BalancerSpecV1{ResetInterval: "30s"}.ResolvedResetInterval())
-	assert.Equal(t, time.Minute, BalancerSpecV1{ResetInterval: "nope"}.ResolvedResetInterval())
+	assert.Equal(t, domain.DefaultLeastBytesResetInterval, BalancerSpecV1{ResetInterval: "nope"}.ResolvedResetInterval())
 }

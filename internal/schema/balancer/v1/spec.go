@@ -3,6 +3,8 @@ package v1
 import (
 	"fmt"
 	"time"
+
+	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 )
 
 type BalancerSpecV1 struct {
@@ -46,14 +48,15 @@ func (s BalancerSpecV1) Validate() error {
 	return nil
 }
 
-// ResolvedResetInterval returns the effective reset interval (default 1m).
+// ResolvedResetInterval returns the effective reset interval
+// (default domain.DefaultLeastBytesResetInterval).
 func (s BalancerSpecV1) ResolvedResetInterval() time.Duration {
 	if s.ResetInterval == "" {
-		return time.Minute
+		return domain.DefaultLeastBytesResetInterval
 	}
 	d, err := time.ParseDuration(s.ResetInterval)
 	if err != nil || d <= 0 {
-		return time.Minute
+		return domain.DefaultLeastBytesResetInterval
 	}
 	return d
 }

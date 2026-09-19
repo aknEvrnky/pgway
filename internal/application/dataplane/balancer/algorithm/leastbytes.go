@@ -29,7 +29,7 @@ func NewLeastBytes(pool *domain.Pool, resetInterval time.Duration) (*LeastBytes,
 		return nil, domain.ErrNoProxy
 	}
 	if resetInterval <= 0 {
-		resetInterval = time.Minute
+		resetInterval = domain.DefaultLeastBytesResetInterval
 	}
 
 	return &LeastBytes{
