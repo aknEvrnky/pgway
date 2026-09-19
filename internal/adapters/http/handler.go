@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -45,13 +46,15 @@ func closeWrite(c net.Conn) {
 type Handler struct {
 	app          ports.Application
 	transport    ports.ProxyTransportPort
+	link         ports.CPLinkStatus // optional
 	maxBodyBytes int64
 }
 
-func NewHandler(app ports.Application, t ports.ProxyTransportPort, maxBodyBytes int64) *Handler {
+func NewHandler(app ports.Application, t ports.ProxyTransportPort, maxBodyBytes int64, link ports.CPLinkStatus) *Handler {
 	return &Handler{
 		app:          app,
 		transport:    t,
+		link:         link,
 		maxBodyBytes: maxBodyBytes,
 	}
 }
@@ -63,6 +66,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		http.Error(w, "missing entrypoint", http.StatusInternalServerError)
 		return
+	}
+
+	if h.link != nil {
+		snap := h.link.Snapshot()
+		if snap.Rejecting {
+			w.Header().Set("X-Pgway-Reject-Reason", "cp_unreachable")
+			retryAfter := snap.RetryAfterSeconds
+			if retryAfter < 1 {
+				retryAfter = 30
+			}
+			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+			http.Error(w, "control plane unreachable", http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	// Reject oversized bodies before ExecuteFlow so balancer state is not

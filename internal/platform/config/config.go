@@ -128,6 +128,20 @@ type DataplaneConfig struct {
 	// accumulate for one coalesce key before the window elapses.
 	// Required to be >= 1 when EventCoalesceWindow is enabled.
 	EventCoalesceMaxBuffer int `mapstructure:"event_coalesce_max_buffer"`
+
+	// CPDisconnectStrategy is fail_open | fail_closed for distributed DP when
+	// the control plane is unreachable. All-in-one ignores this (in-process CP).
+	CPDisconnectStrategy string `mapstructure:"cp_disconnect_strategy"`
+	// CPDisconnectUnreachableThreshold is how long both heartbeat and watch
+	// proofs must be stale before entering unreachable.
+	CPDisconnectUnreachableThreshold time.Duration `mapstructure:"cp_disconnect_unreachable_threshold"`
+	// CPDisconnectRecoverThreshold is hysteresis before leaving unreachable
+	// once proofs are fresh again. 0 = immediate recover.
+	CPDisconnectRecoverThreshold time.Duration `mapstructure:"cp_disconnect_recover_threshold"`
+	// EventResyncInterval is how often all-in-one pgway runs a full Resync
+	// (Bootstrap + listener reconcile) as a missed-event safety net.
+	// <= 0 disables. Ignored by pgway-dp (Watch reconnect is primary).
+	EventResyncInterval time.Duration `mapstructure:"event_resync_interval"`
 }
 
 var c *Config
@@ -171,6 +185,10 @@ func Load(path string) error {
 	viper.SetDefault("proxy.dns_cache.ttl", 5*time.Minute)
 	viper.SetDefault("dataplane.event_coalesce_window", 100*time.Millisecond)
 	viper.SetDefault("dataplane.event_coalesce_max_buffer", 256)
+	viper.SetDefault("dataplane.cp_disconnect_strategy", "fail_open")
+	viper.SetDefault("dataplane.cp_disconnect_unreachable_threshold", 30*time.Second)
+	viper.SetDefault("dataplane.cp_disconnect_recover_threshold", time.Duration(0))
+	viper.SetDefault("dataplane.event_resync_interval", 5*time.Minute)
 
 	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
@@ -225,6 +243,17 @@ func Load(path string) error {
 	}
 	if cfg.Dataplane.EventCoalesceWindow > 0 && cfg.Dataplane.EventCoalesceMaxBuffer < 1 {
 		return fmt.Errorf("dataplane.event_coalesce_max_buffer must be >= 1 when dataplane.event_coalesce_window is enabled")
+	}
+	switch cfg.Dataplane.CPDisconnectStrategy {
+	case "fail_open", "fail_closed":
+	default:
+		return fmt.Errorf("dataplane.cp_disconnect_strategy must be fail_open or fail_closed")
+	}
+	if cfg.Dataplane.CPDisconnectUnreachableThreshold < 0 {
+		return fmt.Errorf("dataplane.cp_disconnect_unreachable_threshold must be >= 0")
+	}
+	if cfg.Dataplane.CPDisconnectRecoverThreshold < 0 {
+		return fmt.Errorf("dataplane.cp_disconnect_recover_threshold must be >= 0")
 	}
 
 	c = &cfg

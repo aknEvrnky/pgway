@@ -86,7 +86,7 @@ func withEntrypoint(r *http.Request, id string) *http.Request {
 func TestHandler_RoundTripTimeout_Returns504(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{roundTripErr: timeoutError{}}
-	h := NewHandler(api, tr, 0)
+	h := NewHandler(api, tr, 0, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
 	req = withEntrypoint(req, "ep1")
@@ -102,7 +102,7 @@ func TestHandler_RoundTripTimeout_Returns504(t *testing.T) {
 func TestHandler_DialRefused_Returns502(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1", Host: "127.0.0.1", Port: 1}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{dialErr: syscall.ECONNREFUSED}
-	h := NewHandler(api, tr, 0)
+	h := NewHandler(api, tr, 0, nil)
 
 	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
 	req.Host = "example.com:443"
@@ -119,7 +119,7 @@ func TestHandler_DialRefused_Returns502(t *testing.T) {
 func TestHandler_ContentLengthOverLimit_Returns413(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
-	h := NewHandler(api, tr, 100)
+	h := NewHandler(api, tr, 100, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/", nil)
 	req.ContentLength = 101
@@ -136,7 +136,7 @@ func TestHandler_ContentLengthOverLimit_Returns413(t *testing.T) {
 func TestHandler_BodyStreamOverLimit_Returns413(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
-	h := NewHandler(api, tr, 64)
+	h := NewHandler(api, tr, 64, nil)
 
 	body := bytes.Repeat([]byte("x"), 128)
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/", bytes.NewReader(body))
@@ -155,7 +155,7 @@ func TestHandler_BodyStreamOverLimit_Returns413(t *testing.T) {
 func TestHandler_UnderLimit_Forwards(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
-	h := NewHandler(api, tr, 1024)
+	h := NewHandler(api, tr, 1024, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/", strings.NewReader("hello"))
 	req = withEntrypoint(req, "ep1")
@@ -172,7 +172,7 @@ func TestHandler_UnderLimit_Forwards(t *testing.T) {
 func TestHandler_ZeroLimit_DisablesCap(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
-	h := NewHandler(api, tr, 0)
+	h := NewHandler(api, tr, 0, nil)
 
 	body := bytes.Repeat([]byte("y"), 200)
 	req := httptest.NewRequest(http.MethodPost, "http://example.com/", bytes.NewReader(body))
@@ -189,7 +189,7 @@ func TestHandler_ZeroLimit_DisablesCap(t *testing.T) {
 func TestHandler_CONNECT_IgnoresBodyLimit(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
-	h := NewHandler(api, tr, 10)
+	h := NewHandler(api, tr, 10, nil)
 
 	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
 	req.Host = "example.com:443"
@@ -340,7 +340,7 @@ func TestHandler_CONNECT_HalfCloseAndTransfer(t *testing.T) {
 
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &tunnelFakeTransport{dst: upStub}
-	h := NewHandler(api, tr, 0)
+	h := NewHandler(api, tr, 0, nil)
 
 	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
 	req.Host = "example.com:443"
@@ -410,7 +410,7 @@ func TestHandler_CONNECT_200ReachesRealHTTPClient(t *testing.T) {
 
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &tunnelFakeTransport{dst: upConn}
-	h := NewHandler(api, tr, 0)
+	h := NewHandler(api, tr, 0, nil)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -438,7 +438,7 @@ func TestHandler_CONNECT_200ReachesRealHTTPClient(t *testing.T) {
 }
 
 func TestHandler_removeHopHeaders_StripsConnectionTokens(t *testing.T) {
-	h := NewHandler(&handlerFakeAPI{}, &handlerFakeTransport{}, 0)
+	h := NewHandler(&handlerFakeAPI{}, &handlerFakeTransport{}, 0, nil)
 	hdr := make(http.Header)
 	hdr.Set("Connection", "keep-alive, X-Foo")
 	hdr.Set("Keep-Alive", "timeout=5")
@@ -451,4 +451,54 @@ func TestHandler_removeHopHeaders_StripsConnectionTokens(t *testing.T) {
 	assert.Empty(t, hdr.Get("Keep-Alive"))
 	assert.Empty(t, hdr.Get("X-Foo"), "header named in Connection must be stripped")
 	assert.Equal(t, "yes", hdr.Get("X-Keep"))
+}
+
+type staticLinkStatus struct {
+	snap ports.CPLinkSnapshot
+}
+
+func (s staticLinkStatus) Snapshot() ports.CPLinkSnapshot { return s.snap }
+
+func TestHandler_FailClosedUnreachable_RejectsNewRequest(t *testing.T) {
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &handlerFakeTransport{}
+	link := staticLinkStatus{snap: ports.CPLinkSnapshot{
+		State:             ports.CPLinkUnreachable,
+		Strategy:          ports.CPDisconnectFailClosed,
+		Rejecting:         true,
+		RetryAfterSeconds: 45,
+	}}
+	h := NewHandler(api, tr, 0, link)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Contains(t, rec.Body.String(), "control plane unreachable")
+	assert.Equal(t, "cp_unreachable", rec.Header().Get("X-Pgway-Reject-Reason"))
+	assert.Equal(t, "45", rec.Header().Get("Retry-After"))
+	assert.Equal(t, int32(0), tr.roundTripCalls.Load())
+}
+
+func TestHandler_FailOpenUnreachable_AllowsTraffic(t *testing.T) {
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &handlerFakeTransport{}
+	link := staticLinkStatus{snap: ports.CPLinkSnapshot{
+		State:     ports.CPLinkUnreachable,
+		Strategy:  ports.CPDisconnectFailOpen,
+		Rejecting: false,
+	}}
+	h := NewHandler(api, tr, 0, link)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, int32(1), tr.roundTripCalls.Load())
 }

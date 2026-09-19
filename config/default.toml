@@ -80,3 +80,15 @@ ttl = "5m"
 event_coalesce_window = "100ms"
 # Early flush when this many events land in one key before the window ends.
 event_coalesce_max_buffer = 256
+# All-in-one missed-event safety net (Bootstrap + listener reconcile). 0 disables.
+# Ignored by pgway-dp (Watch reconnect is the primary heal path).
+# Default 5m avoids resetting LB cursors too often when config is unchanged.
+event_resync_interval = "5m"
+# Distributed DP: fail_open keeps serving last-known config when CP is down;
+# fail_closed rejects new proxy requests with 503 after unreachable (see threshold note).
+cp_disconnect_strategy = "fail_open"
+# Both HB and Watch must be stale, then remain so for this duration, before
+# unreachable. After CP death this can take up to ~2× this value (HB age-out + window).
+cp_disconnect_unreachable_threshold = "30s"
+# Hysteresis before leaving unreachable once proofs are fresh again. 0 = immediate.
+cp_disconnect_recover_threshold = "0s"

@@ -32,7 +32,7 @@ func TestRunHeartbeatStopsOnCancel(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- RunHeartbeat(ctx, zap.NewNop(), hb, 20*time.Millisecond)
+		done <- RunHeartbeat(ctx, zap.NewNop(), hb, 20*time.Millisecond, HeartbeatOptions{})
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -48,7 +48,7 @@ func TestRunHeartbeatFatalOnUnauthenticated(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	err := RunHeartbeat(ctx, zap.NewNop(), hb, 10*time.Millisecond)
+	err := RunHeartbeat(ctx, zap.NewNop(), hb, 10*time.Millisecond, HeartbeatOptions{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ports.ErrAgentUnauthenticated)
 	assert.Contains(t, err.Error(), "PGWAY_AGENT_REGISTRATION_TOKEN")
@@ -60,7 +60,7 @@ func TestRunHeartbeatContinuesOnTransient(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- RunHeartbeat(ctx, zap.NewNop(), hb, 15*time.Millisecond)
+		done <- RunHeartbeat(ctx, zap.NewNop(), hb, 15*time.Millisecond, HeartbeatOptions{})
 	}()
 
 	time.Sleep(50 * time.Millisecond)

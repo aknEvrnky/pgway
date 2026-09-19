@@ -101,7 +101,7 @@ func deletedEvent(id string) ports.ChangeEvent {
 
 func TestAdapter_HandleEvent_SavedStartsNewServer(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -123,7 +123,7 @@ func TestAdapter_HandleEvent_SavedRestartsExistingServer(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -146,7 +146,7 @@ func TestAdapter_HandleEvent_DeletedStopsServer(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -177,7 +177,7 @@ func TestAdapter_HandleEvent_DeletedStopsServer(t *testing.T) {
 
 func TestAdapter_HandleEvent_IgnoresOtherResourceTypes(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	e := ports.ChangeEvent{ID: "p-1", ResourceType: ports.ResourceTypeProxy, ChangeKind: ports.ChangeKindSaved}
@@ -188,13 +188,47 @@ func TestAdapter_HandleEvent_IgnoresOtherResourceTypes(t *testing.T) {
 	assert.Empty(t, adapter.servers)
 }
 
-func TestAdapter_HandleEvent_SavedUnknownEntrypointReturnsError(t *testing.T) {
+func TestAdapter_HandleEvent_SavedUnknownEntrypointIsNoOp(t *testing.T) {
 	api := &fakeAPI{}
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
-	err = adapter.HandleEvent(context.Background(), savedEvent("ghost"))
-	assert.ErrorContains(t, err, "not found")
+	// Full reconcile: a Saved hint for an ID absent from cache does not error.
+	require.NoError(t, adapter.HandleEvent(context.Background(), savedEvent("ghost")))
+	adapter.mu.Lock()
+	defer adapter.mu.Unlock()
+	assert.Empty(t, adapter.servers)
+}
+
+func TestAdapter_HandleEvent_TitleOnlyUpdateKeepsListener(t *testing.T) {
+	port := freePort(t)
+	ep := testEntrypoint("ep-1", port)
+	api := &fakeAPI{}
+	api.setEntrypoints(ep)
+
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = adapter.Run(ctx) }()
+	waitListening(t, ep.ListenAddr())
+
+	adapter.mu.Lock()
+	before := adapter.servers[ep.Id]
+	adapter.mu.Unlock()
+	require.NotNil(t, before)
+
+	updated := testEntrypoint("ep-1", port)
+	updated.Title = "renamed"
+	api.setEntrypoints(updated)
+	require.NoError(t, adapter.HandleEvent(ctx, savedEvent("ep-1")))
+
+	waitListening(t, ep.ListenAddr())
+	adapter.mu.Lock()
+	after := adapter.servers[ep.Id]
+	adapter.mu.Unlock()
+	assert.Same(t, before, after, "same bind addr must not restart the http.Server")
 }
 
 // --- Run / Shutdown --------------------------------------------------------
@@ -205,7 +239,7 @@ func TestAdapter_Run_ReturnsOnContextCancel(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -232,7 +266,7 @@ func TestAdapter_Shutdown_StopsAllServers(t *testing.T) {
 	api := &fakeAPI{}
 	api.setEntrypoints(ep1, ep2)
 
-	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20)
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -247,4 +281,41 @@ func TestAdapter_Shutdown_StopsAllServers(t *testing.T) {
 
 	waitNotListening(t, ep1.ListenAddr())
 	waitNotListening(t, ep2.ListenAddr())
+}
+
+func TestAdapter_ReconcileListeners_AddRemoveAddrChange(t *testing.T) {
+	api := &fakeAPI{}
+	portKeep := freePort(t)
+	portRemove := freePort(t)
+	portAdd := freePort(t)
+	portNewAddr := freePort(t)
+
+	epKeep := testEntrypoint("ep-keep", portKeep)
+	epRemove := testEntrypoint("ep-remove", portRemove)
+	api.setEntrypoints(epKeep, epRemove)
+
+	adapter, err := NewHttpAdapter(context.Background(), api, nil, 10<<20, nil)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = adapter.Run(ctx) }()
+	waitListening(t, epKeep.ListenAddr())
+	waitListening(t, epRemove.ListenAddr())
+
+	epAdd := testEntrypoint("ep-add", portAdd)
+	epKeepMoved := testEntrypoint("ep-keep", portNewAddr)
+	api.setEntrypoints(epKeepMoved, epAdd)
+
+	require.NoError(t, adapter.ReconcileListeners(context.Background()))
+
+	waitNotListening(t, epRemove.ListenAddr())
+	waitNotListening(t, epKeep.ListenAddr()) // old addr
+	waitListening(t, epKeepMoved.ListenAddr())
+	waitListening(t, epAdd.ListenAddr())
+
+	// No-op reconcile keeps listeners up.
+	require.NoError(t, adapter.ReconcileListeners(context.Background()))
+	waitListening(t, epKeepMoved.ListenAddr())
+	waitListening(t, epAdd.ListenAddr())
 }
