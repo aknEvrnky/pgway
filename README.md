@@ -2,7 +2,7 @@
 
 # pgway
 
-Proxy gateway for upstream HTTP (and later SOCKS5) proxies — one stable entry point while provider URLs and credentials change.
+Proxy gateway for upstream HTTP and SOCKS5 proxies — one stable entry point while provider URLs and credentials change.
 
 ```text
 Client → pgway → Upstream Proxy Pool → Target
@@ -44,6 +44,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 ## Status & Roadmap
 
 - ✅ HTTP proxy, CONNECT tunneling, round-robin load balancing
+- ✅ SOCKS5 upstream proxies (clients still speak HTTP proxy to pgway)
 - ✅ Router with multiple match types and composite conditions
 - ✅ Static and dynamic (label-selector) pools
 - ✅ gRPC Control Plane, CLI, BadgerDB storage
@@ -51,7 +52,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 - ✅ Weighted load balancing
 - ✅ Least-bytes load balancing
 - 🚧 Dashboard (in progress), REST API (in flux)
-- 🔜 SOCKS5 support
 - 🔜 Prometheus metrics
 - 🔜 Health checks with automatic pool recovery
 - 🔜 Authentication for REST / dashboard
