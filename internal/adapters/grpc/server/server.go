@@ -34,11 +34,15 @@ func New(
 	events ports.EventSubscriberPort,
 	shutdown context.Context,
 	agentCfg AgentServerConfig,
+	ka KeepaliveConfig,
 ) *grpc.Server {
-	s := grpc.NewServer(
+	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(interceptor.UnaryAuth(authenticator)),
 		grpc.ChainStreamInterceptor(interceptor.StreamAuth(authenticator)),
-	)
+	}
+	opts = append(opts, keepaliveServerOptions(ka)...)
+
+	s := grpc.NewServer(opts...)
 
 	RegisterControlPlane(s, NewControlPlaneServer(cp, resolver))
 	RegisterAuth(s, NewAuthServer(users, authManager))

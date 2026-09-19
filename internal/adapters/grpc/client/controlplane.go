@@ -30,16 +30,20 @@ type Client struct {
 // NewClient connects to the control plane. token authenticates every call;
 // it may be empty for the exempt RPCs (Login, InitAdmin, Register). Use
 // SetToken to swap credentials after Register without redialing.
-func NewClient(addr, token string) (*Client, error) {
+//
+// Keepalive is applied when ka.Interval > 0.
+func NewClient(addr, token string, ka KeepaliveConfig) (*Client, error) {
 	c := &Client{}
 	c.token.Store(token)
 
-	conn, err := grpc.NewClient(
-		"passthrough:///"+addr,
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(c.unaryBearer),
 		grpc.WithStreamInterceptor(c.streamBearer),
-	)
+	}
+	opts = append(opts, keepaliveDialOptions(ka)...)
+
+	conn, err := grpc.NewClient("passthrough:///"+addr, opts...)
 	if err != nil {
 		return nil, err
 	}

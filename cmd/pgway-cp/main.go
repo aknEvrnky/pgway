@@ -85,6 +85,9 @@ func main() {
 		HeartbeatThreshold:   cfg.AgentHeartbeatThreshold,
 		AgentTokenTTL:        cfg.AgentTokenTTL,
 		RegistrationTokenTTL: cfg.RegistrationTokenTTL,
+	}, grpcserver.KeepaliveConfig{
+		Interval: cfg.GRPCKeepaliveInterval,
+		Timeout:  cfg.GRPCKeepaliveTimeout,
 	})
 
 	lis, err := net.Listen("tcp", cfg.GrpcListenAddr)

@@ -12,6 +12,12 @@ badger_gc_interval: 5m
 # gRPC listen address for the control plane. pgway-dp / pgctl dial this address.
 grpc_listen_addr: ":9090"
 
+# gRPC keepalive ping interval (server + client). 0 disables.
+grpc_keepalive_interval: 1m
+
+# How long to wait for a keepalive ping ACK. Required when interval > 0.
+grpc_keepalive_timeout: 20s
+
 # REST API listen address (pgway, pgway-cp).
 rest_listen_addr: ":8081"
 
