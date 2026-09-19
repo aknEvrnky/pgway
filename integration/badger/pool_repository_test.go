@@ -129,4 +129,34 @@ func TestPoolFilter(t *testing.T) {
 		require.Len(t, result.Items, 1)
 		assert.Equal(t, "pool-alpha", result.Items[0].Id)
 	})
+
+	t.Run("filter by proxy id in static members", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		pool1 := testutil.NewTestPool()
+		pool1.Id = "pool-with-p1"
+		pool1.Type = domain.PoolTypeStatic
+		pool1.Members = []domain.PoolMember{{ProxyId: "p1", Weight: 1}}
+
+		pool2 := testutil.NewTestPool()
+		pool2.Id = "pool-with-p2"
+		pool2.Type = domain.PoolTypeStatic
+		pool2.Members = []domain.PoolMember{{ProxyId: "p2", Weight: 1}}
+
+		pool3 := testutil.NewTestPool()
+		pool3.Id = "pool-dynamic"
+		pool3.Type = domain.PoolTypeDynamic
+		pool3.Members = nil
+		pool3.Selector = &domain.LabelSelector{Allow: map[string]string{"env": "prod"}}
+
+		require.NoError(t, store.Pools.Save(ctx, pool1))
+		require.NoError(t, store.Pools.Save(ctx, pool2))
+		require.NoError(t, store.Pools.Save(ctx, pool3))
+
+		result, err := store.Pools.List(ctx, domain.ListParams{}, domain.PoolFilter{ProxyId: "p1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "pool-with-p1", result.Items[0].Id)
+	})
 }

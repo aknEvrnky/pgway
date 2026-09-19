@@ -85,7 +85,7 @@ func (s *ControlPlaneServer) DeleteEntrypoint(ctx context.Context, req *controlp
 
 	err := s.cp.DeleteEntrypoint(ctx, req.Name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "delete entrypoint: %v", err)
+		return nil, mapResourceError("delete entrypoint", err)
 	}
 
 	return &controlplanev1.DeleteEntrypointResponse{}, nil

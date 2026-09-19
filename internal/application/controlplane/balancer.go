@@ -86,6 +86,10 @@ func (s *Service) DeleteBalancer(ctx context.Context, name string) error {
 		return fmt.Errorf("balancer name is required")
 	}
 
+	if err := s.rejectIfFlowsOrRoutersReferenceBalancer(ctx, name); err != nil {
+		return err
+	}
+
 	if err := s.lbRepo.Delete(ctx, name); err != nil {
 		return err
 	}

@@ -85,7 +85,7 @@ func (s *ControlPlaneServer) DeleteBalancer(ctx context.Context, req *controlpla
 
 	err := s.cp.DeleteBalancer(ctx, req.Name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "delete balancer: %v", err)
+		return nil, mapResourceError("delete balancer", err)
 	}
 
 	return &controlplanev1.DeleteBalancerResponse{}, nil

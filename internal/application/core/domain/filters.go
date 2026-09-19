@@ -9,6 +9,8 @@ type ProxyFilter struct {
 type PoolFilter struct {
 	Search string
 	Type   string
+	// ProxyId matches static pools whose Members contain this proxy ID.
+	ProxyId string
 }
 
 type BalancerFilter struct {
@@ -19,12 +21,15 @@ type BalancerFilter struct {
 
 type RouterFilter struct {
 	Search string
+	// TargetBalancerId matches routers with any rule Target equal to this balancer ID.
+	TargetBalancerId string
 }
 
 type EntrypointFilter struct {
 	Search   string
 	Protocol string
 	Host     string
+	FlowId   string
 }
 
 type FlowFilter struct {

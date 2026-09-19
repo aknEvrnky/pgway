@@ -67,6 +67,10 @@ func (s *Service) DeleteFlow(ctx context.Context, name string) error {
 		return fmt.Errorf("flow name is required")
 	}
 
+	if err := s.rejectIfEntrypointsReferenceFlow(ctx, name); err != nil {
+		return err
+	}
+
 	if err := s.flowRepo.Delete(ctx, name); err != nil {
 		return err
 	}

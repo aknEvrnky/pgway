@@ -82,7 +82,7 @@ func (s *ControlPlaneServer) DeletePool(ctx context.Context, req *controlplanev1
 
 	err := s.cp.DeletePool(ctx, req.Name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "delete pool: %v", err)
+		return nil, mapResourceError("delete pool", err)
 	}
 
 	return &controlplanev1.DeletePoolResponse{}, nil

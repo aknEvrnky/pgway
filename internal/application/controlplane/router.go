@@ -67,6 +67,10 @@ func (s *Service) DeleteRouter(ctx context.Context, name string) error {
 		return fmt.Errorf("router name is required")
 	}
 
+	if err := s.rejectIfFlowsReferenceRouter(ctx, name); err != nil {
+		return err
+	}
+
 	if err := s.routerRepo.Delete(ctx, name); err != nil {
 		return err
 	}
