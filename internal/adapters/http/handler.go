@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -195,13 +196,23 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 }
 
 func (h *Handler) removeHopHeaders(header http.Header) {
+	// RFC 7230 §6.1: remove headers named by Connection before dropping Connection itself.
+	for _, connVal := range header.Values("Connection") {
+		for _, token := range strings.Split(connVal, ",") {
+			token = strings.TrimSpace(token)
+			if token != "" {
+				header.Del(token)
+			}
+		}
+	}
+
 	hopHeaders := []string{
 		"Connection", "Proxy-Connection", "Keep-Alive",
 		"Proxy-Authenticate", "Proxy-Authorization",
 		"Te", "Trailer", "Transfer-Encoding", "Upgrade",
 	}
-	for _, h := range hopHeaders {
-		header.Del(h)
+	for _, name := range hopHeaders {
+		header.Del(name)
 	}
 }
 

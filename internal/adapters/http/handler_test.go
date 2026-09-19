@@ -436,3 +436,19 @@ func TestHandler_CONNECT_200ReachesRealHTTPClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(statusLine, "HTTP/1.1 200"), "got %q", statusLine)
 }
+
+func TestHandler_removeHopHeaders_StripsConnectionTokens(t *testing.T) {
+	h := NewHandler(&handlerFakeAPI{}, &handlerFakeTransport{}, 0)
+	hdr := make(http.Header)
+	hdr.Set("Connection", "keep-alive, X-Foo")
+	hdr.Set("Keep-Alive", "timeout=5")
+	hdr.Set("X-Foo", "bar")
+	hdr.Set("X-Keep", "yes")
+
+	h.removeHopHeaders(hdr)
+
+	assert.Empty(t, hdr.Get("Connection"))
+	assert.Empty(t, hdr.Get("Keep-Alive"))
+	assert.Empty(t, hdr.Get("X-Foo"), "header named in Connection must be stripped")
+	assert.Equal(t, "yes", hdr.Get("X-Keep"))
+}
