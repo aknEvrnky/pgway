@@ -109,6 +109,8 @@ func main() {
 		MaxIdleConnsPerHost: cfg.Proxy.MaxIdleConnsPerHost,
 		IdleConnTimeout:     cfg.Proxy.IdleConnTimeout,
 		DialTimeout:         cfg.Proxy.DialTimeout,
+		DNSCacheEnabled:     cfg.Proxy.DNSCache.Enabled,
+		DNSCacheTTL:         cfg.Proxy.DNSCache.TTL,
 	})
 	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.Proxy.MaxRequestBodyBytes))
 	if err != nil {
