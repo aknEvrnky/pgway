@@ -83,6 +83,10 @@ func (s *Service) DeleteProxy(ctx context.Context, name string) error {
 		return fmt.Errorf("proxy name is required")
 	}
 
+	if err := s.rejectIfPoolsReferenceProxy(ctx, name); err != nil {
+		return err
+	}
+
 	if err := s.proxyRepo.Delete(ctx, name); err != nil {
 		return fmt.Errorf("delete proxy: %w", err)
 	}

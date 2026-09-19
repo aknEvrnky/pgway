@@ -87,7 +87,7 @@ func (s *ControlPlaneServer) DeleteProxy(ctx context.Context, req *controlplanev
 	err := s.cp.DeleteProxy(ctx, req.Name)
 
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "delete proxy: %v", err)
+		return nil, mapResourceError("delete proxy", err)
 	}
 
 	return &controlplanev1.DeleteProxyResponse{}, nil

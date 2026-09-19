@@ -194,4 +194,25 @@ func TestEntrypointFilter(t *testing.T) {
 		require.Len(t, result.Items, 1)
 		assert.Equal(t, "ep1", result.Items[0].Id)
 	})
+
+	t.Run("filter by flow id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		ep1 := testutil.NewTestEntrypoint()
+		ep1.Id = "ep-flow-1"
+		ep1.FlowId = "flow-1"
+
+		ep2 := testutil.NewTestEntrypoint()
+		ep2.Id = "ep-flow-2"
+		ep2.FlowId = "flow-2"
+
+		require.NoError(t, store.EPs.Save(ctx, ep1))
+		require.NoError(t, store.EPs.Save(ctx, ep2))
+
+		result, err := store.EPs.List(ctx, domain.ListParams{}, domain.EntrypointFilter{FlowId: "flow-1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "ep-flow-1", result.Items[0].Id)
+	})
 }

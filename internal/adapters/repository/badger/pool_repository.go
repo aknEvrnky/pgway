@@ -56,7 +56,7 @@ func (r *PoolRepository) List(ctx context.Context, params domain.ListParams, fil
 }
 
 func buildPoolPredicate(f domain.PoolFilter) func(*domain.Pool) bool {
-	if f.Search == "" && f.Type == "" {
+	if f.Search == "" && f.Type == "" && f.ProxyId == "" {
 		return nil
 	}
 	return func(p *domain.Pool) bool {
@@ -65,6 +65,18 @@ func buildPoolPredicate(f domain.PoolFilter) func(*domain.Pool) bool {
 		}
 		if f.Type != "" && string(p.Type) != f.Type {
 			return false
+		}
+		if f.ProxyId != "" {
+			found := false
+			for _, m := range p.Members {
+				if m.ProxyId == f.ProxyId {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
 		}
 		return true
 	}

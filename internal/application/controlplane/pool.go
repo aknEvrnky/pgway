@@ -73,6 +73,10 @@ func (s *Service) DeletePool(ctx context.Context, name string) error {
 		return fmt.Errorf("pool name is required")
 	}
 
+	if err := s.rejectIfBalancersReferencePool(ctx, name); err != nil {
+		return err
+	}
+
 	if err := s.poolRepo.Delete(ctx, name); err != nil {
 		return err
 	}

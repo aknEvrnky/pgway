@@ -56,11 +56,26 @@ func (r *RouterRepository) List(ctx context.Context, params domain.ListParams, f
 }
 
 func buildRouterPredicate(f domain.RouterFilter) func(*domain.Router) bool {
-	if f.Search == "" {
+	if f.Search == "" && f.TargetBalancerId == "" {
 		return nil
 	}
 	return func(r *domain.Router) bool {
-		return containsFold(r.Id, f.Search) || containsFold(r.Title, f.Search)
+		if f.Search != "" && !containsFold(r.Id, f.Search) && !containsFold(r.Title, f.Search) {
+			return false
+		}
+		if f.TargetBalancerId != "" {
+			found := false
+			for _, rule := range r.Rules {
+				if rule != nil && rule.Target == f.TargetBalancerId {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+		return true
 	}
 }
 

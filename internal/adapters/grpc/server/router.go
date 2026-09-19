@@ -83,7 +83,7 @@ func (s *ControlPlaneServer) DeleteRouter(ctx context.Context, req *controlplane
 
 	err := s.cp.DeleteRouter(ctx, req.Name)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "delete router: %v", err)
+		return nil, mapResourceError("delete router", err)
 	}
 
 	return &controlplanev1.DeleteRouterResponse{}, nil

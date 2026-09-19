@@ -56,7 +56,7 @@ func (r *EntrypointRepository) List(ctx context.Context, params domain.ListParam
 }
 
 func buildEntrypointPredicate(f domain.EntrypointFilter) func(*domain.Entrypoint) bool {
-	if f.Search == "" && f.Protocol == "" && f.Host == "" {
+	if f.Search == "" && f.Protocol == "" && f.Host == "" && f.FlowId == "" {
 		return nil
 	}
 	return func(ep *domain.Entrypoint) bool {
@@ -67,6 +67,9 @@ func buildEntrypointPredicate(f domain.EntrypointFilter) func(*domain.Entrypoint
 			return false
 		}
 		if f.Host != "" && !containsFold(ep.Host, f.Host) {
+			return false
+		}
+		if f.FlowId != "" && ep.FlowId != f.FlowId {
 			return false
 		}
 		return true

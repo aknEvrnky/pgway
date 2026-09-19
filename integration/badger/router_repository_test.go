@@ -162,4 +162,29 @@ func TestRouterFilter(t *testing.T) {
 		assert.Len(t, result.Items, 2)
 		assert.Equal(t, 2, result.TotalCount)
 	})
+
+	t.Run("filter by target balancer id", func(t *testing.T) {
+		store := badgerutil.NewBadgerStore(t)
+		ctx := context.Background()
+
+		r1 := testutil.NewTestRouter()
+		r1.Id = "router-lb1"
+		r1.Rules = []*domain.RouterRule{{
+			Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb-1",
+		}}
+
+		r2 := testutil.NewTestRouter()
+		r2.Id = "router-lb2"
+		r2.Rules = []*domain.RouterRule{{
+			Id: "r1", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb-2",
+		}}
+
+		require.NoError(t, store.Routers.Save(ctx, r1))
+		require.NoError(t, store.Routers.Save(ctx, r2))
+
+		result, err := store.Routers.List(ctx, domain.ListParams{}, domain.RouterFilter{TargetBalancerId: "lb-1"})
+		require.NoError(t, err)
+		require.Len(t, result.Items, 1)
+		assert.Equal(t, "router-lb1", result.Items[0].Id)
+	})
 }

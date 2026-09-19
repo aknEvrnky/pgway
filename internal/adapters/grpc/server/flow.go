@@ -82,7 +82,7 @@ func (s *ControlPlaneServer) DeleteFlow(ctx context.Context, req *controlplanev1
 	}
 
 	if err := s.cp.DeleteFlow(ctx, req.Name); err != nil {
-		return nil, status.Errorf(codes.Internal, "delete flow: %v", err)
+		return nil, mapResourceError("delete flow", err)
 	}
 
 	return &controlplanev1.DeleteFlowResponse{}, nil
