@@ -25,6 +25,10 @@ listen_addr = ":9090"
 keepalive_interval = "1m"
 # How long to wait for a keepalive ping ACK. Required when interval > 0.
 keepalive_timeout = "20s"
+# Per-client unary RPC token-bucket rate (tokens/sec). 0 disables.
+rate_limit_rps = 100
+# Token-bucket burst capacity. Required when rate_limit_rps > 0.
+rate_limit_burst = 200
 
 [rest]
 # REST API listen address (pgway, pgway-cp).

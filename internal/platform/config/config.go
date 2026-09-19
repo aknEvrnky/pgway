@@ -41,6 +41,12 @@ type GRPCConfig struct {
 	// KeepaliveTimeout is how long to wait for a keepalive ping ACK.
 	// Required to be > 0 when KeepaliveInterval is enabled.
 	KeepaliveTimeout time.Duration `mapstructure:"keepalive_timeout"`
+	// RateLimitRPS is the per-client token-bucket refill rate for unary CP RPCs.
+	// <= 0 disables rate limiting.
+	RateLimitRPS float64 `mapstructure:"rate_limit_rps"`
+	// RateLimitBurst is the token-bucket capacity. Required to be >= 1 when
+	// RateLimitRPS is enabled.
+	RateLimitBurst int `mapstructure:"rate_limit_burst"`
 }
 
 type RestConfig struct {
@@ -121,6 +127,8 @@ func Load(path string) error {
 	viper.SetDefault("grpc.listen_addr", ":9090")
 	viper.SetDefault("grpc.keepalive_interval", time.Minute)
 	viper.SetDefault("grpc.keepalive_timeout", 20*time.Second)
+	viper.SetDefault("grpc.rate_limit_rps", 100.0)
+	viper.SetDefault("grpc.rate_limit_burst", 200)
 	viper.SetDefault("rest.listen_addr", ":8081")
 	viper.SetDefault("auth.token_ttl", 720*time.Hour)
 	viper.SetDefault("auth.registration_token_ttl", 24*time.Hour)
@@ -171,6 +179,9 @@ func Load(path string) error {
 	}
 	if cfg.GRPC.KeepaliveInterval > 0 && cfg.GRPC.KeepaliveTimeout <= 0 {
 		return fmt.Errorf("grpc.keepalive_timeout must be > 0 when grpc.keepalive_interval is enabled")
+	}
+	if cfg.GRPC.RateLimitRPS > 0 && cfg.GRPC.RateLimitBurst < 1 {
+		return fmt.Errorf("grpc.rate_limit_burst must be >= 1 when grpc.rate_limit_rps is enabled")
 	}
 	if cfg.Proxy.MaxIdleConns < 0 {
 		return fmt.Errorf("proxy.max_idle_conns must be >= 0")

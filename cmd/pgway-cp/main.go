@@ -88,6 +88,9 @@ func main() {
 	}, grpcserver.KeepaliveConfig{
 		Interval: cfg.GRPC.KeepaliveInterval,
 		Timeout:  cfg.GRPC.KeepaliveTimeout,
+	}, grpcserver.RateLimitConfig{
+		RPS:   cfg.GRPC.RateLimitRPS,
+		Burst: cfg.GRPC.RateLimitBurst,
 	})
 
 	lis, err := net.Listen("tcp", cfg.GRPC.ListenAddr)
