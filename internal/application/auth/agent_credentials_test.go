@@ -143,7 +143,8 @@ func TestAgentCredentialService_ExtendAgentToken(t *testing.T) {
 		hash := hashToken(plaintext)
 		originalExpiry := *tokens.tokens[hash].ExpiresAt
 
-		require.NoError(t, svc.ExtendAgentToken(ctx, plaintext, 24*time.Hour))
+		_, err = svc.ExtendAgentToken(ctx, plaintext, 24*time.Hour)
+		require.NoError(t, err)
 
 		record, ok := tokens.tokens[hash]
 		require.True(t, ok, "sliding ttl must keep the same hash — the value never rotates")
@@ -157,7 +158,7 @@ func TestAgentCredentialService_ExtendAgentToken(t *testing.T) {
 		svc, tokens, _ := newTestCredentialService()
 		hash := seedToken(tokens, "pgw_user", domain.Token{UserId: "admin"})
 
-		err := svc.ExtendAgentToken(ctx, "pgw_user", 24*time.Hour)
+		_, err := svc.ExtendAgentToken(ctx, "pgw_user", 24*time.Hour)
 		assert.ErrorIs(t, err, ErrInvalidToken)
 		assert.Nil(t, tokens.tokens[hash].ExpiresAt, "user token must stay untouched")
 	})
@@ -167,13 +168,13 @@ func TestAgentCredentialService_ExtendAgentToken(t *testing.T) {
 		past := time.Now().Add(-time.Minute)
 		seedToken(tokens, "pgw_dead", domain.Token{AgentId: "edge-1", ExpiresAt: &past})
 
-		err := svc.ExtendAgentToken(ctx, "pgw_dead", 24*time.Hour)
+		_, err := svc.ExtendAgentToken(ctx, "pgw_dead", 24*time.Hour)
 		assert.ErrorIs(t, err, ErrInvalidToken)
 	})
 
 	t.Run("unknown token", func(t *testing.T) {
 		svc, _, _ := newTestCredentialService()
-		err := svc.ExtendAgentToken(ctx, "pgw_ghost", 24*time.Hour)
+		_, err := svc.ExtendAgentToken(ctx, "pgw_ghost", 24*time.Hour)
 		assert.ErrorIs(t, err, ErrInvalidToken)
 	})
 
@@ -182,7 +183,8 @@ func TestAgentCredentialService_ExtendAgentToken(t *testing.T) {
 		plaintext, err := svc.IssueAgentToken(ctx, "edge-1", time.Hour)
 		require.NoError(t, err)
 
-		assert.Error(t, svc.ExtendAgentToken(ctx, plaintext, 0))
+		_, err = svc.ExtendAgentToken(ctx, plaintext, 0)
+		assert.Error(t, err)
 	})
 }
 

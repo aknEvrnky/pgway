@@ -352,13 +352,28 @@ func TestHandler_CONNECT_HalfCloseAndTransfer(t *testing.T) {
 		h.ServeHTTP(&hijackResponse{conn: clientStub}, req)
 	}()
 
+	// CONNECT 200 must land on the wire before tunnel bytes.
+	require.NoError(t, peer.SetReadDeadline(time.Now().Add(2*time.Second)))
+	br := bufio.NewReader(peer)
+	status, err := br.ReadString('\n')
+	require.NoError(t, err)
+	assert.Contains(t, status, "200")
+	// Skip headers until blank line.
+	for {
+		line, err := br.ReadString('\n')
+		require.NoError(t, err)
+		if line == "\r\n" || line == "\n" {
+			break
+		}
+	}
+
 	payload := []byte("ping-tunnel")
 	_, err = peer.Write(payload)
 	require.NoError(t, err)
 
 	got := make([]byte, len(payload))
 	require.NoError(t, peer.SetReadDeadline(time.Now().Add(2*time.Second)))
-	_, err = io.ReadFull(peer, got)
+	_, err = io.ReadFull(br, got)
 	require.NoError(t, err)
 	assert.Equal(t, payload, got)
 
@@ -373,4 +388,67 @@ func TestHandler_CONNECT_HalfCloseAndTransfer(t *testing.T) {
 	assert.GreaterOrEqual(t, upStub.calls.Load(), int32(1))
 	assert.GreaterOrEqual(t, clientStub.calls.Load(), int32(1))
 	assert.Equal(t, int32(1), tr.dialCalls.Load())
+}
+
+func TestHandler_CONNECT_200ReachesRealHTTPClient(t *testing.T) {
+	// Upstream blackhole (accepts dial, holds connection).
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = upLn.Close() })
+	go func() {
+		c, err := upLn.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		time.Sleep(2 * time.Second)
+	}()
+
+	upConn, err := net.Dial("tcp", upLn.Addr().String())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = upConn.Close() })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &tunnelFakeTransport{dst: upConn}
+	h := NewHandler(api, tr, 0)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = ln.Close() })
+
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = withEntrypoint(r, "ep1")
+		h.ServeHTTP(w, r)
+	})}
+	go func() { _ = srv.Serve(ln) }()
+	t.Cleanup(func() { _ = srv.Close() })
+
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = conn.Close() })
+
+	_, err = io.WriteString(conn, "CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n\r\n")
+	require.NoError(t, err)
+
+	require.NoError(t, conn.SetReadDeadline(time.Now().Add(2*time.Second)))
+	br := bufio.NewReader(conn)
+	statusLine, err := br.ReadString('\n')
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(statusLine, "HTTP/1.1 200"), "got %q", statusLine)
+}
+
+func TestHandler_removeHopHeaders_StripsConnectionTokens(t *testing.T) {
+	h := NewHandler(&handlerFakeAPI{}, &handlerFakeTransport{}, 0)
+	hdr := make(http.Header)
+	hdr.Set("Connection", "keep-alive, X-Foo")
+	hdr.Set("Keep-Alive", "timeout=5")
+	hdr.Set("X-Foo", "bar")
+	hdr.Set("X-Keep", "yes")
+
+	h.removeHopHeaders(hdr)
+
+	assert.Empty(t, hdr.Get("Connection"))
+	assert.Empty(t, hdr.Get("Keep-Alive"))
+	assert.Empty(t, hdr.Get("X-Foo"), "header named in Connection must be stripped")
+	assert.Equal(t, "yes", hdr.Get("X-Keep"))
 }

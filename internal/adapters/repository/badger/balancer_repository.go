@@ -79,7 +79,7 @@ func (r *BalancerRepository) Find(ctx context.Context, id string) (*domain.LoadB
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(balancerKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("balancer %q not found", id)
+			return errNotFound("balancer", id)
 		}
 		if err != nil {
 			return err
@@ -113,7 +113,7 @@ func (r *BalancerRepository) Delete(ctx context.Context, id string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(balancerKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("balancer %q not found", id)
+			return errNotFound("balancer", id)
 		}
 		if err != nil {
 			return err

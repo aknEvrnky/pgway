@@ -79,7 +79,7 @@ func (r *ProxyRepository) Find(ctx context.Context, id string) (*domain.Proxy, e
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(proxyKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("proxy %q not found", id)
+			return errNotFound("proxy", id)
 		}
 
 		if err != nil {
@@ -114,7 +114,7 @@ func (r *ProxyRepository) Delete(ctx context.Context, id string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(proxyKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("proxy %q not found", id)
+			return errNotFound("proxy", id)
 		}
 		if err != nil {
 			return err
@@ -130,7 +130,7 @@ func (r *ProxyRepository) GetByIds(ctx context.Context, ids []string) ([]*domain
 		for _, id := range ids {
 			item, err := txn.Get(proxyKey(id))
 			if errors.Is(err, badgerdb.ErrKeyNotFound) {
-				return fmt.Errorf("proxy %q not found", id)
+				return errNotFound("proxy", id)
 			}
 			if err != nil {
 				return err

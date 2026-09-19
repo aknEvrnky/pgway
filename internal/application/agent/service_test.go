@@ -124,12 +124,12 @@ func (m *mockCreds) IssueAgentToken(_ context.Context, agentId string, ttl time.
 	return token, nil
 }
 
-func (m *mockCreds) ExtendAgentToken(_ context.Context, rawToken string, ttl time.Duration) error {
+func (m *mockCreds) ExtendAgentToken(_ context.Context, rawToken string, ttl time.Duration) (time.Time, error) {
 	if rawToken == "" || ttl <= 0 {
-		return auth.ErrInvalidToken
+		return time.Time{}, auth.ErrInvalidToken
 	}
 	m.extended = append(m.extended, rawToken)
-	return nil
+	return time.Now().Add(ttl), nil
 }
 
 func (m *mockCreds) RevokeAgentTokens(_ context.Context, agentId string) error {

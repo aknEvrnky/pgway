@@ -154,7 +154,7 @@ func proxySpecFromProto(pb *controlplanev1.ProxySpecV1) proxyv1.ProxySpecV1 {
 
 			return &proxyv1.AuthSpec{
 				User: pb.Auth.User,
-				Pass: pb.Auth.User,
+				Pass: pb.Auth.Pass,
 			}
 		}(),
 	}

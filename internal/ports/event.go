@@ -18,7 +18,8 @@ const (
 	ResourceTypeRouter     ResourceType = "router"
 	ResourceTypeProxy      ResourceType = "proxy"
 	ResourceTypePool       ResourceType = "pool"
-	ResourceTypeBalancer   ResourceType = "balancer"
+	// ResourceTypeBalancer is the event/wire name for schema kind LoadBalancer.
+	ResourceTypeBalancer ResourceType = "balancer"
 )
 
 func (t ResourceType) IsValid() bool {

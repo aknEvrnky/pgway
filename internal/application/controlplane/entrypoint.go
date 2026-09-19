@@ -42,10 +42,14 @@ func (s *Service) ApplyEntrypointV1(ctx context.Context, meta schema.Metadata, s
 	}
 
 	now := time.Now()
-	if existing, err := s.epRepo.Find(ctx, ep.Id); err == nil {
-		ep.CreatedAt = existing.CreatedAt
-	} else {
-		ep.CreatedAt = now
+	existing, err := s.epRepo.Find(ctx, ep.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	ep.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find entrypoint: %w", err)
 	}
 	ep.UpdatedAt = now
 

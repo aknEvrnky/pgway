@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"crypto/subtle"
+	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -68,8 +70,10 @@ func (s *Service) Bootstrap(ctx context.Context) error {
 	s.bootstrapToken = token
 	s.mu.Unlock()
 
-	zap.L().Warn("no users found — initialize with: pgctl init --bootstrap-token <token>",
-		zap.String("bootstrap_token", token))
+	// Print once to stderr for the operator; do not put the secret in structured logs
+	// (log aggregators retain zap fields).
+	_, _ = fmt.Fprintf(os.Stderr, "pgway: no users found — initialize with:\n  pgctl init --bootstrap-token %s\n", token)
+	zap.L().Warn("no users found — initialize with pgctl init (bootstrap token written to stderr only)")
 
 	return nil
 }
@@ -83,6 +87,9 @@ func (s *Service) BootstrapToken() string {
 }
 
 func (s *Service) InitAdmin(ctx context.Context, bootstrapToken, username, password string) (*domain.User, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	count, err := s.users.Count(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("counting users: %w", err)
@@ -92,10 +99,7 @@ func (s *Service) InitAdmin(ctx context.Context, bootstrapToken, username, passw
 		return nil, "", ErrAlreadyInitialized
 	}
 
-	s.mu.Lock()
 	expected := s.bootstrapToken
-	s.mu.Unlock()
-
 	if expected == "" || subtle.ConstantTimeCompare([]byte(expected), []byte(bootstrapToken)) != 1 {
 		return nil, "", ErrInvalidBootstrapToken
 	}
@@ -106,9 +110,7 @@ func (s *Service) InitAdmin(ctx context.Context, bootstrapToken, username, passw
 	}
 
 	// bootstrap token is single-use
-	s.mu.Lock()
 	s.bootstrapToken = ""
-	s.mu.Unlock()
 
 	token, err := s.issueToken(ctx, user.Id, s.defaultTTL)
 	if err != nil {
@@ -252,10 +254,6 @@ func (s *Service) setPassword(ctx context.Context, user *domain.User, newPasswor
 }
 
 func (s *Service) createUser(ctx context.Context, username, password string, role domain.Role) (*domain.User, error) {
-	if _, err := s.users.Find(ctx, username); err == nil {
-		return nil, ErrUserExists
-	}
-
 	hash, err := hashPassword(password)
 	if err != nil {
 		return nil, err
@@ -274,7 +272,10 @@ func (s *Service) createUser(ctx context.Context, username, password string, rol
 		return nil, fmt.Errorf("user validation: %w", err)
 	}
 
-	if err := s.users.Save(ctx, user); err != nil {
+	if err := s.users.Create(ctx, user); err != nil {
+		if errors.Is(err, domain.ErrUserExists) {
+			return nil, ErrUserExists
+		}
 		return nil, fmt.Errorf("persisting user: %w", err)
 	}
 

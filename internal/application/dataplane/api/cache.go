@@ -70,6 +70,15 @@ func (c *ResourceCache) ClearFlows() {
 	c.flows.Clear()
 }
 
+func (c *ResourceCache) AllRouters() []*domain.Router {
+	var result []*domain.Router
+	c.routers.Range(func(key, value any) bool {
+		result = append(result, value.(*domain.Router))
+		return true
+	})
+	return result
+}
+
 func (c *ResourceCache) GetRouter(id string) (*domain.Router, error) {
 	val, ok := c.routers.Load(id)
 	if !ok {

@@ -98,20 +98,20 @@ func (s *AgentCredentialService) IssueAgentToken(ctx context.Context, agentId st
 	return tokenStr, nil
 }
 
-func (s *AgentCredentialService) ExtendAgentToken(ctx context.Context, rawToken string, ttl time.Duration) error {
+func (s *AgentCredentialService) ExtendAgentToken(ctx context.Context, rawToken string, ttl time.Duration) (time.Time, error) {
 	if ttl <= 0 {
-		return fmt.Errorf("TTL must be greater than 0")
+		return time.Time{}, fmt.Errorf("TTL must be greater than 0")
 	}
 
 	hash := hashToken(rawToken)
 	record, err := s.tokens.Find(ctx, hash)
 
 	if err != nil || record.IsExpired(time.Now()) {
-		return ErrInvalidToken
+		return time.Time{}, ErrInvalidToken
 	}
 
 	if record.AgentId == "" {
-		return ErrInvalidToken
+		return time.Time{}, ErrInvalidToken
 	}
 
 	expires := time.Now().Add(ttl)
@@ -121,10 +121,10 @@ func (s *AgentCredentialService) ExtendAgentToken(ctx context.Context, rawToken 
 	err = s.tokens.Save(ctx, record)
 
 	if err != nil {
-		return fmt.Errorf("persist token: %w", err)
+		return time.Time{}, fmt.Errorf("persist token: %w", err)
 	}
 
-	return nil
+	return expires, nil
 }
 
 func (s *AgentCredentialService) RevokeAgentTokens(ctx context.Context, agentId string) error {

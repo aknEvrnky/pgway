@@ -7,12 +7,13 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/dptest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestApplication_HandleEvent_WarmupCache(t *testing.T) {
-	cp := &mockControlPlane{entrypoints: []*domain.Entrypoint{}}
+	cp := &dptest.ControlPlane{Entrypoints: []*domain.Entrypoint{}}
 
 	app := newApp(cp)
 	require.NoError(t, app.warmupCache(context.Background()))
@@ -20,7 +21,7 @@ func TestApplication_HandleEvent_WarmupCache(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, eps, 0)
 
-	cp.entrypoints = append(cp.entrypoints, testEP)
+	cp.Entrypoints = append(cp.Entrypoints, testEP)
 
 	// create a mock event
 	mockEvent := ports.ChangeEvent{
@@ -39,11 +40,11 @@ func TestApplication_HandleEvent_WarmupCache(t *testing.T) {
 }
 
 func TestApplication_HandleEvent_BootstrapApplication(t *testing.T) {
-	cp := &mockControlPlane{
-		entrypoints: []*domain.Entrypoint{testEP},
-		lbs:         []*domain.LoadBalancer{testLB},
-		pools:       map[string]*domain.Pool{"pool-1": testPool},
-		proxies:     []*domain.Proxy{testProxy},
+	cp := &dptest.ControlPlane{
+		Entrypoints: []*domain.Entrypoint{testEP},
+		Balancers:   []*domain.LoadBalancer{testLB},
+		Pools:       map[string]*domain.Pool{"pool-1": testPool},
+		Proxies:     []*domain.Proxy{testProxy},
 	}
 
 	app := newApp(cp)
@@ -69,8 +70,8 @@ func TestApplication_HandleEvent_BootstrapApplication(t *testing.T) {
 		{ProxyId: "p2", Weight: 1},
 	}
 
-	cp.proxies = []*domain.Proxy{testProxy, newTestProxy}
-	cp.pools["pool-1"] = newTestPool
+	cp.Proxies = []*domain.Proxy{testProxy, newTestProxy}
+	cp.Pools["pool-1"] = newTestPool
 
 	// handle change event
 	changeEvent := ports.ChangeEvent{
@@ -92,7 +93,7 @@ func TestApplication_HandleEvent_BootstrapApplication(t *testing.T) {
 }
 
 func TestApplication_HandleEvent_DeletedRemovesFromCache(t *testing.T) {
-	cp := &mockControlPlane{entrypoints: []*domain.Entrypoint{testEP}}
+	cp := &dptest.ControlPlane{Entrypoints: []*domain.Entrypoint{testEP}}
 
 	app := newApp(cp)
 	require.NoError(t, app.warmupCache(context.Background()))
@@ -102,7 +103,7 @@ func TestApplication_HandleEvent_DeletedRemovesFromCache(t *testing.T) {
 	require.Len(t, eps, 1)
 
 	// upstream no longer has the entrypoint
-	cp.entrypoints = []*domain.Entrypoint{}
+	cp.Entrypoints = []*domain.Entrypoint{}
 
 	err = app.HandleEvent(context.Background(), ports.ChangeEvent{
 		ID:           testEP.Id,
@@ -124,11 +125,11 @@ func TestApplication_HandleEvent_TopologyEventKeepsBalancerState(t *testing.T) {
 		{ProxyId: "p2", Weight: 1},
 	}}
 
-	cp := &mockControlPlane{
-		entrypoints: []*domain.Entrypoint{testEP},
-		lbs:         []*domain.LoadBalancer{testLB},
-		pools:       map[string]*domain.Pool{"pool-1": pool},
-		proxies:     []*domain.Proxy{testProxy, secondProxy},
+	cp := &dptest.ControlPlane{
+		Entrypoints: []*domain.Entrypoint{testEP},
+		Balancers:   []*domain.LoadBalancer{testLB},
+		Pools:       map[string]*domain.Pool{"pool-1": pool},
+		Proxies:     []*domain.Proxy{testProxy, secondProxy},
 	}
 
 	app := newApp(cp)
@@ -153,11 +154,11 @@ func TestApplication_HandleEvent_TopologyEventKeepsBalancerState(t *testing.T) {
 }
 
 func TestApplication_HandleEvent_BalancerEventKeepsTopologyCache(t *testing.T) {
-	cp := &mockControlPlane{
-		entrypoints: []*domain.Entrypoint{testEP},
-		lbs:         []*domain.LoadBalancer{testLB},
-		pools:       map[string]*domain.Pool{"pool-1": testPool},
-		proxies:     []*domain.Proxy{testProxy},
+	cp := &dptest.ControlPlane{
+		Entrypoints: []*domain.Entrypoint{testEP},
+		Balancers:   []*domain.LoadBalancer{testLB},
+		Pools:       map[string]*domain.Pool{"pool-1": testPool},
+		Proxies:     []*domain.Proxy{testProxy},
 	}
 
 	app := newApp(cp)
@@ -165,7 +166,7 @@ func TestApplication_HandleEvent_BalancerEventKeepsTopologyCache(t *testing.T) {
 
 	// upstream topology changes, but only a proxy event fires
 	secondEP := &domain.Entrypoint{Id: "ep-2", Protocol: domain.ProtocolHTTP, Host: "0.0.0.0", Port: 9090, FlowId: "flow-1"}
-	cp.entrypoints = []*domain.Entrypoint{testEP, secondEP}
+	cp.Entrypoints = []*domain.Entrypoint{testEP, secondEP}
 
 	err := app.HandleEvent(context.Background(), ports.ChangeEvent{
 		ID:           testProxy.Id,

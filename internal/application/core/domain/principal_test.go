@@ -22,12 +22,18 @@ func TestPrincipal_Kind(t *testing.T) {
 			expectedKind: PrincipalKindUser,
 		},
 		{
-			name: "the kind is agent if user is nil",
+			name: "the kind is agent if agent is set and user is nil",
 			user: nil,
 			agent: &Agent{
 				Id: "agent-perry",
 			},
 			expectedKind: PrincipalKindAgent,
+		},
+		{
+			name:         "unknown when both nil",
+			user:         nil,
+			agent:        nil,
+			expectedKind: PrincipalKindUnknown,
 		},
 	}
 

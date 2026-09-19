@@ -39,10 +39,14 @@ func (s *Service) ApplyProxyV1(ctx context.Context, meta schema.Metadata, spec p
 
 	// 5 - set timestamps
 	now := time.Now()
-	if existing, err := s.proxyRepo.Find(ctx, proxy.Id); err == nil {
-		proxy.CreatedAt = existing.CreatedAt
-	} else {
-		proxy.CreatedAt = now
+	existing, err := s.proxyRepo.Find(ctx, proxy.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	proxy.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find proxy: %w", err)
 	}
 	proxy.UpdatedAt = now
 

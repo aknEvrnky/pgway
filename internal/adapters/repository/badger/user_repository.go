@@ -76,7 +76,7 @@ func (r *UserRepository) Find(ctx context.Context, id string) (*domain.User, err
 	err := r.db.View(func(txn *badgerdb.Txn) error {
 		item, err := txn.Get(userKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("user %q not found", id)
+			return errNotFound("user", id)
 		}
 
 		if err != nil {
@@ -116,6 +116,24 @@ func (r *UserRepository) Count(ctx context.Context) (int, error) {
 	return count, err
 }
 
+func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
+	data, err := r.marshal(user)
+	if err != nil {
+		return fmt.Errorf("marshall user %q: %w", user.Id, err)
+	}
+
+	return r.db.Update(func(txn *badgerdb.Txn) error {
+		_, err := txn.Get(userKey(user.Id))
+		if err == nil {
+			return domain.ErrUserExists
+		}
+		if !errors.Is(err, badgerdb.ErrKeyNotFound) {
+			return err
+		}
+		return txn.Set(userKey(user.Id), data)
+	})
+}
+
 func (r *UserRepository) Save(ctx context.Context, user *domain.User) error {
 	data, err := r.marshal(user)
 	if err != nil {
@@ -131,7 +149,7 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	return r.db.Update(func(txn *badgerdb.Txn) error {
 		_, err := txn.Get(userKey(id))
 		if errors.Is(err, badgerdb.ErrKeyNotFound) {
-			return fmt.Errorf("user %q not found", id)
+			return errNotFound("user", id)
 		}
 		if err != nil {
 			return err

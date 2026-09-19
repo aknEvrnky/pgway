@@ -124,9 +124,14 @@ func (s *AgentServer) ListAgents(ctx context.Context, req *controlplanev1.ListAg
 		return nil, err
 	}
 
+	cursor, err := decodeCursor(req.GetPageToken())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid page_token")
+	}
+
 	params := domain.ListParams{
 		PageSize: int(req.PageSize),
-		Cursor:   req.PageToken,
+		Cursor:   cursor,
 	}
 	filter := domain.AgentFilter{
 		Search: req.Search,
@@ -146,7 +151,7 @@ func (s *AgentServer) ListAgents(ctx context.Context, req *controlplanev1.ListAg
 
 	return &controlplanev1.ListAgentsResponse{
 		Agents:        agents,
-		NextPageToken: result.NextCursor,
+		NextPageToken: encodeCursor(result.NextCursor),
 		TotalCount:    int32(result.TotalCount),
 	}, nil
 }

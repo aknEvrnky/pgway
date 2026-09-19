@@ -36,6 +36,9 @@ type BadgerConfig struct {
 
 type GRPCConfig struct {
 	ListenAddr string `mapstructure:"listen_addr"`
+	// DialAddr is the CP address clients dial (pgctl, pgway-dp). When empty,
+	// DialTarget falls back to ListenAddr (convenient for all-in-one / local).
+	DialAddr string `mapstructure:"dial_addr"`
 	// KeepaliveInterval is how often idle gRPC connections send pings.
 	// <= 0 disables keepalive on both server and client.
 	KeepaliveInterval time.Duration `mapstructure:"keepalive_interval"`
@@ -48,6 +51,14 @@ type GRPCConfig struct {
 	// RateLimitBurst is the token-bucket capacity. Required to be >= 1 when
 	// RateLimitRPS is enabled.
 	RateLimitBurst int `mapstructure:"rate_limit_burst"`
+}
+
+// DialTarget returns DialAddr if set, otherwise ListenAddr.
+func (c GRPCConfig) DialTarget() string {
+	if c.DialAddr != "" {
+		return c.DialAddr
+	}
+	return c.ListenAddr
 }
 
 type RestConfig struct {

@@ -84,11 +84,12 @@ func (s *Service) Heartbeat(ctx context.Context) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("save agent: %w", err)
 	}
 
-	if err := s.creds.ExtendAgentToken(ctx, rawToken, s.agentTokenTTL); err != nil {
+	expiresAt, err := s.creds.ExtendAgentToken(ctx, rawToken, s.agentTokenTTL)
+	if err != nil {
 		return time.Time{}, fmt.Errorf("extend agent token: %w", err)
 	}
 
-	return now.Add(s.agentTokenTTL), nil
+	return expiresAt, nil
 }
 
 // Deregister clears LastHeartbeat so status derives to passive. The agent

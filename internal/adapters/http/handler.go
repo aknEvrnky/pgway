@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -108,29 +109,37 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 
 	defer dst.Close()
 
-	// send conn OK
-	w.WriteHeader(http.StatusOK)
-
-	// hijack the tcp conn under the client
+	// Hijack first, then write the CONNECT 200 on the raw connection.
+	// WriteHeader before Hijack does not reliably reach the client: net/http
+	// may discard the buffered response when hijacking.
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "hijacking not supported", http.StatusInternalServerError)
 		return
 	}
 
-	src, _, err := hijacker.Hijack()
+	src, bufrw, err := hijacker.Hijack()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		zap.L().Error("hijack failed", zap.Error(err))
 		return
 	}
 	defer src.Close()
+
+	if _, err := bufrw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
+		zap.L().Error("write connect ok", zap.Error(err))
+		return
+	}
+	if err := bufrw.Flush(); err != nil {
+		zap.L().Error("flush connect ok", zap.Error(err))
+		return
+	}
 
 	g, _ := errgroup.WithContext(r.Context())
 
 	g.Go(func() error {
 		bufp := getCopyBuf()
 		defer putCopyBuf(bufp)
-		_, err := io.CopyBuffer(dst, src, *bufp)
+		_, err := io.CopyBuffer(dst, bufrw, *bufp)
 		closeWrite(dst)
 		return err
 	})
@@ -139,8 +148,9 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 		bufp := getCopyBuf()
 		defer putCopyBuf(bufp)
 		// Downstream only: upstream → client
-		n, err := io.CopyBuffer(src, dst, *bufp)
+		n, err := io.CopyBuffer(bufrw, dst, *bufp)
 		*transferred = n
+		_ = bufrw.Flush()
 		closeWrite(src)
 		return err
 	})
@@ -186,13 +196,23 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 }
 
 func (h *Handler) removeHopHeaders(header http.Header) {
+	// RFC 7230 §6.1: remove headers named by Connection before dropping Connection itself.
+	for _, connVal := range header.Values("Connection") {
+		for _, token := range strings.Split(connVal, ",") {
+			token = strings.TrimSpace(token)
+			if token != "" {
+				header.Del(token)
+			}
+		}
+	}
+
 	hopHeaders := []string{
 		"Connection", "Proxy-Connection", "Keep-Alive",
 		"Proxy-Authenticate", "Proxy-Authorization",
 		"Te", "Trailer", "Transfer-Encoding", "Upgrade",
 	}
-	for _, h := range hopHeaders {
-		header.Del(h)
+	for _, name := range hopHeaders {
+		header.Del(name)
 	}
 }
 

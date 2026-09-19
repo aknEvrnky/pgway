@@ -2,6 +2,7 @@ package agenthost
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -34,6 +35,16 @@ func (f *fakeWatcher) Watch(ctx context.Context, afterConnect func(context.Conte
 		return ctx.Err()
 	}
 	return nil
+}
+
+// dialFailWatcher fails before afterConnect (simulates dial / stream setup failure).
+type dialFailWatcher struct {
+	n atomic.Int32
+}
+
+func (f *dialFailWatcher) Watch(context.Context, func(context.Context) error) error {
+	f.n.Add(1)
+	return errors.New("dial failed")
 }
 
 func TestRunWatchStopsOnCancel(t *testing.T) {
@@ -103,4 +114,45 @@ func TestRunWatchOnConnectedAfterAfterConnect(t *testing.T) {
 	require.Equal(t, "onConnected", <-steps)
 	cancel()
 	<-done
+}
+
+func TestSleepBackoffDoublesAndCaps(t *testing.T) {
+	backoff := 10 * time.Millisecond
+	max := 35 * time.Millisecond
+	require.True(t, sleepBackoff(context.Background(), &backoff, max))
+	assert.Equal(t, 20*time.Millisecond, backoff)
+	require.True(t, sleepBackoff(context.Background(), &backoff, max))
+	assert.Equal(t, 35*time.Millisecond, backoff)
+}
+
+func TestRunWatchBackoffGrowsOnRapidFailures(t *testing.T) {
+	w := &dialFailWatcher{}
+	ctx, cancel := context.WithCancel(context.Background())
+	start := time.Now()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- RunWatch(ctx, zap.NewNop(), w, nil, WatchOptions{
+			InitialBackoff: 25 * time.Millisecond,
+			MaxBackoff:     200 * time.Millisecond,
+		})
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for w.n.Load() < 3 {
+		if time.Now().After(deadline) {
+			cancel()
+			<-done
+			t.Fatalf("timed out waiting for 3 attempts, got %d", w.n.Load())
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	elapsed := time.Since(start)
+	cancel()
+	<-done
+
+	// Growing: sleep 25ms + 50ms before 2nd and 3rd attempts (≥75ms).
+	// Constant-reset bug would be ~50ms for the same attempt count.
+	assert.GreaterOrEqual(t, elapsed, 70*time.Millisecond)
+	assert.GreaterOrEqual(t, w.n.Load(), int32(3))
 }

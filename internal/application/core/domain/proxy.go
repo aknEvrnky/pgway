@@ -28,7 +28,7 @@ func (p *Proxy) Addr() string {
 }
 
 func (p *Proxy) HasAuth() bool {
-	return p.Auth != nil && p.Auth.User != ""
+	return p.Auth != nil && (p.Auth.User != "" || p.Auth.Pass != "")
 }
 
 func (p *Proxy) Validate() error {
@@ -61,9 +61,8 @@ func (p *Proxy) URL() *url.URL {
 }
 
 func NewProxyFromURL(str string) (*Proxy, error) {
-	// add the schema if it does not exist
 	if !strings.Contains(str, "://") {
-		str = string(DefaultProtocol) + str
+		str = bareProxyURL(str)
 	}
 
 	parsed, err := url.Parse(str)
@@ -100,4 +99,21 @@ func NewProxyFromURL(str string) (*Proxy, error) {
 	}
 
 	return proxy, nil
+}
+
+// bareProxyURL normalizes documented non-URL forms to a parseable URL string:
+//   - ip:port
+//   - ip:port:user:pass
+func bareProxyURL(str string) string {
+	// host:port:user:pass (four fields; IPv4-style host without brackets)
+	if parts := strings.SplitN(str, ":", 4); len(parts) == 4 &&
+		parts[0] != "" && parts[1] != "" && parts[2] != "" {
+		u := &url.URL{
+			Scheme: string(DefaultProtocol),
+			User:   url.UserPassword(parts[2], parts[3]),
+			Host:   net.JoinHostPort(parts[0], parts[1]),
+		}
+		return u.String()
+	}
+	return string(DefaultProtocol) + "://" + str
 }

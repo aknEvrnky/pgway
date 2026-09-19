@@ -333,6 +333,18 @@ func TestRouterMatch_Evaluate(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "host matches ignoring port",
+			match:    RouterMatch{Type: MatchTypeHost, Value: "example.com"},
+			req:      newReq("GET", "http://example.com:8080/", nil),
+			expected: true,
+		},
+		{
+			name:     "host glob match",
+			match:    RouterMatch{Type: MatchTypeHost, Value: "*.example.com"},
+			req:      newReq("GET", "http://api.example.com/", nil),
+			expected: true,
+		},
+		{
 			name:     "host no match",
 			match:    RouterMatch{Type: MatchTypeHost, Value: "example.com"},
 			req:      newReq("GET", "http://other.com/", nil),

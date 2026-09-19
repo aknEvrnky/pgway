@@ -34,7 +34,7 @@ func (m *mockUserRepo) List(_ context.Context, _ domain.ListParams, filter domai
 func (m *mockUserRepo) Find(_ context.Context, id string) (*domain.User, error) {
 	u, ok := m.users[id]
 	if !ok {
-		return nil, fmt.Errorf("user %q not found", id)
+		return nil, fmt.Errorf("user %q not found: %w", id, domain.ErrNotFound)
 	}
 	copied := *u
 	return &copied, nil
@@ -42,6 +42,15 @@ func (m *mockUserRepo) Find(_ context.Context, id string) (*domain.User, error) 
 
 func (m *mockUserRepo) Count(_ context.Context) (int, error) {
 	return len(m.users), nil
+}
+
+func (m *mockUserRepo) Create(_ context.Context, user *domain.User) error {
+	if _, ok := m.users[user.Id]; ok {
+		return domain.ErrUserExists
+	}
+	copied := *user
+	m.users[user.Id] = &copied
+	return nil
 }
 
 func (m *mockUserRepo) Save(_ context.Context, user *domain.User) error {

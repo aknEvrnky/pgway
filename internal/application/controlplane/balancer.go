@@ -53,10 +53,14 @@ func (s *Service) ApplyBalancerV1(ctx context.Context, meta schema.Metadata, spe
 	}
 
 	now := time.Now()
-	if existing, err := s.lbRepo.Find(ctx, lb.Id); err == nil {
-		lb.CreatedAt = existing.CreatedAt
-	} else {
-		lb.CreatedAt = now
+	existing, err := s.lbRepo.Find(ctx, lb.Id)
+	var existingCreated time.Time
+	if err == nil {
+		existingCreated = existing.CreatedAt
+	}
+	lb.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
+	if err != nil {
+		return nil, fmt.Errorf("find balancer: %w", err)
 	}
 	lb.UpdatedAt = now
 
