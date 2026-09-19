@@ -93,7 +93,12 @@ func main() {
 		zap.L().Fatal("bootstrap", zap.Error(err))
 	}
 
-	proxyTransport := net.NewAdapter()
+	proxyTransport := net.NewAdapter(net.TransportConfig{
+		MaxIdleConns:        cfg.ProxyMaxIdleConns,
+		MaxIdleConnsPerHost: cfg.ProxyMaxIdleConnsPerHost,
+		IdleConnTimeout:     cfg.ProxyIdleConnTimeout,
+		DialTimeout:         cfg.ProxyDialTimeout,
+	})
 	httpAdapter, err := http.NewHttpAdapter(ctx, app, proxyTransport, int64(cfg.MaxRequestBodyBytes))
 	if err != nil {
 		zap.L().Fatal("init http adapter", zap.Error(err))
