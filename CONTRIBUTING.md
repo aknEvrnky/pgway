@@ -6,7 +6,7 @@ Thanks for contributing to **pgway**. This guide is the practical checklist for 
 
 - Go **1.27+** (`go version`)
 - Git
-- Optional: [protoc](https://grpc.io/docs/protoc-installation/) if you change `.proto` files
+- [protoc](https://grpc.io/docs/protoc-installation/) (protobuf compiler) — required for `make tools` / `make proto` (e.g. `brew install protobuf` or `apt install protobuf-compiler`)
 - Optional: Bun/Node only for the experimental dashboard under `frontend/`
 
 ## Setup
@@ -15,11 +15,11 @@ Thanks for contributing to **pgway**. This guide is the practical checklist for 
 git clone https://github.com/aknEvrnky/pgway.git
 cd pgway
 make build
-make tools   # gotestsum (and other make helpers)
+make tools   # gotestsum, protoc-gen-go, protoc-gen-go-grpc (+ checks for protoc)
 make test
 ```
 
-Ensure `$(go env GOPATH)/bin` is on your `PATH` so `gotestsum` is found.
+Ensure `$(go env GOPATH)/bin` is on your `PATH` so `gotestsum` and the `protoc-gen-*` plugins are found.
 
 ## Project shape (short)
 
