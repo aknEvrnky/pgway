@@ -13,6 +13,11 @@ type WatchOptions struct {
 	// OnConnected is invoked after the watch stream is established and
 	// afterConnect (bootstrap) has succeeded — useful for test handshakes.
 	OnConnected func()
+
+	// InitialBackoff is the first reconnect delay (default 1s).
+	InitialBackoff time.Duration
+	// MaxBackoff caps exponential growth (default 30s).
+	MaxBackoff time.Duration
 }
 
 // RunWatch reconnects forever until ctx is canceled.
@@ -28,20 +33,29 @@ func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatch
 	if log == nil {
 		log = zap.NewNop()
 	}
-	backoff := time.Second
-	const maxBackoff = 30 * time.Second
+	initial := opts.InitialBackoff
+	if initial <= 0 {
+		initial = time.Second
+	}
+	maxBackoff := opts.MaxBackoff
+	if maxBackoff <= 0 {
+		maxBackoff = 30 * time.Second
+	}
+	backoff := initial
 
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 
+		sessionOK := false
 		err := watch.Watch(ctx, func(c context.Context) error {
 			if afterConnect != nil {
 				if err := afterConnect(c); err != nil {
 					return err
 				}
 			}
+			sessionOK = true
 			if opts.OnConnected != nil {
 				opts.OnConnected()
 			}
@@ -57,7 +71,10 @@ func RunWatch(ctx context.Context, log *zap.Logger, watch ports.AgentChangeWatch
 			log.Warn("watch stream ended", zap.Error(err))
 		}
 
-		backoff = time.Second
+		// Reset after a successful session; keep growing across rapid failures.
+		if sessionOK {
+			backoff = initial
+		}
 		if !sleepBackoff(ctx, &backoff, maxBackoff) {
 			return ctx.Err()
 		}
