@@ -54,6 +54,30 @@ func TestNewProxyFromURL(t *testing.T) {
 			expectedError: "",
 		},
 		{
+			name:     "bare ip:port defaults to http",
+			proxyUrl: "127.0.0.1:8080",
+			expectedProxy: &Proxy{
+				Protocol: "http",
+				Host:     "127.0.0.1",
+				Port:     8080,
+			},
+			expectedError: "",
+		},
+		{
+			name:     "bare ip:port:user:pass defaults to http",
+			proxyUrl: "10.0.0.1:3128:alice:s3cret",
+			expectedProxy: &Proxy{
+				Protocol: "http",
+				Host:     "10.0.0.1",
+				Port:     3128,
+				Auth: &BasicAuth{
+					User: "alice",
+					Pass: "s3cret",
+				},
+			},
+			expectedError: "",
+		},
+		{
 			name:          "invalid proxy url can not be parsed",
 			proxyUrl:      "https://user:pass:127.0.0.1:8080",
 			expectedProxy: nil,
