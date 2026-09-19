@@ -101,8 +101,8 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	dst, err := h.transport.Dial(r.Context(), proxy, r.Host)
 	if err != nil {
 		zap.L().Error("dial failed", zap.Error(err), zap.String("proxy", proxy.Addr()), zap.String("target", r.Host))
-
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		status, msg := classifyUpstreamError(err)
+		http.Error(w, msg, status)
 		return
 	}
 
@@ -167,7 +167,8 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		status, msg := classifyUpstreamError(err)
+		http.Error(w, msg, status)
 		return
 	}
 	defer resp.Body.Close()
