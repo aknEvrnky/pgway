@@ -11,6 +11,7 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
+	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
@@ -101,6 +102,12 @@ func main() {
 		zap.L().Fatal("grpc listen", zap.Error(err), zap.String("addr", cfg.GRPC.ListenAddr))
 	}
 
+	gate := probes.NewReadyGate(probes.ReadyGateConfig{
+		Storage:     badgerrepo.NewStoragePinger(db),
+		RequireGRPC: true,
+	})
+	gate.MarkGRPCServing(true)
+
 	// Data Plane — cpService as read only service
 	app := api.NewApplication(cpService, cpService, zap.L())
 
@@ -124,6 +131,11 @@ func main() {
 	// REST adapter
 	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
 
+	var probeAdapter *probes.Adapter
+	if cfg.Probes.Enabled {
+		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
+	}
+
 	// event consumer — handler order matters: app refreshes the cache first,
 	// then the http adapter reads the refreshed cache
 	eventConsumer := consumer.NewConsumer(zap.L(), pubSub, consumer.CoalesceConfig{
@@ -131,7 +143,7 @@ func main() {
 		MaxBuffer: cfg.Dataplane.EventCoalesceMaxBuffer,
 	}, app, httpAdapter)
 
-	runErr := make(chan error, 4)
+	runErr := make(chan error, 5)
 
 	go func() {
 		zap.L().Info("grpc started", zap.String("addr", cfg.GRPC.ListenAddr))
@@ -154,6 +166,12 @@ func main() {
 			runErr <- err
 		}
 	}()
+
+	if probeAdapter != nil {
+		go func() {
+			runErr <- probeAdapter.Run()
+		}()
+	}
 
 	if cfg.Dataplane.EventResyncInterval > 0 {
 		go func() {
@@ -181,10 +199,18 @@ func main() {
 
 	// Graceful shutdown
 	zap.L().Info("shutting down")
-	server.GracefulStopWithTimeout(grpcServer, 5*time.Second)
+	gate.MarkShuttingDown()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	if probeAdapter != nil {
+		if err := probeAdapter.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("probes shutdown", zap.Error(err))
+		}
+	}
+
+	server.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
 	if err := httpAdapter.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("http shutdown", zap.Error(err))

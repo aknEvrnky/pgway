@@ -11,6 +11,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/agentstate"
 	grpcclient "github.com/aknEvrnky/pgway/internal/adapters/grpc/client"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
+	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	"github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -113,6 +114,15 @@ func main() {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
+	gate := probes.NewReadyGate(probes.ReadyGateConfig{
+		Link:        link,
+		RequireGRPC: false,
+	})
+	var probeAdapter *probes.Adapter
+	if cfg.Probes.Enabled {
+		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
+	}
+
 	localBus := memory.NewPubSub(10)
 	eventConsumer := consumer.NewConsumer(zap.L(), localBus, consumer.CoalesceConfig{
 		Window:    cfg.Dataplane.EventCoalesceWindow,
@@ -122,7 +132,7 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runErr := make(chan error, 1)
+	runErr := make(chan error, 2)
 	hbErr := make(chan error, 1)
 	watchErr := make(chan error, 1)
 	consumeErr := make(chan error, 1)
@@ -131,6 +141,12 @@ func main() {
 		zap.L().Info("gateway started")
 		runErr <- httpAdapter.Run(sigCtx)
 	}()
+
+	if probeAdapter != nil {
+		go func() {
+			runErr <- probeAdapter.Run()
+		}()
+	}
 
 	go func() {
 		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.Agent.HeartbeatInterval, agenthost.HeartbeatOptions{
@@ -173,6 +189,8 @@ func main() {
 		}
 	}
 
+	gate.MarkShuttingDown()
+
 	deregCtx, deregCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if err := cpClient.Deregister(deregCtx); err != nil {
 		zap.L().Warn("deregister agent", zap.Error(err))
@@ -181,6 +199,12 @@ func main() {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	if probeAdapter != nil {
+		if err := probeAdapter.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("probes shutdown", zap.Error(err))
+		}
+	}
 
 	if err := httpAdapter.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("http shutdown", zap.Error(err))

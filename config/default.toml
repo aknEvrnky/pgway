@@ -34,6 +34,13 @@ rate_limit_burst = 200
 # REST API listen address (pgway, pgway-cp).
 listen_addr = ":8081"
 
+[probes]
+# Opt-in process liveness/readiness HTTP listener (K8s probes). Off by default.
+enabled = false
+# Dedicated bind address — prefer loopback or cluster-internal (e.g. 127.0.0.1:8082).
+# Do not reuse entrypoint / gRPC / REST ports; avoid binding on public interfaces.
+listen_addr = ":8082"
+
 [auth]
 # Default lifetime of login-issued tokens (pgway, pgway-cp).
 token_ttl = "720h"

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
+	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 
@@ -81,6 +82,11 @@ func main() {
 
 	go badgerrepo.RunValueLogGC(sigCtx, db, cfg.Badger.GCInterval, zap.L())
 
+	gate := probes.NewReadyGate(probes.ReadyGateConfig{
+		Storage:     badgerrepo.NewStoragePinger(db),
+		RequireGRPC: true,
+	})
+
 	grpcServer := grpcserver.New(cpService, cpService, authService, authService, authenticator, agentService, pubsub, sigCtx, grpcserver.AgentServerConfig{
 		HeartbeatThreshold:   cfg.Agent.HeartbeatThreshold,
 		AgentTokenTTL:        cfg.Auth.AgentTokenTTL,
@@ -97,8 +103,19 @@ func main() {
 	if err != nil {
 		zap.L().Fatal("listen", zap.Error(err), zap.String("grpc_listen_addr", cfg.GRPC.ListenAddr))
 	}
+	gate.MarkGRPCServing(true)
 
 	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+
+	var probeAdapter *probes.Adapter
+	if cfg.Probes.Enabled {
+		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
+		go func() {
+			if err := probeAdapter.Run(); err != nil {
+				zap.L().Fatal("probes serve", zap.Error(err))
+			}
+		}()
+	}
 
 	go func() {
 		zap.L().Info("control plane started", zap.String("grpc", cfg.GRPC.ListenAddr))
@@ -116,10 +133,18 @@ func main() {
 
 	<-sigCtx.Done()
 	zap.L().Info("shutting down control plane")
-	grpcserver.GracefulStopWithTimeout(grpcServer, 5*time.Second)
+	gate.MarkShuttingDown()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	if probeAdapter != nil {
+		if err := probeAdapter.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("probes shutdown", zap.Error(err))
+		}
+	}
+
+	grpcserver.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
 	if err := restAdapter.Shutdown(shutdownCtx); err != nil {
 		zap.L().Error("rest shutdown", zap.Error(err))
