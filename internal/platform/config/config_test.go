@@ -42,6 +42,10 @@ func defaultWant(host string) Config {
 			RateLimitBurst:    200,
 		},
 		Rest: RestConfig{ListenAddr: ":8081"},
+		Probes: ProbesConfig{
+			Enabled:    false,
+			ListenAddr: ":8082",
+		},
 		Auth: AuthConfig{
 			TokenTTL:             720 * time.Hour,
 			RegistrationTokenTTL: 24 * time.Hour,
@@ -463,6 +467,60 @@ cp_disconnect_recover_threshold = "-5s"
 			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
+}
+
+func TestLoad_ProbesValidation(t *testing.T) {
+	tests := []struct {
+		name string
+		file string
+	}{
+		{
+			name: "empty listen_addr",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[probes]
+enabled = true
+listen_addr = ""
+`,
+		},
+		{
+			name: "whitespace-only listen_addr",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[probes]
+enabled = true
+listen_addr = "   "
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			err := Load(writeConfig(t, tt.file))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "probes.listen_addr")
+		})
+	}
+}
+
+func TestLoad_ProbesEnabled(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[probes]
+enabled = true
+listen_addr = "127.0.0.1:18082"
+`)))
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.Probes.Enabled)
+	assert.Equal(t, "127.0.0.1:18082", cfg.Probes.ListenAddr)
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {

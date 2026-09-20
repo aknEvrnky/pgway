@@ -21,6 +21,7 @@ type Config struct {
 	Badger    BadgerConfig    `mapstructure:"badger"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
 	Rest      RestConfig      `mapstructure:"rest"`
+	Probes    ProbesConfig    `mapstructure:"probes"`
 	Auth      AuthConfig      `mapstructure:"auth"`
 	Agent     AgentConfig     `mapstructure:"agent"`
 	Proxy     ProxyConfig     `mapstructure:"proxy"`
@@ -62,6 +63,15 @@ func (c GRPCConfig) DialTarget() string {
 }
 
 type RestConfig struct {
+	ListenAddr string `mapstructure:"listen_addr"`
+}
+
+// ProbesConfig controls the opt-in process liveness/readiness HTTP listener.
+type ProbesConfig struct {
+	// Enabled starts the dedicated probe HTTP listener.
+	// Default false — leave off outside orchestrated environments.
+	Enabled bool `mapstructure:"enabled"`
+	// ListenAddr is the probe bind address (separate from gRPC/REST/entrypoints).
 	ListenAddr string `mapstructure:"listen_addr"`
 }
 
@@ -167,6 +177,8 @@ func Load(path string) error {
 	viper.SetDefault("grpc.rate_limit_rps", 100.0)
 	viper.SetDefault("grpc.rate_limit_burst", 200)
 	viper.SetDefault("rest.listen_addr", ":8081")
+	viper.SetDefault("probes.enabled", false)
+	viper.SetDefault("probes.listen_addr", ":8082")
 	viper.SetDefault("auth.token_ttl", 720*time.Hour)
 	viper.SetDefault("auth.registration_token_ttl", 24*time.Hour)
 	viper.SetDefault("auth.agent_token_ttl", 168*time.Hour)
@@ -254,6 +266,9 @@ func Load(path string) error {
 	}
 	if cfg.Dataplane.CPDisconnectRecoverThreshold < 0 {
 		return fmt.Errorf("dataplane.cp_disconnect_recover_threshold must be >= 0")
+	}
+	if cfg.Probes.Enabled && strings.TrimSpace(cfg.Probes.ListenAddr) == "" {
+		return fmt.Errorf("probes.listen_addr must be non-empty when probes.enabled is true")
 	}
 
 	c = &cfg
