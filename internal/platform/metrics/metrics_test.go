@@ -92,6 +92,26 @@ func TestInit_DisabledNoop(t *testing.T) {
 	require.NoError(t, metrics.Shutdown(context.Background()))
 }
 
+func TestSetup_DisabledNoop(t *testing.T) {
+	_ = metrics.Shutdown(context.Background())
+	stop, err := metrics.Setup(context.Background(), metrics.Config{Enabled: false}, "pgway-test")
+	require.NoError(t, err)
+	require.NoError(t, stop(context.Background()))
+}
+
+func TestSetup_AppliesDefaultServiceName(t *testing.T) {
+	_ = metrics.Shutdown(context.Background())
+	stop, err := metrics.Setup(context.Background(), metrics.Config{
+		Enabled:        true,
+		Endpoint:       "collector:4317",
+		ExportInterval: time.Second,
+		Insecure:       true,
+	}, "pgway-test")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = stop(context.Background()) })
+	_ = metrics.Shutdown(context.Background())
+}
+
 func TestInit_ValidationMessages(t *testing.T) {
 	_ = metrics.Shutdown(context.Background())
 	err := metrics.Init(context.Background(), metrics.Config{Enabled: true, ExportInterval: time.Second})

@@ -14,7 +14,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
 )
 
 // Result / protocol attribute values (low cardinality).
@@ -118,6 +118,20 @@ func bindInstruments(m metric.Meter) {
 	mu.Unlock()
 }
 
+// withDefaults trims ServiceName/Version and applies fallbacks so callers
+// never emit empty resource attributes.
+func (c Config) withDefaults(defaultServiceName string) Config {
+	c.ServiceName = strings.TrimSpace(c.ServiceName)
+	if c.ServiceName == "" {
+		c.ServiceName = defaultServiceName
+	}
+	c.Version = strings.TrimSpace(c.Version)
+	if c.Version == "" {
+		c.Version = "dev"
+	}
+	return c
+}
+
 // Init starts the MeterProvider and OTLP/gRPC exporter when enabled.
 // Disabled is a no-op (instruments stay on the global noop/default provider).
 func Init(ctx context.Context, cfg Config) error {
@@ -131,14 +145,7 @@ func Init(ctx context.Context, cfg Config) error {
 	if cfg.ExportInterval <= 0 {
 		return fmt.Errorf("otel.export_interval must be > 0")
 	}
-	serviceName := strings.TrimSpace(cfg.ServiceName)
-	if serviceName == "" {
-		serviceName = "pgway"
-	}
-	version := strings.TrimSpace(cfg.Version)
-	if version == "" {
-		version = "dev"
-	}
+	cfg = cfg.withDefaults("pgway")
 
 	exporterOpts := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(endpoint),
@@ -155,8 +162,8 @@ func Init(ctx context.Context, cfg Config) error {
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceName(serviceName),
-			semconv.ServiceVersion(version),
+			semconv.ServiceName(cfg.ServiceName),
+			semconv.ServiceVersion(cfg.Version),
 		),
 	)
 	if err != nil {
@@ -183,6 +190,18 @@ func Init(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("runtime metrics: %w", err)
 	}
 	return nil
+}
+
+// Setup normalizes cfg (service name and version fallbacks), starts metrics
+// via Init, and returns a stop function that flushes via Shutdown with the
+// context supplied by the caller at stop time. On Init error the returned
+// stop function is nil.
+func Setup(ctx context.Context, cfg Config, defaultServiceName string) (stop func(context.Context) error, err error) {
+	cfg = cfg.withDefaults(defaultServiceName)
+	if err := Init(ctx, cfg); err != nil {
+		return nil, err
+	}
+	return Shutdown, nil
 }
 
 // InitManual wires instruments to a test MeterProvider (ManualReader).

@@ -38,23 +38,20 @@ func main() {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
 
-	serviceName := cfg.Otel.ServiceName
-	if serviceName == "" {
-		serviceName = "pgway-cp"
-	}
-	if err := metrics.Init(context.Background(), metrics.Config{
+	stopMetrics, err := metrics.Setup(context.Background(), metrics.Config{
 		Enabled:        cfg.Otel.Enabled,
 		Endpoint:       cfg.Otel.Endpoint,
-		Insecure:       cfg.Otel.Insecure,
-		ServiceName:    serviceName,
+		ServiceName:    cfg.Otel.ServiceName,
 		ExportInterval: cfg.Otel.ExportInterval,
-	}); err != nil {
+		Insecure:       cfg.Otel.Insecure,
+	}, "pgway-cp")
+	if err != nil {
 		zap.L().Fatal("init metrics", zap.Error(err))
 	}
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := metrics.Shutdown(shutdownCtx); err != nil {
+		if err := stopMetrics(shutdownCtx); err != nil {
 			zap.L().Warn("metrics shutdown", zap.Error(err))
 		}
 	}()
