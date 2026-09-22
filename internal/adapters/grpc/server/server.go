@@ -39,6 +39,7 @@ func New(
 ) *grpc.Server {
 	opts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
+			interceptor.UnaryMetrics(),
 			interceptor.UnaryAuth(authenticator),
 			interceptor.UnaryRateLimit(rl.toInterceptor()),
 		),

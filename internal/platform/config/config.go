@@ -26,6 +26,7 @@ type Config struct {
 	Agent     AgentConfig     `mapstructure:"agent"`
 	Proxy     ProxyConfig     `mapstructure:"proxy"`
 	Dataplane DataplaneConfig `mapstructure:"dataplane"`
+	Otel      OtelConfig      `mapstructure:"otel"`
 }
 
 type BadgerConfig struct {
@@ -154,6 +155,20 @@ type DataplaneConfig struct {
 	EventResyncInterval time.Duration `mapstructure:"event_resync_interval"`
 }
 
+// OtelConfig controls OpenTelemetry metrics export (OTLP/gRPC push).
+type OtelConfig struct {
+	// Enabled turns on the MeterProvider and OTLP exporter.
+	Enabled bool `mapstructure:"enabled"`
+	// Endpoint is the OTLP/gRPC collector host:port (no scheme).
+	Endpoint string `mapstructure:"endpoint"`
+	// Insecure uses plaintext OTLP/gRPC (no TLS). Default false = TLS.
+	Insecure bool `mapstructure:"insecure"`
+	// ServiceName sets resource service.name. Empty → binary default at Init.
+	ServiceName string `mapstructure:"service_name"`
+	// ExportInterval is the periodic reader export period.
+	ExportInterval time.Duration `mapstructure:"export_interval"`
+}
+
 var c *Config
 
 func Load(path string) error {
@@ -201,6 +216,11 @@ func Load(path string) error {
 	viper.SetDefault("dataplane.cp_disconnect_unreachable_threshold", 30*time.Second)
 	viper.SetDefault("dataplane.cp_disconnect_recover_threshold", time.Duration(0))
 	viper.SetDefault("dataplane.event_resync_interval", 5*time.Minute)
+	viper.SetDefault("otel.enabled", false)
+	viper.SetDefault("otel.endpoint", "localhost:4317")
+	viper.SetDefault("otel.insecure", false)
+	viper.SetDefault("otel.service_name", "")
+	viper.SetDefault("otel.export_interval", 15*time.Second)
 
 	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
@@ -269,6 +289,14 @@ func Load(path string) error {
 	}
 	if cfg.Probes.Enabled && strings.TrimSpace(cfg.Probes.ListenAddr) == "" {
 		return fmt.Errorf("probes.listen_addr must be non-empty when probes.enabled is true")
+	}
+	if cfg.Otel.Enabled {
+		if strings.TrimSpace(cfg.Otel.Endpoint) == "" {
+			return fmt.Errorf("otel.endpoint must be non-empty when otel.enabled is true")
+		}
+		if cfg.Otel.ExportInterval <= 0 {
+			return fmt.Errorf("otel.export_interval must be > 0 when otel.enabled is true")
+		}
 	}
 
 	c = &cfg

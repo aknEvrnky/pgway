@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -15,9 +16,12 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 type handlerFakeAPI struct {
@@ -481,6 +485,227 @@ func TestHandler_FailClosedUnreachable_RejectsNewRequest(t *testing.T) {
 	assert.Equal(t, "cp_unreachable", rec.Header().Get("X-Pgway-Reject-Reason"))
 	assert.Equal(t, "45", rec.Header().Get("Retry-After"))
 	assert.Equal(t, int32(0), tr.roundTripCalls.Load())
+}
+
+func TestResultFromHTTPStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		want   string
+	}{
+		{"504", http.StatusGatewayTimeout, metrics.ResultTimeout},
+		{"413", http.StatusRequestEntityTooLarge, metrics.ResultRejected},
+		{"503", http.StatusServiceUnavailable, metrics.ResultRejected},
+		{"502", http.StatusBadGateway, metrics.ResultError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, resultFromHTTPStatus(tt.status))
+		})
+	}
+}
+
+func TestHandler_ExecuteFlowNotFound_RecordsRejected(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{executeErr: fmt.Errorf("flow: %w", domain.ErrNotFound)}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodGet, "http://example.com/", nil), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var found bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.requests" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				for _, kv := range dp.Attributes.ToSlice() {
+					if string(kv.Key) == "result" && kv.Value.AsString() == metrics.ResultRejected {
+						found = true
+					}
+				}
+			}
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestHandler_HTTP_RecordsRequestBytes(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodPost, "http://example.com/", strings.NewReader("hello")), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var in, out bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.bytes" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				attrs := map[string]string{}
+				for _, kv := range dp.Attributes.ToSlice() {
+					attrs[string(kv.Key)] = kv.Value.AsString()
+				}
+				if attrs["direction"] == metrics.DirectionIn {
+					in = true
+					assert.Equal(t, int64(5), dp.Value)
+				}
+				if attrs["direction"] == metrics.DirectionOut {
+					out = true
+				}
+			}
+		}
+	}
+	assert.True(t, in)
+	assert.True(t, out)
+}
+
+func TestHandler_ActiveGauge_ReturnsToZero(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodGet, "http://example.com/", nil), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var saw bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.active" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				saw = true
+				assert.Equal(t, int64(0), dp.Value)
+			}
+		}
+	}
+	assert.True(t, saw, "pgway.proxy.active must expose a data point")
+}
+
+func TestHandler_CONNECT_RecordsMetrics(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	// Upstream tunnel target (what Dial returns a connection to).
+	upLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = upLn.Close() })
+	go func() {
+		c, err := upLn.Accept()
+		if err != nil {
+			return
+		}
+		defer c.Close()
+		buf := make([]byte, 64)
+		_, _ = c.Read(buf)
+	}()
+
+	upConn, err := net.Dial("tcp", upLn.Addr().String())
+	require.NoError(t, err)
+
+	// Client side of the hijacked connection.
+	clientLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clientLn.Close() })
+
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		c, err := clientLn.Accept()
+		if err != nil {
+			return
+		}
+		accepted <- c
+	}()
+
+	peer, err := net.Dial("tcp", clientLn.Addr().String())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = peer.Close() })
+
+	hijacked := <-accepted
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &tunnelFakeTransport{dst: upConn}
+	h := NewHandler(api, tr, 0, nil)
+
+	req := httptest.NewRequest(http.MethodConnect, "http://example.com:443", nil)
+	req.Host = "example.com:443"
+	req = withEntrypoint(req, "ep1")
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		h.ServeHTTP(&hijackResponse{conn: hijacked}, req)
+	}()
+
+	// CONNECT 200 must land on the wire before teardown so the tunnel
+	// is established with result=ok deterministically.
+	require.NoError(t, peer.SetReadDeadline(time.Now().Add(2*time.Second)))
+	br := bufio.NewReader(peer)
+	status, err := br.ReadString('\n')
+	require.NoError(t, err)
+	assert.Contains(t, status, "200")
+	for {
+		line, err := br.ReadString('\n')
+		require.NoError(t, err)
+		if line == "\r\n" || line == "\n" {
+			break
+		}
+	}
+
+	// Closing the client side ends both copy goroutines so g.Wait()
+	// returns; deferred metric records fire before ServeHTTP returns.
+	_ = peer.Close()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("tunnel did not finish after client close")
+	}
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+
+	var requestsOK, activeSaw bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			switch m.Name {
+			case "pgway.proxy.requests":
+				for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+					attrs := map[string]string{}
+					for _, kv := range dp.Attributes.ToSlice() {
+						attrs[string(kv.Key)] = kv.Value.AsString()
+					}
+					if attrs["protocol"] == metrics.ProtocolConnect && attrs["result"] == metrics.ResultOK {
+						requestsOK = true
+					}
+				}
+			case "pgway.proxy.active":
+				for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+					activeSaw = true
+					assert.Equal(t, int64(0), dp.Value, "active gauge must drain to zero after tunnel teardown")
+				}
+			}
+		}
+	}
+	assert.True(t, requestsOK, "pgway.proxy.requests must record protocol=connect result=ok")
+	assert.True(t, activeSaw, "pgway.proxy.active must expose a data point")
 }
 
 func TestHandler_FailOpenUnreachable_AllowsTraffic(t *testing.T) {

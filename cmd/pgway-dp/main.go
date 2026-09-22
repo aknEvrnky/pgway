@@ -20,6 +20,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
+	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +45,24 @@ func main() {
 	if err := logger.SetLevel(cfg.LogLevel); err != nil {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
+
+	stopMetrics, err := metrics.Setup(context.Background(), metrics.Config{
+		Enabled:        cfg.Otel.Enabled,
+		Endpoint:       cfg.Otel.Endpoint,
+		ServiceName:    cfg.Otel.ServiceName,
+		ExportInterval: cfg.Otel.ExportInterval,
+		Insecure:       cfg.Otel.Insecure,
+	}, "pgway-dp")
+	if err != nil {
+		zap.L().Fatal("init metrics", zap.Error(err))
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := stopMetrics(shutdownCtx); err != nil {
+			zap.L().Warn("metrics shutdown", zap.Error(err))
+		}
+	}()
 
 	lock, err := agentstate.NewLock(cfg.Agent.StatePath).Acquire()
 	if err != nil {
