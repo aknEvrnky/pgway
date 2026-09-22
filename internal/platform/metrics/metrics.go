@@ -35,6 +35,7 @@ const (
 type Config struct {
 	Enabled        bool
 	Endpoint       string
+	Insecure       bool
 	ServiceName    string
 	ExportInterval time.Duration
 	Version        string
@@ -135,10 +136,13 @@ func Init(ctx context.Context, cfg Config) error {
 		version = "dev"
 	}
 
-	exporter, err := otlpmetricgrpc.New(ctx,
+	exporterOpts := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(endpoint),
-		otlpmetricgrpc.WithInsecure(),
-	)
+	}
+	if cfg.Insecure {
+		exporterOpts = append(exporterOpts, otlpmetricgrpc.WithInsecure())
+	}
+	exporter, err := otlpmetricgrpc.New(ctx, exporterOpts...)
 	if err != nil {
 		return fmt.Errorf("otlp metric exporter: %w", err)
 	}

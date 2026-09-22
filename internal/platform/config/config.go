@@ -161,6 +161,8 @@ type OtelConfig struct {
 	Enabled bool `mapstructure:"enabled"`
 	// Endpoint is the OTLP/gRPC collector host:port (no scheme).
 	Endpoint string `mapstructure:"endpoint"`
+	// Insecure uses plaintext OTLP/gRPC (no TLS). Default false = TLS.
+	Insecure bool `mapstructure:"insecure"`
 	// ServiceName sets resource service.name. Empty → binary default at Init.
 	ServiceName string `mapstructure:"service_name"`
 	// ExportInterval is the periodic reader export period.
@@ -216,6 +218,7 @@ func Load(path string) error {
 	viper.SetDefault("dataplane.event_resync_interval", 5*time.Minute)
 	viper.SetDefault("otel.enabled", false)
 	viper.SetDefault("otel.endpoint", "localhost:4317")
+	viper.SetDefault("otel.insecure", false)
 	viper.SetDefault("otel.service_name", "")
 	viper.SetDefault("otel.export_interval", 15*time.Second)
 

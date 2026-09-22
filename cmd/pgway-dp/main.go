@@ -53,6 +53,7 @@ func main() {
 	if err := metrics.Init(context.Background(), metrics.Config{
 		Enabled:        cfg.Otel.Enabled,
 		Endpoint:       cfg.Otel.Endpoint,
+		Insecure:       cfg.Otel.Insecure,
 		ServiceName:    serviceName,
 		ExportInterval: cfg.Otel.ExportInterval,
 	}); err != nil {

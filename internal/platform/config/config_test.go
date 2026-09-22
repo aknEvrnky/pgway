@@ -81,6 +81,7 @@ func defaultWant(host string) Config {
 		Otel: OtelConfig{
 			Enabled:        false,
 			Endpoint:       "localhost:4317",
+			Insecure:       false,
 			ServiceName:    "",
 			ExportInterval: 15 * time.Second,
 		},
@@ -589,6 +590,22 @@ export_interval = "30s"
 	assert.Equal(t, "collector:4317", cfg.Otel.Endpoint)
 	assert.Equal(t, "pgway-test", cfg.Otel.ServiceName)
 	assert.Equal(t, 30*time.Second, cfg.Otel.ExportInterval)
+}
+
+func TestLoad_OtelInsecure(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "collector:4317"
+insecure = true
+`)))
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.Otel.Insecure)
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {
