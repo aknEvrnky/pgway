@@ -78,6 +78,12 @@ func defaultWant(host string) Config {
 			CPDisconnectRecoverThreshold:     0,
 			EventResyncInterval:              5 * time.Minute,
 		},
+		Otel: OtelConfig{
+			Enabled:        false,
+			Endpoint:       "localhost:4317",
+			ServiceName:    "",
+			ExportInterval: 15 * time.Second,
+		},
 	}
 }
 
@@ -521,6 +527,68 @@ listen_addr = "127.0.0.1:18082"
 	require.NotNil(t, cfg)
 	assert.True(t, cfg.Probes.Enabled)
 	assert.Equal(t, "127.0.0.1:18082", cfg.Probes.ListenAddr)
+}
+
+func TestLoad_OtelValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		file    string
+		wantErr string
+	}{
+		{
+			name: "empty endpoint when enabled",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = ""
+`,
+			wantErr: "otel.endpoint",
+		},
+		{
+			name: "zero export interval when enabled",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "localhost:4317"
+export_interval = "0s"
+`,
+			wantErr: "otel.export_interval",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			viper.Reset()
+			err := Load(writeConfig(t, tt.file))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}
+
+func TestLoad_OtelEnabled(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "collector:4317"
+service_name = "pgway-test"
+export_interval = "30s"
+`)))
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.Otel.Enabled)
+	assert.Equal(t, "collector:4317", cfg.Otel.Endpoint)
+	assert.Equal(t, "pgway-test", cfg.Otel.ServiceName)
+	assert.Equal(t, 30*time.Second, cfg.Otel.ExportInterval)
 }
 
 func TestLoad_ProxyTransportValidation(t *testing.T) {

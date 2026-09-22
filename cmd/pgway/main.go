@@ -24,6 +24,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
+	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
@@ -40,6 +41,26 @@ func main() {
 	if err := logger.SetLevel(cfg.LogLevel); err != nil {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
+
+	serviceName := cfg.Otel.ServiceName
+	if serviceName == "" {
+		serviceName = "pgway"
+	}
+	if err := metrics.Init(context.Background(), metrics.Config{
+		Enabled:        cfg.Otel.Enabled,
+		Endpoint:       cfg.Otel.Endpoint,
+		ServiceName:    serviceName,
+		ExportInterval: cfg.Otel.ExportInterval,
+	}); err != nil {
+		zap.L().Fatal("init metrics", zap.Error(err))
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := metrics.Shutdown(shutdownCtx); err != nil {
+			zap.L().Warn("metrics shutdown", zap.Error(err))
+		}
+	}()
 
 	// BadgerDB
 	opts := badgerdb.DefaultOptions(cfg.Badger.Path).WithLogger(badgerrepo.NewBadgerLogger())
