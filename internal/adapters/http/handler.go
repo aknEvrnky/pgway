@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -231,6 +232,16 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 }
 
 func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time) {
+	r.RequestURI = ""
+	h.removeHopHeaders(r.Header)
+
+	if h.maxBodyBytes > 0 {
+		r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
+	}
+	// Wrap after the size cap so the count reflects what is actually consumed.
+	cr := &countingReadCloser{rc: r.Body}
+	r.Body = cr
+
 	result := metrics.ResultOK
 	defer func() {
 		metrics.RecordProxy(context.WithoutCancel(r.Context()), metrics.ProxyRecord{
@@ -238,16 +249,10 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 			Protocol:   metrics.ProtocolHTTP,
 			Result:     result,
 			Duration:   time.Since(start),
+			BytesIn:    cr.count(),
 			BytesOut:   *transferred,
 		})
 	}()
-
-	r.RequestURI = ""
-	h.removeHopHeaders(r.Header)
-
-	if h.maxBodyBytes > 0 {
-		r.Body = http.MaxBytesReader(w, r.Body, h.maxBodyBytes)
-	}
 
 	resp, err := h.transport.RoundTrip(r.Context(), proxy, r)
 	if err != nil {
@@ -276,6 +281,21 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 		result = metrics.ResultError
 	}
 }
+
+type countingReadCloser struct {
+	rc io.ReadCloser
+	n  atomic.Int64
+}
+
+func (c *countingReadCloser) Read(p []byte) (int, error) {
+	n, err := c.rc.Read(p)
+	c.n.Add(int64(n))
+	return n, err
+}
+
+func (c *countingReadCloser) Close() error { return c.rc.Close() }
+
+func (c *countingReadCloser) count() int64 { return c.n.Load() }
 
 func resultFromHTTPStatus(status int) string {
 	if status == http.StatusGatewayTimeout {

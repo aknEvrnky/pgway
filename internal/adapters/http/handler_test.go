@@ -535,6 +535,67 @@ func TestHandler_ExecuteFlowNotFound_RecordsRejected(t *testing.T) {
 	assert.True(t, found)
 }
 
+func TestHandler_HTTP_RecordsRequestBytes(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodPost, "http://example.com/", strings.NewReader("hello")), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var in, out bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.bytes" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				attrs := map[string]string{}
+				for _, kv := range dp.Attributes.ToSlice() {
+					attrs[string(kv.Key)] = kv.Value.AsString()
+				}
+				if attrs["direction"] == metrics.DirectionIn {
+					in = true
+					assert.Equal(t, int64(5), dp.Value)
+				}
+				if attrs["direction"] == metrics.DirectionOut {
+					out = true
+				}
+			}
+		}
+	}
+	assert.True(t, in)
+	assert.True(t, out)
+}
+
+func TestHandler_ActiveGauge_ReturnsToZero(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodGet, "http://example.com/", nil), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.active" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				assert.Equal(t, int64(0), dp.Value)
+			}
+		}
+	}
+}
+
 func TestHandler_FailOpenUnreachable_AllowsTraffic(t *testing.T) {
 	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
 	tr := &handlerFakeTransport{}
