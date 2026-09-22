@@ -108,7 +108,21 @@ func TestSetup_AppliesDefaultServiceName(t *testing.T) {
 		Insecure:       true,
 	}, "pgway-test")
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = stop(context.Background()) })
+
+	stopCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	t.Cleanup(func() { _ = stop(stopCtx) })
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = stop(stopCtx)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stop did not return within 2s")
+	}
 	_ = metrics.Shutdown(context.Background())
 }
 
