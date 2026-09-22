@@ -2,6 +2,7 @@ package metrics_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -87,4 +88,41 @@ func TestInit_DisabledNoop(t *testing.T) {
 		Result:     metrics.ResultOK,
 	})
 	require.NoError(t, metrics.Shutdown(context.Background()))
+}
+
+func TestInit_ValidationMessages(t *testing.T) {
+	_ = metrics.Shutdown(context.Background())
+	err := metrics.Init(context.Background(), metrics.Config{Enabled: true, ExportInterval: time.Second})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "otel.endpoint must be non-empty")
+
+	err = metrics.Init(context.Background(), metrics.Config{Enabled: true, Endpoint: "localhost:4317"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "otel.export_interval must be > 0")
+}
+
+func TestRecordProxy_ConcurrentWithRebind(t *testing.T) {
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	for range 4 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					metrics.RecordProxy(context.Background(), metrics.ProxyRecord{
+						Entrypoint: "ep1", Protocol: metrics.ProtocolHTTP, Result: metrics.ResultOK,
+					})
+				}
+			}
+		}()
+	}
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	close(stop)
+	wg.Wait()
+	_ = metrics.Shutdown(context.Background())
 }

@@ -57,16 +57,19 @@ type CPRPCRecord struct {
 	Duration time.Duration
 }
 
-var (
-	mu       sync.Mutex
-	provider *sdkmetric.MeterProvider
-
+type instruments struct {
 	proxyRequests metric.Int64Counter
 	proxyDuration metric.Float64Histogram
 	proxyBytes    metric.Int64Counter
 	proxyActive   metric.Int64UpDownCounter
 	cpRPCRequests metric.Int64Counter
 	cpRPCDuration metric.Float64Histogram
+}
+
+var (
+	mu       sync.RWMutex
+	provider *sdkmetric.MeterProvider
+	instr    instruments
 )
 
 func init() {
@@ -74,36 +77,40 @@ func init() {
 }
 
 func bindInstruments(m metric.Meter) {
-	proxyRequests, _ = m.Int64Counter(
+	var next instruments
+	next.proxyRequests, _ = m.Int64Counter(
 		"pgway.proxy.requests",
 		metric.WithDescription("Proxy requests finished"),
 		metric.WithUnit("{request}"),
 	)
-	proxyDuration, _ = m.Float64Histogram(
+	next.proxyDuration, _ = m.Float64Histogram(
 		"pgway.proxy.duration",
 		metric.WithDescription("Proxy request duration"),
 		metric.WithUnit("s"),
 	)
-	proxyBytes, _ = m.Int64Counter(
+	next.proxyBytes, _ = m.Int64Counter(
 		"pgway.proxy.bytes",
 		metric.WithDescription("Proxy bytes transferred"),
 		metric.WithUnit("By"),
 	)
-	proxyActive, _ = m.Int64UpDownCounter(
+	next.proxyActive, _ = m.Int64UpDownCounter(
 		"pgway.proxy.active",
 		metric.WithDescription("Active proxy connections"),
 		metric.WithUnit("{connection}"),
 	)
-	cpRPCRequests, _ = m.Int64Counter(
+	next.cpRPCRequests, _ = m.Int64Counter(
 		"pgway.cp.rpc.requests",
 		metric.WithDescription("Control-plane unary RPCs finished"),
 		metric.WithUnit("{request}"),
 	)
-	cpRPCDuration, _ = m.Float64Histogram(
+	next.cpRPCDuration, _ = m.Float64Histogram(
 		"pgway.cp.rpc.duration",
 		metric.WithDescription("Control-plane unary RPC duration"),
 		metric.WithUnit("s"),
 	)
+	mu.Lock()
+	instr = next
+	mu.Unlock()
 }
 
 // Init starts the MeterProvider and OTLP/gRPC exporter when enabled.
@@ -114,10 +121,10 @@ func Init(ctx context.Context, cfg Config) error {
 	}
 	endpoint := strings.TrimSpace(cfg.Endpoint)
 	if endpoint == "" {
-		return fmt.Errorf("otel endpoint is empty")
+		return fmt.Errorf("otel.endpoint must be non-empty")
 	}
 	if cfg.ExportInterval <= 0 {
-		return fmt.Errorf("otel export interval must be > 0")
+		return fmt.Errorf("otel.export_interval must be > 0")
 	}
 	serviceName := strings.TrimSpace(cfg.ServiceName)
 	if serviceName == "" {
@@ -155,11 +162,11 @@ func Init(ctx context.Context, cfg Config) error {
 	)
 
 	mu.Lock()
-	defer mu.Unlock()
 	if provider != nil {
 		_ = provider.Shutdown(ctx)
 	}
 	provider = mp
+	mu.Unlock()
 	otel.SetMeterProvider(mp)
 	bindInstruments(mp.Meter("pgway"))
 
@@ -173,8 +180,8 @@ func Init(ctx context.Context, cfg Config) error {
 // Not for production; tests call this instead of Init.
 func InitManual(mp *sdkmetric.MeterProvider) {
 	mu.Lock()
-	defer mu.Unlock()
 	provider = mp
+	mu.Unlock()
 	otel.SetMeterProvider(mp)
 	bindInstruments(mp.Meter("pgway"))
 }
@@ -193,7 +200,10 @@ func Shutdown(ctx context.Context) error {
 
 // RecordProxy records one finished proxy attempt.
 func RecordProxy(ctx context.Context, rec ProxyRecord) {
-	if proxyRequests == nil {
+	mu.RLock()
+	i := instr
+	mu.RUnlock()
+	if i.proxyRequests == nil {
 		return
 	}
 	attrs := []attribute.KeyValue{
@@ -202,17 +212,17 @@ func RecordProxy(ctx context.Context, rec ProxyRecord) {
 		attribute.String("protocol", rec.Protocol),
 	}
 	opt := metric.WithAttributes(attrs...)
-	proxyRequests.Add(ctx, 1, opt)
-	proxyDuration.Record(ctx, rec.Duration.Seconds(), opt)
+	i.proxyRequests.Add(ctx, 1, opt)
+	i.proxyDuration.Record(ctx, rec.Duration.Seconds(), opt)
 	if rec.BytesIn > 0 {
-		proxyBytes.Add(ctx, rec.BytesIn, metric.WithAttributes(
+		i.proxyBytes.Add(ctx, rec.BytesIn, metric.WithAttributes(
 			attribute.String("entrypoint", rec.Entrypoint),
 			attribute.String("direction", DirectionIn),
 			attribute.String("protocol", rec.Protocol),
 		))
 	}
 	if rec.BytesOut > 0 {
-		proxyBytes.Add(ctx, rec.BytesOut, metric.WithAttributes(
+		i.proxyBytes.Add(ctx, rec.BytesOut, metric.WithAttributes(
 			attribute.String("entrypoint", rec.Entrypoint),
 			attribute.String("direction", DirectionOut),
 			attribute.String("protocol", rec.Protocol),
@@ -222,23 +232,29 @@ func RecordProxy(ctx context.Context, rec ProxyRecord) {
 
 // ActiveProxyDelta adjusts the active connection gauge (+1 / -1).
 func ActiveProxyDelta(ctx context.Context, protocol string, delta int64) {
-	if proxyActive == nil {
+	mu.RLock()
+	i := instr
+	mu.RUnlock()
+	if i.proxyActive == nil {
 		return
 	}
-	proxyActive.Add(ctx, delta, metric.WithAttributes(
+	i.proxyActive.Add(ctx, delta, metric.WithAttributes(
 		attribute.String("protocol", protocol),
 	))
 }
 
 // RecordCPRPC records one finished unary CP RPC.
 func RecordCPRPC(ctx context.Context, rec CPRPCRecord) {
-	if cpRPCRequests == nil {
+	mu.RLock()
+	i := instr
+	mu.RUnlock()
+	if i.cpRPCRequests == nil {
 		return
 	}
 	opt := metric.WithAttributes(
 		attribute.String("method", rec.Method),
 		attribute.String("result", rec.Result),
 	)
-	cpRPCRequests.Add(ctx, 1, opt)
-	cpRPCDuration.Record(ctx, rec.Duration.Seconds(), opt)
+	i.cpRPCRequests.Add(ctx, 1, opt)
+	i.cpRPCDuration.Record(ctx, rec.Duration.Seconds(), opt)
 }
