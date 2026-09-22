@@ -103,7 +103,7 @@ func TestSetup_AppliesDefaultServiceName(t *testing.T) {
 	_ = metrics.Shutdown(context.Background())
 	stop, err := metrics.Setup(context.Background(), metrics.Config{
 		Enabled:        true,
-		Endpoint:       "collector:4317",
+		Endpoint:       "127.0.0.1:1",
 		ExportInterval: time.Second,
 		Insecure:       true,
 	}, "pgway-test")
