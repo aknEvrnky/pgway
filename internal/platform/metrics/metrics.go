@@ -73,6 +73,8 @@ var (
 	instr    instruments
 )
 
+var proxyDurationBounds = []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 300}
+
 func init() {
 	bindInstruments(otel.GetMeterProvider().Meter("pgway"))
 }
@@ -88,6 +90,7 @@ func bindInstruments(m metric.Meter) {
 		"pgway.proxy.duration",
 		metric.WithDescription("Proxy request duration"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(proxyDurationBounds...),
 	)
 	next.proxyBytes, _ = m.Int64Counter(
 		"pgway.proxy.bytes",
@@ -108,6 +111,7 @@ func bindInstruments(m metric.Meter) {
 		"pgway.cp.rpc.duration",
 		metric.WithDescription("Control-plane unary RPC duration"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(proxyDurationBounds...),
 	)
 	mu.Lock()
 	instr = next
@@ -174,6 +178,7 @@ func Init(ctx context.Context, cfg Config) error {
 	otel.SetMeterProvider(mp)
 	bindInstruments(mp.Meter("pgway"))
 
+	// runtime.Start cannot be stopped; its goroutine survives Shutdown and later records are dropped by the shut-down provider.
 	if err := runtime.Start(runtime.WithMeterProvider(mp)); err != nil {
 		return fmt.Errorf("runtime metrics: %w", err)
 	}

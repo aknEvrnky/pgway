@@ -13,6 +13,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
+var wantDurationBounds = []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60, 300}
+
 func TestRecordProxy_Increments(t *testing.T) {
 	reader := sdkmetric.NewManualReader()
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
@@ -99,6 +101,58 @@ func TestInit_ValidationMessages(t *testing.T) {
 	err = metrics.Init(context.Background(), metrics.Config{Enabled: true, Endpoint: "localhost:4317"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "otel.export_interval must be > 0")
+}
+
+func TestProxyDuration_BucketBoundaries(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	metrics.InitManual(mp)
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	metrics.RecordProxy(context.Background(), metrics.ProxyRecord{
+		Entrypoint: "ep1", Protocol: metrics.ProtocolHTTP, Result: metrics.ResultOK, Duration: time.Second,
+	})
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var saw bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.duration" {
+				continue
+			}
+			saw = true
+			hist := m.Data.(metricdata.Histogram[float64])
+			require.NotEmpty(t, hist.DataPoints)
+			assert.Equal(t, wantDurationBounds, hist.DataPoints[0].Bounds)
+		}
+	}
+	assert.True(t, saw)
+}
+
+func TestCPRPCDuration_BucketBoundaries(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	metrics.InitManual(mp)
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	metrics.RecordCPRPC(context.Background(), metrics.CPRPCRecord{
+		Method: "ApplyProxy", Result: metrics.ResultOK, Duration: time.Millisecond,
+	})
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var saw bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.cp.rpc.duration" {
+				continue
+			}
+			saw = true
+			hist := m.Data.(metricdata.Histogram[float64])
+			require.NotEmpty(t, hist.DataPoints)
+			assert.Equal(t, wantDurationBounds, hist.DataPoints[0].Bounds)
+		}
+	}
+	assert.True(t, saw)
 }
 
 func TestRecordProxy_ConcurrentWithRebind(t *testing.T) {
