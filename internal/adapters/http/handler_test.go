@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -15,9 +16,12 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 type handlerFakeAPI struct {
@@ -481,6 +485,54 @@ func TestHandler_FailClosedUnreachable_RejectsNewRequest(t *testing.T) {
 	assert.Equal(t, "cp_unreachable", rec.Header().Get("X-Pgway-Reject-Reason"))
 	assert.Equal(t, "45", rec.Header().Get("Retry-After"))
 	assert.Equal(t, int32(0), tr.roundTripCalls.Load())
+}
+
+func TestResultFromHTTPStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		want   string
+	}{
+		{"504", http.StatusGatewayTimeout, metrics.ResultTimeout},
+		{"413", http.StatusRequestEntityTooLarge, metrics.ResultRejected},
+		{"503", http.StatusServiceUnavailable, metrics.ResultRejected},
+		{"502", http.StatusBadGateway, metrics.ResultError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, resultFromHTTPStatus(tt.status))
+		})
+	}
+}
+
+func TestHandler_ExecuteFlowNotFound_RecordsRejected(t *testing.T) {
+	reader := sdkmetric.NewManualReader()
+	metrics.InitManual(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	t.Cleanup(func() { _ = metrics.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{executeErr: fmt.Errorf("flow: %w", domain.ErrNotFound)}
+	h := NewHandler(api, &handlerFakeTransport{}, 0, nil)
+	req := withEntrypoint(httptest.NewRequest(http.MethodGet, "http://example.com/", nil), "ep1")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var rm metricdata.ResourceMetrics
+	require.NoError(t, reader.Collect(context.Background(), &rm))
+	var found bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name != "pgway.proxy.requests" {
+				continue
+			}
+			for _, dp := range m.Data.(metricdata.Sum[int64]).DataPoints {
+				for _, kv := range dp.Attributes.ToSlice() {
+					if string(kv.Key) == "result" && kv.Value.AsString() == metrics.ResultRejected {
+						found = true
+					}
+				}
+			}
+		}
+	}
+	assert.True(t, found)
 }
 
 func TestHandler_FailOpenUnreachable_AllowsTraffic(t *testing.T) {

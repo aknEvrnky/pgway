@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
+	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
@@ -122,7 +124,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   protocol,
-			Result:     metrics.ResultError,
+			Result:     flowErrorResult(err),
 			Duration:   time.Since(start),
 		})
 		return
@@ -139,7 +141,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	metrics.ActiveProxyDelta(r.Context(), protocol, 1)
-	defer metrics.ActiveProxyDelta(r.Context(), protocol, -1)
+	// The request context is canceled on CONNECT hijack before defers run;
+	// record the decrement on a cancel-safe context so the gauge drains.
+	defer metrics.ActiveProxyDelta(context.WithoutCancel(r.Context()), protocol, -1)
 
 	if r.Method == http.MethodConnect {
 		h.handleTunnel(w, r, proxy, &transferred, ep, start)
@@ -153,7 +157,7 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	result := metrics.ResultOK
 	var bytesIn int64
 	defer func() {
-		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
+		metrics.RecordProxy(context.WithoutCancel(r.Context()), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   metrics.ProtocolConnect,
 			Result:     result,
@@ -229,7 +233,7 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time) {
 	result := metrics.ResultOK
 	defer func() {
-		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
+		metrics.RecordProxy(context.WithoutCancel(r.Context()), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   metrics.ProtocolHTTP,
 			Result:     result,
@@ -281,6 +285,21 @@ func resultFromHTTPStatus(status int) string {
 		return metrics.ResultRejected
 	}
 	return metrics.ResultError
+}
+
+// flowErrorResult classifies ExecuteFlow failures: missing configuration
+// (entrypoint, flow, balancer, routing rule, empty pool) is a gateway-side
+// rejection, anything else is an internal error.
+func flowErrorResult(err error) string {
+	switch {
+	case errors.Is(err, domain.ErrNotFound),
+		errors.Is(err, domain.ErrNoProxy),
+		errors.Is(err, domain.ErrNoMatchingRule),
+		errors.Is(err, balancer.ErrBalancerNotFound):
+		return metrics.ResultRejected
+	default:
+		return metrics.ResultError
+	}
 }
 
 func (h *Handler) removeHopHeaders(header http.Header) {
