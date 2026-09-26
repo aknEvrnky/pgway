@@ -27,6 +27,7 @@ func (a *Adapter) cors(next http.Handler) http.Handler {
 			if _, ok := allowed[origin]; ok {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 				w.Header().Set("Access-Control-Max-Age", "86400")
@@ -44,7 +45,12 @@ func (a *Adapter) cors(next http.Handler) http.Handler {
 
 func (a *Adapter) auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, ok := bearerToken(r.Header.Get("Authorization"))
+		if isPublicPath(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		token, ok := requestToken(r)
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "missing or invalid authorization")
 			return
@@ -65,6 +71,22 @@ func (a *Adapter) auth(next http.Handler) http.Handler {
 		ctx = ports.ContextWithToken(ctx, token)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func isPublicPath(r *http.Request) bool {
+	return r.Method == http.MethodPost && r.URL.Path == "/api/v1/auth/login"
+}
+
+// requestToken prefers Authorization: Bearer, then the httpOnly session cookie.
+func requestToken(r *http.Request) (string, bool) {
+	if token, ok := bearerToken(r.Header.Get("Authorization")); ok {
+		return token, true
+	}
+	c, err := r.Cookie(sessionCookieName)
+	if err != nil || c.Value == "" {
+		return "", false
+	}
+	return c.Value, true
 }
 
 // bearerToken parses an Authorization header. The auth scheme is

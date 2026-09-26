@@ -12,6 +12,14 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
   ],
 
+  runtimeConfig: {
+    public: {
+      // Prefer localhost (not 127.0.0.1) so httpOnly cookies stay same-site
+      // with the Nuxt origin at http://localhost:3000.
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8081',
+    },
+  },
+
   app: {
     head: {
       link: [

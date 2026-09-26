@@ -37,6 +37,7 @@ enabled = true
 # Prefer loopback until you put a reverse proxy / trusted network in front.
 listen_addr = "127.0.0.1:8081"
 # Browser Origins allowed for CORS. Empty = no cross-origin (no reflective Origin).
+# Dashboard (Nuxt) typically needs: ["http://localhost:3000"]
 cors_allow_origins = []
 # Per-client token-bucket for REST (0 = off). Same model as grpc.rate_limit_*.
 rate_limit_rps = 100

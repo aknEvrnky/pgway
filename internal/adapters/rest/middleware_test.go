@@ -126,7 +126,7 @@ func userPrincipal() *domain.Principal {
 	return &domain.Principal{User: &domain.User{Id: "alice", Role: domain.RoleAdmin}}
 }
 
-func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, cp ports.ControlPlane) http.Handler {
+func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, authMgr ports.AuthManager, cp ports.ControlPlane) http.Handler {
 	t.Helper()
 	if cfg.ListenAddr == "" {
 		cfg.ListenAddr = "127.0.0.1:0"
@@ -134,12 +134,12 @@ func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, cp ports.C
 	if cfg.CORSAllowOrigins == nil {
 		cfg.CORSAllowOrigins = []string{}
 	}
-	a := rest.NewRestAdapter(cp, auth, cfg)
+	a := rest.NewRestAdapter(cp, auth, authMgr, cfg)
 	return a.Handler()
 }
 
 func TestAuth_MissingBearer(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, &fakeCP{})
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
@@ -147,7 +147,7 @@ func TestAuth_MissingBearer(t *testing.T) {
 }
 
 func TestAuth_InvalidToken(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{err: fmt.Errorf("bad")}, &fakeCP{})
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{err: fmt.Errorf("bad")}, nil, &fakeCP{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
 	req.Header.Set("Authorization", "Bearer bad")
 	rec := httptest.NewRecorder()
@@ -158,7 +158,7 @@ func TestAuth_InvalidToken(t *testing.T) {
 func TestAuth_AgentForbidden(t *testing.T) {
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{
 		principal: &domain.Principal{Agent: &domain.Agent{Id: "edge-1"}},
-	}, &fakeCP{})
+	}, nil, &fakeCP{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
 	req.Header.Set("Authorization", "Bearer agent-tok")
 	rec := httptest.NewRecorder()
@@ -167,7 +167,7 @@ func TestAuth_AgentForbidden(t *testing.T) {
 }
 
 func TestAuth_AllowUser(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, &fakeCP{
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{
 		proxy: &domain.Proxy{Id: "p1", Host: "1.2.3.4", Port: 8080},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
@@ -181,7 +181,7 @@ func TestCORS_Allowlist(t *testing.T) {
 	h := testAdapter(t, config.RestConfig{
 		RateLimitRPS:     0,
 		CORSAllowOrigins: []string{"http://localhost:3000"},
-	}, &fakeAuth{principal: userPrincipal()}, &fakeCP{})
+	}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	t.Run("allowed origin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodOptions, "/api/v1/proxies", nil)
@@ -190,6 +190,7 @@ func TestCORS_Allowlist(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 		assert.Equal(t, "http://localhost:3000", rec.Header().Get("Access-Control-Allow-Origin"))
+		assert.Equal(t, "true", rec.Header().Get("Access-Control-Allow-Credentials"))
 	})
 
 	t.Run("denied origin", func(t *testing.T) {
@@ -206,7 +207,7 @@ func TestRateLimit_PreAuthIPBruteForce(t *testing.T) {
 	h := testAdapter(t, config.RestConfig{
 		RateLimitRPS:   1,
 		RateLimitBurst: 1,
-	}, &fakeAuth{err: fmt.Errorf("bad")}, &fakeCP{})
+	}, &fakeAuth{err: fmt.Errorf("bad")}, nil, &fakeCP{})
 
 	do := func() int {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
@@ -225,7 +226,7 @@ func TestRateLimit_PostAuthUserBucket(t *testing.T) {
 	h := testAdapter(t, config.RestConfig{
 		RateLimitRPS:   1,
 		RateLimitBurst: 1,
-	}, &fakeAuth{principal: userPrincipal()}, &fakeCP{})
+	}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	// Distinct client IPs with fresh IP buckets: the shared per-user bucket
 	// must still cap them.
@@ -243,7 +244,7 @@ func TestRateLimit_PostAuthUserBucket(t *testing.T) {
 }
 
 func TestGetProxy_RedactsPassword(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, &fakeCP{
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{
 		proxy: &domain.Proxy{
 			Id:   "secure",
 			Host: "10.0.0.1",
@@ -267,7 +268,7 @@ func TestGetProxy_RedactsPassword(t *testing.T) {
 func TestRecovery_NoStackInBody(t *testing.T) {
 	// Panic inside handler after auth via a CP that panics on ListProxies.
 	cp := &panicCP{}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, cp)
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
 	req.Header.Set("Authorization", "Bearer ok")
 	rec := httptest.NewRecorder()

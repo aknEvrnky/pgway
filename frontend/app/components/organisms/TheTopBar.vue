@@ -1,6 +1,24 @@
 <script setup lang="ts">
 const { isDark, toggle } = useDarkMode()
 const { width } = useSidebar()
+const auth = useAuth()
+const loggingOut = ref(false)
+
+const displayName = computed(() => auth.user.value?.id || 'User')
+const roleLabel = computed(() => auth.user.value?.role === 'admin' ? 'Admin' : 'Member')
+const initial = computed(() => (displayName.value[0] || '?').toUpperCase())
+
+async function onLogout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await auth.logout()
+    await navigateTo('/login')
+  }
+  finally {
+    loggingOut.value = false
+  }
+}
 </script>
 
 <template>
@@ -52,14 +70,21 @@ const { width } = useSidebar()
       <div class="h-8 w-px bg-white/5" />
 
       <!-- User -->
-      <div class="flex items-center gap-3 cursor-pointer active:opacity-80">
+      <div class="flex items-center gap-3">
         <div class="text-right">
-          <p class="text-white text-xs font-semibold leading-tight">Admin User</p>
-          <p class="text-slate-500 text-[10px] leading-tight">Project Owner</p>
+          <p class="text-white text-xs font-semibold leading-tight">{{ displayName }}</p>
+          <p class="text-slate-500 text-[10px] leading-tight">{{ roleLabel }}</p>
         </div>
         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold">
-          A
+          {{ initial }}
         </div>
+        <button
+          class="text-slate-400 hover:text-white transition-colors text-xs font-medium disabled:opacity-50"
+          :disabled="loggingOut"
+          @click="onLogout"
+        >
+          Logout
+        </button>
       </div>
     </div>
   </header>

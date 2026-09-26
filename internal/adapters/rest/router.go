@@ -5,6 +5,10 @@ import "net/http"
 func (a *Adapter) routes() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("POST /api/v1/auth/login", a.login)
+	mux.HandleFunc("POST /api/v1/auth/logout", a.logout)
+	mux.HandleFunc("GET /api/v1/auth/me", a.me)
+
 	mux.HandleFunc("GET /api/v1/proxies", a.listProxies)
 	mux.HandleFunc("GET /api/v1/proxies/{name}", a.getProxy)
 	mux.HandleFunc("POST /api/v1/proxies", a.applyProxy)
