@@ -10,6 +10,21 @@ import (
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 
+var (
+	// ErrBootstrapConfig marks unretryable bootstrap misconfiguration.
+	ErrBootstrapConfig = errors.New("bootstrap misconfigured")
+	// ErrBootstrapState marks an unusable local agent state store.
+	ErrBootstrapState = errors.New("agent state unusable")
+)
+
+// IsPermanentBootstrapError reports whether err must not be retried at DP
+// startup: misconfiguration, an unusable state store, or auth rejection.
+func IsPermanentBootstrapError(err error) bool {
+	return errors.Is(err, ErrBootstrapConfig) ||
+		errors.Is(err, ErrBootstrapState) ||
+		isAuthRejected(err)
+}
+
 // BootstrapResult is the credential set ready for CP dials.
 type BootstrapResult struct {
 	AgentID    string
@@ -30,11 +45,11 @@ func BootstrapCredentials(
 		return &BootstrapResult{AgentID: creds.AgentID, AgentToken: creds.AgentToken}, nil
 	}
 	if !errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("load agent state: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrBootstrapState, err)
 	}
 
 	if regToken == "" {
-		return nil, fmt.Errorf("no agent state and PGWAY_AGENT_REGISTRATION_TOKEN is empty")
+		return nil, fmt.Errorf("%w: no agent state and PGWAY_AGENT_REGISTRATION_TOKEN is empty", ErrBootstrapConfig)
 	}
 
 	registered, agentToken, err := reg.Register(ctx, regToken, agent)

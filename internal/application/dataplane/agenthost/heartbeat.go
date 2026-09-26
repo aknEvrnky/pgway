@@ -59,6 +59,12 @@ func isAuthRejected(err error) bool {
 	return errors.Is(err, ports.ErrAgentUnauthenticated)
 }
 
+// IsAuthRejected reports whether err is an agent-auth rejection (revoked or
+// expired agent token) — never retryable.
+func IsAuthRejected(err error) bool {
+	return isAuthRejected(err)
+}
+
 func fatalAuthError(err error) error {
 	return errors.Join(err, errors.New(
 		"agent token rejected; delete state file and re-register with a fresh PGWAY_AGENT_REGISTRATION_TOKEN",
