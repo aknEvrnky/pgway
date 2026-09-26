@@ -15,7 +15,9 @@ import (
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/balancer"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
+	"github.com/aknEvrnky/pgway/internal/platform/tracing"
 	"github.com/aknEvrnky/pgway/internal/ports"
+	"go.opentelemetry.io/otel/attribute"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -66,24 +68,38 @@ func NewHandler(app ports.Application, t ports.ProxyTransportPort, maxBodyBytes 
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	ctx, span := tracing.Tracer().Start(r.Context(), tracing.SpanProxyRequest)
+	r = r.WithContext(ctx)
+
 	entrypointId, ok := r.Context().Value(entrypointContextKey).(contextKey)
 	protocol := metrics.ProtocolHTTP
 	if r.Method == http.MethodConnect {
 		protocol = metrics.ProtocolConnect
 	}
 
+	ep := "unknown"
+	result := metrics.ResultRejected
+	defer func() {
+		span.SetAttributes(
+			attribute.String("entrypoint", ep),
+			attribute.String("result", result),
+			attribute.String("protocol", protocol),
+		)
+		span.End()
+	}()
+
 	if !ok {
 		zap.L().Info("missing entrypoint", zap.String("ep", string(entrypointId)))
 		http.Error(w, "missing entrypoint", http.StatusInternalServerError)
 		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
-			Entrypoint: "unknown",
+			Entrypoint: ep,
 			Protocol:   protocol,
-			Result:     metrics.ResultRejected,
+			Result:     result,
 			Duration:   time.Since(start),
 		})
 		return
 	}
-	ep := string(entrypointId)
+	ep = string(entrypointId)
 
 	if h.link != nil {
 		snap := h.link.Snapshot()
@@ -98,7 +114,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
 				Entrypoint: ep,
 				Protocol:   protocol,
-				Result:     metrics.ResultRejected,
+				Result:     result,
 				Duration:   time.Since(start),
 			})
 			return
@@ -113,7 +129,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   protocol,
-			Result:     metrics.ResultRejected,
+			Result:     result,
 			Duration:   time.Since(start),
 		})
 		return
@@ -121,11 +137,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	proxy, balancerId, err := h.app.ExecuteFlow(r.Context(), ep, r)
 	if err != nil {
+		result = flowErrorResult(err)
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		metrics.RecordProxy(r.Context(), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   protocol,
-			Result:     flowErrorResult(err),
+			Result:     result,
 			Duration:   time.Since(start),
 		})
 		return
@@ -146,33 +163,36 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// record the decrement on a cancel-safe context so the gauge drains.
 	defer metrics.ActiveProxyDelta(context.WithoutCancel(r.Context()), protocol, -1)
 
+	result = metrics.ResultOK
 	if r.Method == http.MethodConnect {
-		h.handleTunnel(w, r, proxy, &transferred, ep, start)
+		h.handleTunnel(w, r, proxy, &transferred, ep, start, &result)
 		return
 	}
 
-	h.handleHTTP(w, r, proxy, &transferred, ep, start)
+	h.handleHTTP(w, r, proxy, &transferred, ep, start, &result)
 }
 
-func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time) {
-	result := metrics.ResultOK
+func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time, result *string) {
+	*result = metrics.ResultOK
 	var bytesIn int64
 	defer func() {
 		metrics.RecordProxy(context.WithoutCancel(r.Context()), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   metrics.ProtocolConnect,
-			Result:     result,
+			Result:     *result,
 			Duration:   time.Since(start),
 			BytesIn:    bytesIn,
 			BytesOut:   *transferred,
 		})
 	}()
 
-	dst, err := h.transport.Dial(r.Context(), proxy, r.Host)
+	upCtx, upSpan := tracing.Tracer().Start(r.Context(), tracing.SpanProxyUpstream)
+	dst, err := h.transport.Dial(upCtx, proxy, r.Host)
+	upSpan.End()
 	if err != nil {
 		zap.L().Error("dial failed", zap.Error(err), zap.String("proxy", proxy.Addr()), zap.String("target", r.Host))
 		status, msg := classifyUpstreamError(err)
-		result = resultFromHTTPStatus(status)
+		*result = resultFromHTTPStatus(status)
 		http.Error(w, msg, status)
 		return
 	}
@@ -181,7 +201,7 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		result = metrics.ResultError
+		*result = metrics.ResultError
 		http.Error(w, "hijacking not supported", http.StatusInternalServerError)
 		return
 	}
@@ -189,19 +209,19 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	src, bufrw, err := hijacker.Hijack()
 	if err != nil {
 		zap.L().Error("hijack failed", zap.Error(err))
-		result = metrics.ResultError
+		*result = metrics.ResultError
 		return
 	}
 	defer src.Close()
 
 	if _, err := bufrw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
 		zap.L().Error("write connect ok", zap.Error(err))
-		result = metrics.ResultError
+		*result = metrics.ResultError
 		return
 	}
 	if err := bufrw.Flush(); err != nil {
 		zap.L().Error("flush connect ok", zap.Error(err))
-		result = metrics.ResultError
+		*result = metrics.ResultError
 		return
 	}
 
@@ -231,7 +251,7 @@ func (h *Handler) handleTunnel(w http.ResponseWriter, r *http.Request, proxy *do
 	}
 }
 
-func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time) {
+func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *domain.Proxy, transferred *int64, ep string, start time.Time, result *string) {
 	r.RequestURI = ""
 	h.removeHopHeaders(r.Header)
 
@@ -242,28 +262,30 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	cr := &countingReadCloser{rc: r.Body}
 	r.Body = cr
 
-	result := metrics.ResultOK
+	*result = metrics.ResultOK
 	defer func() {
 		metrics.RecordProxy(context.WithoutCancel(r.Context()), metrics.ProxyRecord{
 			Entrypoint: ep,
 			Protocol:   metrics.ProtocolHTTP,
-			Result:     result,
+			Result:     *result,
 			Duration:   time.Since(start),
 			BytesIn:    cr.count(),
 			BytesOut:   *transferred,
 		})
 	}()
 
-	resp, err := h.transport.RoundTrip(r.Context(), proxy, r)
+	upCtx, upSpan := tracing.Tracer().Start(r.Context(), tracing.SpanProxyUpstream)
+	resp, err := h.transport.RoundTrip(upCtx, proxy, r)
+	upSpan.End()
 	if err != nil {
 		var maxBytes *http.MaxBytesError
 		if errors.As(err, &maxBytes) {
-			result = metrics.ResultRejected
+			*result = metrics.ResultRejected
 			http.Error(w, "request body too large", http.StatusRequestEntityTooLarge)
 			return
 		}
 		status, msg := classifyUpstreamError(err)
-		result = resultFromHTTPStatus(status)
+		*result = resultFromHTTPStatus(status)
 		http.Error(w, msg, status)
 		return
 	}
@@ -278,7 +300,7 @@ func (h *Handler) handleHTTP(w http.ResponseWriter, r *http.Request, proxy *doma
 	*transferred = n
 	if err != nil {
 		zap.L().Error("copy response body", zap.Error(err))
-		result = metrics.ResultError
+		*result = metrics.ResultError
 	}
 }
 

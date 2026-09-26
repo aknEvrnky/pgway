@@ -79,11 +79,13 @@ func defaultWant(host string) Config {
 			EventResyncInterval:              5 * time.Minute,
 		},
 		Otel: OtelConfig{
-			Enabled:        false,
-			Endpoint:       "localhost:4317",
-			Insecure:       false,
-			ServiceName:    "",
-			ExportInterval: 15 * time.Second,
+			Enabled:          false,
+			Endpoint:         "localhost:4317",
+			Insecure:         false,
+			ServiceName:      "",
+			ExportInterval:   15 * time.Second,
+			TracesEnabled:    false,
+			TraceSampleRatio: 0.1,
 		},
 	}
 }
@@ -561,6 +563,46 @@ export_interval = "0s"
 `,
 			wantErr: "otel.export_interval",
 		},
+		{
+			name: "traces without master switch",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = false
+traces_enabled = true
+`,
+			wantErr: "otel.enabled must be true when otel.traces_enabled is true",
+		},
+		{
+			name: "trace sample ratio below zero",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "localhost:4317"
+traces_enabled = true
+trace_sample_ratio = -0.1
+`,
+			wantErr: "otel.trace_sample_ratio",
+		},
+		{
+			name: "trace sample ratio above one",
+			file: `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "localhost:4317"
+traces_enabled = true
+trace_sample_ratio = 1.1
+`,
+			wantErr: "otel.trace_sample_ratio",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -590,6 +632,27 @@ export_interval = "30s"
 	assert.Equal(t, "collector:4317", cfg.Otel.Endpoint)
 	assert.Equal(t, "pgway-test", cfg.Otel.ServiceName)
 	assert.Equal(t, 30*time.Second, cfg.Otel.ExportInterval)
+	assert.False(t, cfg.Otel.TracesEnabled)
+	assert.Equal(t, 0.1, cfg.Otel.TraceSampleRatio)
+}
+
+func TestLoad_OtelTracesEnabled(t *testing.T) {
+	viper.Reset()
+	require.NoError(t, Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[otel]
+enabled = true
+endpoint = "collector:4317"
+traces_enabled = true
+trace_sample_ratio = 0.5
+`)))
+	cfg := Get()
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.Otel.Enabled)
+	assert.True(t, cfg.Otel.TracesEnabled)
+	assert.Equal(t, 0.5, cfg.Otel.TraceSampleRatio)
 }
 
 func TestLoad_OtelInsecure(t *testing.T) {

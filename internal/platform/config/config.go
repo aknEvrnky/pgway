@@ -155,9 +155,10 @@ type DataplaneConfig struct {
 	EventResyncInterval time.Duration `mapstructure:"event_resync_interval"`
 }
 
-// OtelConfig controls OpenTelemetry metrics export (OTLP/gRPC push).
+// OtelConfig controls OpenTelemetry metrics and optional traces (OTLP/gRPC).
 type OtelConfig struct {
-	// Enabled turns on the MeterProvider and OTLP exporter.
+	// Enabled is the master switch for MeterProvider / OTLP metrics export.
+	// Traces also require Enabled=true (see TracesEnabled).
 	Enabled bool `mapstructure:"enabled"`
 	// Endpoint is the OTLP/gRPC collector host:port (no scheme).
 	Endpoint string `mapstructure:"endpoint"`
@@ -165,8 +166,13 @@ type OtelConfig struct {
 	Insecure bool `mapstructure:"insecure"`
 	// ServiceName sets resource service.name. Empty → binary default at Init.
 	ServiceName string `mapstructure:"service_name"`
-	// ExportInterval is the periodic reader export period.
+	// ExportInterval is the periodic reader export period (metrics).
 	ExportInterval time.Duration `mapstructure:"export_interval"`
+	// TracesEnabled turns on TracerProvider + OTLP span export.
+	// Requires Enabled=true (master switch).
+	TracesEnabled bool `mapstructure:"traces_enabled"`
+	// TraceSampleRatio is the TraceIDRatioBased fraction (0.0–1.0) when traces are on.
+	TraceSampleRatio float64 `mapstructure:"trace_sample_ratio"`
 }
 
 var c *Config
@@ -221,6 +227,8 @@ func Load(path string) error {
 	viper.SetDefault("otel.insecure", false)
 	viper.SetDefault("otel.service_name", "")
 	viper.SetDefault("otel.export_interval", 15*time.Second)
+	viper.SetDefault("otel.traces_enabled", false)
+	viper.SetDefault("otel.trace_sample_ratio", 0.1)
 
 	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
@@ -296,6 +304,14 @@ func Load(path string) error {
 		}
 		if cfg.Otel.ExportInterval <= 0 {
 			return fmt.Errorf("otel.export_interval must be > 0 when otel.enabled is true")
+		}
+	}
+	if cfg.Otel.TracesEnabled {
+		if !cfg.Otel.Enabled {
+			return fmt.Errorf("otel.enabled must be true when otel.traces_enabled is true")
+		}
+		if cfg.Otel.TraceSampleRatio < 0 || cfg.Otel.TraceSampleRatio > 1 {
+			return fmt.Errorf("otel.trace_sample_ratio must be between 0 and 1 when otel.traces_enabled is true")
 		}
 	}
 

@@ -36,6 +36,17 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  tempo:
+    image: grafana/tempo:3.0.3
+    container_name: pgway-tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "127.0.0.1:3200:3200" # Tempo HTTP API (queries, /ready)
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:13.2.2
     container_name: pgway-grafana
@@ -58,3 +69,4 @@ services:
 volumes:
   prom-data:
   grafana-data:
+  tempo-data:

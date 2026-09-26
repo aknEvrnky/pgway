@@ -21,6 +21,7 @@ import (
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
+	"github.com/aknEvrnky/pgway/internal/platform/tracing"
 	"go.uber.org/zap"
 )
 
@@ -61,6 +62,24 @@ func main() {
 		defer cancel()
 		if err := stopMetrics(shutdownCtx); err != nil {
 			zap.L().Warn("metrics shutdown", zap.Error(err))
+		}
+	}()
+
+	stopTracing, err := tracing.Setup(context.Background(), tracing.Config{
+		Enabled:     cfg.Otel.Enabled && cfg.Otel.TracesEnabled,
+		Endpoint:    cfg.Otel.Endpoint,
+		ServiceName: cfg.Otel.ServiceName,
+		Insecure:    cfg.Otel.Insecure,
+		SampleRatio: cfg.Otel.TraceSampleRatio,
+	}, "pgway-dp")
+	if err != nil {
+		zap.L().Fatal("init tracing", zap.Error(err))
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := stopTracing(shutdownCtx); err != nil {
+			zap.L().Warn("tracing shutdown", zap.Error(err))
 		}
 	}()
 
