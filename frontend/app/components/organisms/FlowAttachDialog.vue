@@ -15,27 +15,54 @@ const emit = defineEmits<{
 
 const { apiFetch } = useApi()
 const { list: listEntrypoints } = useEntrypoints()
-const options = ref<{ id: string, label: string }[]>([])
+const options = ref<{ id: string, label: string, disabled?: boolean }[]>([])
 const loading = ref(false)
 const selected = ref('')
 const error = ref('')
+const hint = ref('')
+
+const isEntrypoint = computed(() => props.kind === 'entrypoint')
+const canAttachPick = computed(() => options.value.some(o => !o.disabled))
 
 watch(
-  () => [props.open, props.kind] as const,
+  () => [props.open, props.kind, props.flowId] as const,
   async () => {
     if (!props.open || !props.kind) return
     selected.value = ''
     error.value = ''
+    hint.value = ''
     loading.value = true
     options.value = []
     try {
       switch (props.kind) {
         case 'entrypoint': {
+          // flow_id is required on every entrypoint — picking one bound to
+          // another flow would steal it. Only offer unbound (legacy) or
+          // already-owned by this flow.
           const res = await listEntrypoints({ page_size: 100 })
-          options.value = (res.items || []).map(e => ({
+          const flow = props.flowId
+          const usable = (res.items || []).filter((e) => {
+            const owner = (e.flow_id || '').trim()
+            return !owner || owner === flow
+          })
+          const foreign = (res.items || []).length - usable.length
+          options.value = usable.map(e => ({
             id: e.id,
-            label: `${e.id} → ${e.flow_id || '—'}`,
+            label: e.flow_id === flow
+              ? `${e.id} (already on this flow)`
+              : `${e.id} (unbound)`,
           }))
+          if (!usable.length) {
+            hint.value = foreign > 0
+              ? `No attachable entrypoints. ${foreign} exist but belong to other flows — create a new listener for this flow instead.`
+              : 'No entrypoints yet. Create a new listener bound to this flow.'
+          }
+          else if (foreign > 0) {
+            hint.value = `${foreign} entrypoint(s) hidden — already bound to other flows (exclusive ownership).`
+          }
+          else {
+            hint.value = 'Entrypoints are exclusive to one flow. Prefer Create new for an additional listen address.'
+          }
           break
         }
         case 'router': {
@@ -72,6 +99,10 @@ watch(
 )
 
 function confirm() {
+  if (isEntrypoint.value && !canAttachPick.value) {
+    error.value = 'Create a new entrypoint instead — none are available to attach'
+    return
+  }
   if (!selected.value) {
     error.value = 'Select a resource'
     return
@@ -95,19 +126,33 @@ function confirm() {
           Attach {{ kind }}
         </h2>
         <p class="text-sm text-on-surface-variant">
-          Pick an existing resource to wire into flow
-          <span class="font-mono text-primary">{{ flowId }}</span>,
-          or create a new one.
+          <template v-if="isEntrypoint">
+            Bind a listen address to flow
+            <span class="font-mono text-primary">{{ flowId }}</span>.
+            An entrypoint can belong to only one flow.
+          </template>
+          <template v-else>
+            Pick an existing resource to wire into flow
+            <span class="font-mono text-primary">{{ flowId }}</span>,
+            or create a new one.
+          </template>
+        </p>
+        <p
+          v-if="hint"
+          class="text-[11px] text-on-surface-variant bg-surface-container-lowest/80 border border-outline-variant/15 rounded-lg px-3 py-2"
+        >
+          {{ hint }}
         </p>
         <select
+          v-if="!isEntrypoint || canAttachPick || loading"
           v-model="selected"
-          :disabled="loading"
-          class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-mono outline-none"
+          :disabled="loading || (isEntrypoint && !canAttachPick)"
+          class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-3 text-sm font-mono outline-none disabled:opacity-50"
         >
           <option value="" disabled>
             {{ loading ? 'Loading…' : 'Select…' }}
           </option>
-          <option v-for="o in options" :key="o.id" :value="o.id">
+          <option v-for="o in options" :key="o.id" :value="o.id" :disabled="o.disabled">
             {{ o.label }}
           </option>
         </select>
@@ -127,11 +172,21 @@ function confirm() {
               Cancel
             </button>
             <button
+              v-if="!isEntrypoint || canAttachPick"
               type="button"
-              class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-xl"
+              class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-xl disabled:opacity-50"
+              :disabled="isEntrypoint && !canAttachPick"
               @click="confirm"
             >
               Attach
+            </button>
+            <button
+              v-else
+              type="button"
+              class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-xl"
+              @click="emit('create')"
+            >
+              Create Entrypoint
             </button>
           </div>
         </div>

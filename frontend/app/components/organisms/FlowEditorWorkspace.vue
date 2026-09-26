@@ -34,7 +34,7 @@ const props = defineProps<{
 
 const toast = useAppToast()
 const { apply: applyFlow } = useFlows()
-const { apply: applyEntrypoint, get: getEntrypoint } = useEntrypoints()
+const { apply: applyEntrypoint, get: getEntrypoint, remove: removeEntrypoint } = useEntrypoints()
 const { apply: applyBalancer } = useBalancers()
 const { apply: applyPool } = usePools()
 
@@ -56,6 +56,11 @@ const dirty = ref<Map<string, { kind: string, name: string, apply: () => Promise
 
 const attachOpen = ref(false)
 const attachKind = ref<FlowGraphKind | null>(null)
+
+const epDetachOpen = ref(false)
+const epDetachError = ref<string | null>(null)
+const epDetachLoading = ref(false)
+const epDetaching = ref<Entrypoint | null>(null)
 
 type FormKind = FlowGraphKind
 const formOpen = ref(false)
@@ -300,7 +305,17 @@ async function onAttachPick(id: string) {
         return
       }
       const ep = await getEntrypoint(id)
-      const next: Entrypoint = { ...ep, flow_id: bundle.value.flow.id }
+      const owner = (ep.flow_id || '').trim()
+      const flowId = bundle.value.flow.id
+      if (owner && owner !== flowId) {
+        toast.error(`Entrypoint "${id}" belongs to flow "${owner}" — cannot rebind. Create a new entrypoint instead.`)
+        return
+      }
+      if (bundle.value.entrypoints.some(e => e.id === id) && owner === flowId) {
+        toast.info(`Entrypoint ${id} is already on this flow`)
+        return
+      }
+      const next: Entrypoint = { ...ep, flow_id: flowId }
       const eps = [...bundle.value.entrypoints.filter(e => e.id !== id), next]
       bundle.value = { ...bundle.value, entrypoints: eps }
       markDirty(`entrypoint:${id}`, 'Entrypoint', id, async () => {
@@ -515,6 +530,49 @@ function openCreateFormGuarded(kind: FlowGraphKind) {
   }
   openCreateForm(kind)
 }
+
+function openDetachEntrypoint() {
+  if (!bundle.value || selectedKind.value !== 'entrypoint' || !selectedId.value) return
+  const ep = bundle.value.entrypoints.find(e => e.id === selectedId.value)
+  if (!ep) {
+    toast.error('Entrypoint not found on this flow')
+    return
+  }
+  epDetaching.value = ep
+  epDetachError.value = null
+  epDetachOpen.value = true
+}
+
+async function confirmDetachEntrypoint() {
+  if (!bundle.value || !epDetaching.value) return
+  const ep = epDetaching.value
+  const id = ep.id
+  epDetachLoading.value = true
+  epDetachError.value = null
+  try {
+    await removeEntrypoint(id)
+    const nextDirty = new Map(dirty.value)
+    nextDirty.delete(`entrypoint:${id}`)
+    dirty.value = nextDirty
+    const eps = bundle.value.entrypoints.filter(e => e.id !== id)
+    bundle.value = { ...bundle.value, entrypoints: eps }
+    if (selectedId.value === id) {
+      selectedKind.value = 'flow'
+      selectedId.value = bundle.value.flow.id || '__draft__'
+    }
+    epDetachOpen.value = false
+    epDetaching.value = null
+    toast.success(`Entrypoint "${id}" detached`)
+  }
+  catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'detach failed'
+    epDetachError.value = msg
+    toast.error(msg)
+  }
+  finally {
+    epDetachLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -597,6 +655,7 @@ function openCreateFormGuarded(kind: FlowGraphKind) {
       @patch-flow="patchFlow"
       @patch-flow-name="patchFlowName"
       @edit="openEdit"
+      @detach-entrypoint="openDetachEntrypoint"
       @deploy="deploy"
     />
 
@@ -607,6 +666,19 @@ function openCreateFormGuarded(kind: FlowGraphKind) {
       @close="attachOpen = false"
       @pick="onAttachPick"
       @create="openCreateFormGuarded(attachKind!)"
+    />
+
+    <OrganismsEntrypointDeleteDialog
+      :open="epDetachOpen"
+      :name="epDetaching?.id || ''"
+      :host="epDetaching?.host"
+      :port="epDetaching?.port"
+      :protocol="epDetaching?.protocol"
+      :flow-id="epDetaching?.flow_id"
+      :error="epDetachError"
+      :loading="epDetachLoading"
+      @close="epDetachOpen = false"
+      @confirm="confirmDetachEntrypoint"
     />
 
     <OrganismsFlowFormDialog

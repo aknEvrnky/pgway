@@ -19,6 +19,7 @@ const emit = defineEmits<{
   patchFlow: [patch: Partial<Pick<Flow, 'router_id' | 'balancer_id'>>]
   patchFlowName: [name: string]
   edit: [kind: FlowGraphKind]
+  detachEntrypoint: []
   deploy: []
 }>()
 
@@ -211,6 +212,18 @@ function poolSelectorPairs(p: Pool): [string, string][] {
             <p class="text-[11px] text-on-surface-variant">
               flow_id → {{ (selectedResource as Entrypoint).flow_id }}
             </p>
+            <div class="pt-2 space-y-2">
+              <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                Detach removes this listen socket from the flow (deletes the entrypoint). The flow itself is kept.
+              </p>
+              <button
+                type="button"
+                class="w-full text-sm font-bold text-error bg-error-container/25 hover:bg-error-container/40 border border-error/30 rounded-xl px-4 py-2.5 transition-colors"
+                @click="emit('detachEntrypoint')"
+              >
+                Detach &amp; delete entrypoint
+              </button>
+            </div>
           </template>
 
           <template v-else-if="selectedKind === 'router'">
