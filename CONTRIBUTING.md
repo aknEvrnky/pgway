@@ -34,9 +34,22 @@ Hexagonal layout: domain under `internal/application/core/domain`, CP under `con
 
 **Hard rule:** `dataplane` packages must not import `controlplane`, `auth`, or `agent`. Import boundaries are checked by `internal/architecture/import_rules_test.go`.
 
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) so tagged releases can group the changelog (GoReleaser):
+
+```text
+feat: add least-bytes load balancer
+fix(http): close CONNECT tunnel on upstream error
+docs: document GHCR image pulls
+chore: tidy go.mod
+```
+
+Common types: `feat`, `fix`, `docs`, `refactor`, `perf`, `build`, `chore`, `ci`, `test`. Prefer `feat` / `fix` / `docs` for changes that should appear in GitHub Release notes (`chore` / `ci` / `test` are filtered out).
+
 ## Before you open a PR
 
-1. Prefer a focused branch and small commits.
+1. Prefer a focused branch and small Conventional Commits (see above).
 2. Add/update tests for every behavior change (`*_test.go`, table-driven + testify).
 3. Run:
 

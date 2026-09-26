@@ -54,8 +54,10 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 - ✅ Least-bytes load balancing
 - ✅ OpenTelemetry metrics
 - ✅ OpenTelemetry tracing
+- ✅ GitHub Releases + multi-arch GHCR images (GoReleaser, tag-triggered)
 - 🚧 Dashboard (in progress), REST API (in flux)
 - 🔜 Health checks with automatic pool recovery
+- 🔜 Homebrew formula ([#100](https://github.com/aknEvrnky/pgway/issues/100)) — after dashboard stabilizes
 
 ## License
 
