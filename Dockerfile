@@ -1,6 +1,12 @@
 # syntax=docker/dockerfile:1
+# Local / CI image build from source. Release images are built by GoReleaser
+# via Dockerfile.goreleaser from prebuilt linux binaries (same ldflags).
 
 FROM golang:1.27-bookworm AS builder
+
+ARG VERSION=dev
+ARG COMMIT=none
+ARG DATE=unknown
 
 WORKDIR /src
 
@@ -11,10 +17,11 @@ COPY . .
 
 ENV CGO_ENABLED=0
 RUN mkdir -p /out \
-	&& go build -trimpath -ldflags="-s -w" -o /out/pgway ./cmd/pgway \
-	&& go build -trimpath -ldflags="-s -w" -o /out/pgway-cp ./cmd/pgway-cp \
-	&& go build -trimpath -ldflags="-s -w" -o /out/pgway-dp ./cmd/pgway-dp \
-	&& go build -trimpath -ldflags="-s -w" -o /out/pgctl ./cmd/pgctl
+	&& LDFLAGS="-s -w -X github.com/aknEvrnky/pgway/internal/platform/version.Version=${VERSION} -X github.com/aknEvrnky/pgway/internal/platform/version.Commit=${COMMIT} -X github.com/aknEvrnky/pgway/internal/platform/version.Date=${DATE}" \
+	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway ./cmd/pgway \
+	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway-cp ./cmd/pgway-cp \
+	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway-dp ./cmd/pgway-dp \
+	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgctl ./cmd/pgctl
 
 FROM gcr.io/distroless/static:nonroot
 

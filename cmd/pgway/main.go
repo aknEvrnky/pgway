@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -26,13 +27,19 @@ import (
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
 	"github.com/aknEvrnky/pgway/internal/platform/tracing"
+	"github.com/aknEvrnky/pgway/internal/platform/version"
 	badgerdb "github.com/dgraph-io/badger/v4"
 	"go.uber.org/zap"
 )
 
 func main() {
 	configPath := flag.String("config", "", "path to config file (default: search /etc/pgway, $HOME/.pgway, .)")
+	showVersion := flag.Bool("v", false, "print version and exit")
 	flag.Parse()
+	if *showVersion {
+		_, _ = fmt.Fprintln(os.Stdout, version.Line("pgway"))
+		return
+	}
 
 	if err := config.Load(*configPath); err != nil {
 		zap.L().Fatal("load configuration", zap.Error(err))
@@ -42,6 +49,7 @@ func main() {
 	if err := logger.SetLevel(cfg.LogLevel); err != nil {
 		zap.L().Fatal("set log level", zap.Error(err))
 	}
+	zap.L().Info("starting", zap.String("version", version.String()), zap.String("commit", version.Commit))
 
 	stopMetrics, err := metrics.Setup(context.Background(), metrics.Config{
 		Enabled:        cfg.Otel.Enabled,
@@ -49,6 +57,7 @@ func main() {
 		ServiceName:    cfg.Otel.ServiceName,
 		ExportInterval: cfg.Otel.ExportInterval,
 		Insecure:       cfg.Otel.Insecure,
+		Version:        version.String(),
 	}, "pgway")
 	if err != nil {
 		zap.L().Fatal("init metrics", zap.Error(err))
@@ -67,6 +76,7 @@ func main() {
 		ServiceName: cfg.Otel.ServiceName,
 		Insecure:    cfg.Otel.Insecure,
 		SampleRatio: cfg.Otel.TraceSampleRatio,
+		Version:     version.String(),
 	}, "pgway")
 	if err != nil {
 		zap.L().Fatal("init tracing", zap.Error(err))

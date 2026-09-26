@@ -1,10 +1,18 @@
 .PHONY: proto build test tools
 
+VERSION ?= dev
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS := -s -w \
+	-X github.com/aknEvrnky/pgway/internal/platform/version.Version=$(VERSION) \
+	-X github.com/aknEvrnky/pgway/internal/platform/version.Commit=$(COMMIT) \
+	-X github.com/aknEvrnky/pgway/internal/platform/version.Date=$(DATE)
+
 build:
-	go build -o build/pgway ./cmd/pgway
-	go build -o build/pgway-cp ./cmd/pgway-cp
-	go build -o build/pgway-dp ./cmd/pgway-dp
-	go build -o build/pgctl ./cmd/pgctl
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway ./cmd/pgway
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-cp ./cmd/pgway-cp
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-dp ./cmd/pgway-dp
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgctl ./cmd/pgctl
 
 # Dev tools (GOBIN / $(go env GOPATH)/bin must be on PATH).
 # protoc itself is a system package (not installable via go install) —
