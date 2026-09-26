@@ -1,0 +1,14 @@
+.git
+.github
+.cursor
+.claude
+.idea
+.code
+.worktrees
+.env
+config.toml
+build/
+var/
+docs/
+frontend/
+*.md
