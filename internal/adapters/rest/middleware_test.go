@@ -40,16 +40,20 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 }
 
 type fakeCP struct {
-	proxy     *domain.Proxy
-	proxies   []*domain.Proxy
-	pool      *domain.Pool
-	pools     []*domain.Pool
-	balancer  *domain.LoadBalancer
-	balancers []*domain.LoadBalancer
-	router    *domain.Router
-	routers   []*domain.Router
-	deleteErr error
-	applyErr  error
+	proxy      *domain.Proxy
+	proxies    []*domain.Proxy
+	pool       *domain.Pool
+	pools      []*domain.Pool
+	balancer   *domain.LoadBalancer
+	balancers  []*domain.LoadBalancer
+	router     *domain.Router
+	routers    []*domain.Router
+	flow       *domain.Flow
+	flows      []*domain.Flow
+	entrypoint *domain.Entrypoint
+	entrypoints []*domain.Entrypoint
+	deleteErr  error
+	applyErr   error
 }
 
 func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {
@@ -339,27 +343,146 @@ func (f *fakeCP) DeleteRouter(_ context.Context, _ string) error {
 	return f.deleteErr
 }
 
-func (f *fakeCP) GetFlow(context.Context, string) (*domain.Flow, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetFlow(_ context.Context, name string) (*domain.Flow, error) {
+	if f.flow != nil && f.flow.Id == name {
+		cp := *f.flow
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("flow %q not found", name)
 }
-func (f *fakeCP) ListFlows(context.Context, domain.ListParams, domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
-	return domain.ListResult[domain.Flow]{}, nil
+func (f *fakeCP) ListFlows(_ context.Context, params domain.ListParams, filter domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
+	all := f.flows
+	if len(all) == 0 && f.flow != nil {
+		all = []*domain.Flow{f.flow}
+	}
+
+	matched := make([]*domain.Flow, 0, len(all))
+	for _, fl := range all {
+		if filter.RouterId != "" && fl.RouterId != filter.RouterId {
+			continue
+		}
+		if filter.BalancerId != "" && fl.BalancerId != filter.BalancerId {
+			continue
+		}
+		switch filter.Mode {
+		case "router":
+			if fl.RouterId == "" {
+				continue
+			}
+		case "direct":
+			if fl.RouterId != "" || fl.BalancerId == "" {
+				continue
+			}
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(fl.Id), q) &&
+				!strings.Contains(strings.ToLower(fl.RouterId), q) &&
+				!strings.Contains(strings.ToLower(fl.BalancerId), q) {
+				continue
+			}
+		}
+		matched = append(matched, fl)
+	}
+
+	result := domain.ListResult[domain.Flow]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, fl := range matched {
+			if fl.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
 func (f *fakeCP) ApplyFlowV1(context.Context, schema.Metadata, flowv1.FlowSpecV1) (*domain.Flow, error) {
-	return nil, fmt.Errorf("n/a")
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.flow, nil
 }
-func (f *fakeCP) DeleteFlow(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteFlow(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
-func (f *fakeCP) GetEntrypoint(context.Context, string) (*domain.Entrypoint, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetEntrypoint(_ context.Context, name string) (*domain.Entrypoint, error) {
+	if f.entrypoint != nil && f.entrypoint.Id == name {
+		cp := *f.entrypoint
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("entrypoint %q not found", name)
 }
-func (f *fakeCP) ListEntrypoints(context.Context, domain.ListParams, domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
-	return domain.ListResult[domain.Entrypoint]{}, nil
+func (f *fakeCP) ListEntrypoints(_ context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
+	all := f.entrypoints
+	if len(all) == 0 && f.entrypoint != nil {
+		all = []*domain.Entrypoint{f.entrypoint}
+	}
+	matched := make([]*domain.Entrypoint, 0, len(all))
+	for _, ep := range all {
+		if filter.FlowId != "" && ep.FlowId != filter.FlowId {
+			continue
+		}
+		if filter.Protocol != "" && string(ep.Protocol) != filter.Protocol {
+			continue
+		}
+		if filter.Host != "" && !strings.Contains(strings.ToLower(ep.Host), strings.ToLower(filter.Host)) {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(ep.Id), q) && !strings.Contains(strings.ToLower(ep.Title), q) {
+				continue
+			}
+		}
+		matched = append(matched, ep)
+	}
+	result := domain.ListResult[domain.Entrypoint]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, ep := range matched {
+			if ep.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
-func (f *fakeCP) ApplyEntrypointV1(context.Context, schema.Metadata, entrypointv1.EntrypointSpecV1) (*domain.Entrypoint, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) ApplyEntrypointV1(_ context.Context, _ schema.Metadata, _ entrypointv1.EntrypointSpecV1) (*domain.Entrypoint, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.entrypoint, nil
 }
-func (f *fakeCP) DeleteEntrypoint(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteEntrypoint(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 var _ ports.ControlPlane = (*fakeCP)(nil)
 var _ ports.TokenAuthenticator = (*fakeAuth)(nil)

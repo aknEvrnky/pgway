@@ -181,18 +181,75 @@ export interface RouterApplyRequest {
 
 export interface Flow {
   id: string
-  routerId?: string
-  balancerId?: string
+  router_id?: string
+  balancer_id?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type FlowModeFilter = '' | 'router' | 'direct'
+
+export interface FlowListQuery {
+  search?: string
+  mode?: FlowModeFilter
+  router_id?: string
+  balancer_id?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface FlowListResponse {
+  items: Flow[]
+  next_cursor?: string
+  total_count: number
+}
+
+export interface FlowApplyRequest {
+  metadata: { name: string }
+  spec: {
+    router_id?: string
+    balancer_id?: string
+  }
 }
 
 export interface Entrypoint {
   id: string
-  title: string
+  title?: string
   protocol: string
   host: string
   port: number
-  flowId: string
+  flow_id: string
+  created_at?: string
+  updated_at?: string
 }
+
+export interface EntrypointListQuery {
+  search?: string
+  protocol?: string
+  host?: string
+  flow_id?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface EntrypointListResponse {
+  items: Entrypoint[]
+  next_cursor?: string
+  total_count: number
+}
+
+export interface EntrypointApplyRequest {
+  metadata: { name: string }
+  spec: {
+    title?: string
+    protocol: string
+    host: string
+    port: number
+    flow_id: string
+  }
+}
+
+export type FlowGraphKind = 'entrypoint' | 'flow' | 'router' | 'balancer' | 'pool' | 'proxy'
 
 export interface MetricCardData {
   label: string

@@ -38,6 +38,8 @@ type FlowFilter struct {
 	Search     string
 	RouterId   string
 	BalancerId string
+	// Mode: "" (any), "router" (router_id set), "direct" (balancer only, no router).
+	Mode string
 }
 
 type UserFilter struct {

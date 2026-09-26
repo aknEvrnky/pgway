@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Pool, PoolApplyRequest, PoolType } from '~/types'
+import type { Pool, PoolApplyRequest, PoolType, Proxy, ProxyListResponse } from '~/types'
 
 const props = defineProps<{
   open: boolean
@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const { apply } = usePools()
+const { apiFetch } = useApi()
 
 type LabelRow = { key: string; value: string }
 type MemberRow = { proxy_id: string; weight: number }
@@ -23,6 +24,8 @@ const poolType = ref<PoolType>('static')
 const members = ref<MemberRow[]>([{ proxy_id: '', weight: 1 }])
 const allowLabels = ref<LabelRow[]>([{ key: '', value: '' }])
 const labels = ref<LabelRow[]>([{ key: '', value: '' }])
+const proxies = ref<Proxy[]>([])
+const proxiesLoading = ref(false)
 const formError = ref('')
 const saving = ref(false)
 
@@ -32,16 +35,59 @@ const isStatic = computed(() => poolType.value === 'static')
 const memberCount = computed(() => members.value.filter(m => m.proxy_id.trim()).length)
 
 const tipName = 'Resource ID (metadata.name). Immutable after create. Referenced as LoadBalancer pool_id.'
-const tipMembers = 'Explicit list of proxy IDs. Each proxy must already exist. Weight is used by weighted load balancers (default: 1, minimum: 1). Duplicate proxy IDs are not allowed. At least one member is required.'
+const tipMembers = 'Select existing proxies. Weight is used by weighted load balancers (default: 1, minimum: 1). Duplicate proxies are not allowed. At least one member is required.'
 const tipSelector = 'Dynamic pools resolve proxies whose labels match ALL of these allow pairs (AND). At least one allow pair is required. Static members are not allowed on dynamic pools. Weighted load balancers require a static pool; round-robin and least-bytes can use either type.'
 const tipLabels = 'Metadata labels on the pool resource itself (key-value). Separate from the dynamic selector.'
 
+function proxyLabel(p: Proxy): string {
+  return `${p.id} — ${p.protocol}://${p.host}:${p.port}`
+}
+
+type ProxyOption = { id: string; label: string }
+
+/** Proxies available for a member row (exclude ones already picked in other rows). */
+function availableProxies(rowIndex: number): ProxyOption[] {
+  const taken = new Set(
+    members.value
+      .map((m, i) => (i !== rowIndex ? m.proxy_id.trim() : ''))
+      .filter(Boolean),
+  )
+  const current = members.value[rowIndex]?.proxy_id.trim()
+  const opts: ProxyOption[] = proxies.value
+    .filter(p => !taken.has(p.id) || p.id === current)
+    .map(p => ({ id: p.id, label: proxyLabel(p) }))
+
+  // Keep a selected id visible even if it is missing from the loaded list
+  if (current && !opts.some(o => o.id === current)) {
+    opts.unshift({ id: current, label: `${current} (missing)` })
+  }
+  return opts
+}
+
+const canAddMember = computed(() => {
+  if (proxiesLoading.value || proxies.value.length === 0) return false
+  const selected = new Set(members.value.map(m => m.proxy_id.trim()).filter(Boolean))
+  return selected.size < proxies.value.length
+})
+
 watch(
   () => [props.open, props.initial, props.mode] as const,
-  () => {
+  async () => {
     if (!props.open) return
     formError.value = ''
     saving.value = false
+    proxiesLoading.value = true
+    try {
+      const res = await apiFetch<ProxyListResponse>('/api/v1/proxies?page_size=100')
+      proxies.value = res.items || []
+    }
+    catch {
+      proxies.value = []
+    }
+    finally {
+      proxiesLoading.value = false
+    }
+
     if (props.mode === 'edit' && props.initial) {
       const p = props.initial
       name.value = p.id
@@ -150,7 +196,7 @@ function buildBody(): PoolApplyRequest {
       const id = m.proxy_id.trim()
       if (!id) continue
       if (seen.has(id)) {
-        throw new Error(`duplicate proxy_id ${id}`)
+        throw new Error(`duplicate proxy ${id}`)
       }
       seen.add(id)
       const w = Number(m.weight)
@@ -285,17 +331,27 @@ function onBackdrop() {
               </span>
             </div>
             <div class="grid grid-cols-[1fr_5.5rem_2rem] gap-2 px-1">
-              <span class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Proxy ID</span>
+              <span class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Proxy</span>
               <span class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Weight</span>
               <span />
             </div>
             <div v-for="(row, i) in members" :key="i" class="grid grid-cols-[1fr_5.5rem_2rem] gap-2 items-center">
-              <input
+              <select
                 v-model="row.proxy_id"
-                type="text"
-                placeholder="proxy-id"
-                class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg px-3 py-2 text-sm font-mono text-on-surface focus:ring-1 focus:ring-primary/20 outline-none"
+                :disabled="proxiesLoading"
+                class="w-full min-w-0 bg-surface-container-lowest border border-outline-variant/20 rounded-lg px-3 py-2 text-sm font-mono text-on-surface focus:ring-1 focus:ring-primary/20 outline-none disabled:opacity-60"
               >
+                <option value="" disabled>
+                  {{ proxiesLoading ? 'Loading…' : proxies.length ? 'Select a proxy' : 'No proxies available' }}
+                </option>
+                <option
+                  v-for="p in availableProxies(i)"
+                  :key="p.id"
+                  :value="p.id"
+                >
+                  {{ p.label }}
+                </option>
+              </select>
               <input
                 v-model.number="row.weight"
                 type="number"
@@ -314,9 +370,13 @@ function onBackdrop() {
                 </svg>
               </button>
             </div>
+            <p v-if="!proxiesLoading && proxies.length === 0" class="text-[11px] text-on-surface-variant">
+              Create a proxy first, then add it as a member.
+            </p>
             <button
               type="button"
-              class="flex items-center gap-2 text-[10px] font-bold text-primary hover:text-primary-container transition-colors"
+              class="flex items-center gap-2 text-[10px] font-bold text-primary hover:text-primary-container transition-colors disabled:opacity-40"
+              :disabled="!canAddMember"
               @click="addMember"
             >
               <span class="text-sm leading-none">+</span>

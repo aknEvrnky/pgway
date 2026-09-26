@@ -30,9 +30,9 @@ const { logLines } = useDashboardData()
         <MoleculesQuickActionButton label="Add Pool">
           <template #icon>
             <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <ellipse cx="12" cy="6" rx="8" ry="3" />
-              <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-              <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+              <path d="M12 2L2 7l10 5 10-5-10-5z" />
+              <path d="M2 12l10 5 10-5" />
+              <path d="M2 17l10 5 10-5" />
             </svg>
           </template>
         </MoleculesQuickActionButton>
