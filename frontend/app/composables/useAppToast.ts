@@ -8,7 +8,7 @@ export interface ToastItem {
 
 const TOAST_TTL_MS = 4000
 
-export function useToast() {
+export function useAppToast() {
   const toasts = useState<ToastItem[]>('app-toasts', () => [])
   const seq = useState('app-toast-seq', () => 0)
 

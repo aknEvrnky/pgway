@@ -84,9 +84,40 @@ export interface PoolApplyRequest {
 
 export interface LoadBalancer {
   id: string
-  title: string
+  title?: string
   type: 'round-robin' | 'weighted' | 'least-bytes'
-  poolId: string
+  pool_id: string
+  reset_interval?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export type BalancerType = LoadBalancer['type']
+
+export interface BalancerListQuery {
+  search?: string
+  type?: BalancerType | ''
+  pool_id?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface BalancerListResponse {
+  items: LoadBalancer[]
+  next_cursor?: string
+  total_count: number
+}
+
+export interface BalancerApplyRequest {
+  metadata: {
+    name: string
+  }
+  spec: {
+    title?: string
+    type: BalancerType
+    pool_id: string
+    reset_interval?: string
+  }
 }
 
 export interface Router {

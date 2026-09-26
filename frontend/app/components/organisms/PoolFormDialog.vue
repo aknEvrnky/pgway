@@ -181,14 +181,14 @@ async function onSave() {
   try {
     const body = buildBody()
     await apply(body)
-    useToast().success(props.mode === 'edit' ? 'Pool updated' : 'Pool created')
+    useAppToast().success(props.mode === 'edit' ? 'Pool updated' : 'Pool created')
     emit('saved')
     emit('close')
   }
   catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'save failed'
     formError.value = msg
-    useToast().error(msg)
+    useAppToast().error(msg)
   }
   finally {
     saving.value = false

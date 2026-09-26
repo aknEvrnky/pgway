@@ -25,5 +25,10 @@ func writeCPError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
+	// Weighted balancers require a static pool — treat as client error.
+	if strings.Contains(err.Error(), "requires static pool") {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	writeError(w, http.StatusInternalServerError, err.Error())
 }

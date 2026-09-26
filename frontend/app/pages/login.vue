@@ -17,14 +17,14 @@ async function onSubmit() {
   loading.value = true
   try {
     await auth.login(username.value.trim(), password.value)
-    useToast().success('Signed in')
+    useAppToast().success('Signed in')
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await navigateTo(redirect || '/')
   }
   catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Login failed'
     error.value = msg
-    useToast().error(msg)
+    useAppToast().error(msg)
   }
   finally {
     loading.value = false

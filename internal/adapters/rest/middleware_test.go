@@ -44,6 +44,8 @@ type fakeCP struct {
 	proxies   []*domain.Proxy
 	pool      *domain.Pool
 	pools     []*domain.Pool
+	balancer  *domain.LoadBalancer
+	balancers []*domain.LoadBalancer
 	deleteErr error
 	applyErr  error
 }
@@ -174,16 +176,72 @@ func (f *fakeCP) DeletePool(_ context.Context, _ string) error {
 	return f.deleteErr
 }
 
-func (f *fakeCP) GetBalancer(context.Context, string) (*domain.LoadBalancer, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetBalancer(_ context.Context, name string) (*domain.LoadBalancer, error) {
+	if f.balancer != nil && f.balancer.Id == name {
+		cp := *f.balancer
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("balancer %q not found", name)
 }
-func (f *fakeCP) ListBalancers(context.Context, domain.ListParams, domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
-	return domain.ListResult[domain.LoadBalancer]{}, nil
+func (f *fakeCP) ListBalancers(_ context.Context, params domain.ListParams, filter domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
+	all := f.balancers
+	if len(all) == 0 && f.balancer != nil {
+		all = []*domain.LoadBalancer{f.balancer}
+	}
+
+	matched := make([]*domain.LoadBalancer, 0, len(all))
+	for _, lb := range all {
+		if filter.Type != "" && string(lb.Type) != filter.Type {
+			continue
+		}
+		if filter.PoolId != "" && lb.PoolId != filter.PoolId {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(lb.Id), q) &&
+				!strings.Contains(strings.ToLower(lb.Title), q) &&
+				!strings.Contains(strings.ToLower(string(lb.Type)), q) &&
+				!strings.Contains(strings.ToLower(lb.PoolId), q) {
+				continue
+			}
+		}
+		matched = append(matched, lb)
+	}
+
+	result := domain.ListResult[domain.LoadBalancer]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, lb := range matched {
+			if lb.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
-func (f *fakeCP) ApplyBalancerV1(context.Context, schema.Metadata, balancerv1.BalancerSpecV1) (*domain.LoadBalancer, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) ApplyBalancerV1(_ context.Context, _ schema.Metadata, _ balancerv1.BalancerSpecV1) (*domain.LoadBalancer, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.balancer, nil
 }
-func (f *fakeCP) DeleteBalancer(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteBalancer(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 func (f *fakeCP) GetRouter(context.Context, string) (*domain.Router, error) {
 	return nil, fmt.Errorf("n/a")

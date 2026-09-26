@@ -19,6 +19,11 @@ func (a *Adapter) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/pools", a.applyPool)
 	mux.HandleFunc("DELETE /api/v1/pools/{name}", a.deletePool)
 
+	mux.HandleFunc("GET /api/v1/balancers", a.listBalancers)
+	mux.HandleFunc("GET /api/v1/balancers/{name}", a.getBalancer)
+	mux.HandleFunc("POST /api/v1/balancers", a.applyBalancer)
+	mux.HandleFunc("DELETE /api/v1/balancers/{name}", a.deleteBalancer)
+
 	var handler http.Handler = mux
 	// Order matters: the per-user bucket runs post-auth, the per-IP bucket
 	// pre-auth so token brute-force is capped before authentication.

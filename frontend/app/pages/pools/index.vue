@@ -2,7 +2,7 @@
 import type { Pool, PoolType } from '~/types'
 
 const { items, totalCount, nextCursor, loading, error, pageSize, refresh, remove } = usePools()
-const toast = useToast()
+const toast = useAppToast()
 
 const search = ref('')
 const typeFilter = ref<PoolType | ''>('')

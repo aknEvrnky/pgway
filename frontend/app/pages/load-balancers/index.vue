@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import type { Proxy, ProxyProtocol } from '~/types'
+import type { BalancerType, LoadBalancer } from '~/types'
 
-const { items, totalCount, nextCursor, loading, error, pageSize, refresh, remove } = useProxies()
+const { items, totalCount, nextCursor, loading, error, pageSize, refresh, remove } = useBalancers()
 const toast = useAppToast()
 
 const search = ref('')
-const protocolFilter = ref<ProxyProtocol | ''>('')
+const typeFilter = ref<BalancerType | ''>('')
 const pageToken = ref<string | undefined>(undefined)
 const cursorStack = ref<string[]>([])
 
 const formOpen = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
-const editing = ref<Proxy | null>(null)
+const editing = ref<LoadBalancer | null>(null)
 
 const deleteOpen = ref(false)
-const deleting = ref<Proxy | null>(null)
+const deleting = ref<LoadBalancer | null>(null)
 const deleteError = ref<string | null>(null)
 const deleteLoading = ref(false)
 
@@ -33,7 +33,7 @@ const canNext = computed(() => !!nextCursor.value)
 async function loadPage(token?: string) {
   await refresh({
     search: search.value,
-    protocol: protocolFilter.value,
+    type: typeFilter.value,
     page_size: pageSize,
     page_token: token,
   })
@@ -61,7 +61,7 @@ watch(search, () => {
   }, 250)
 })
 
-watch(protocolFilter, () => {
+watch(typeFilter, () => {
   reloadFirst().catch(() => {})
 })
 
@@ -86,20 +86,46 @@ function formatCreated(iso?: string) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function detailsText(lb: LoadBalancer): string {
+  switch (lb.type) {
+    case 'round-robin':
+      return 'even distribution'
+    case 'weighted':
+      return 'requires static pool'
+    case 'least-bytes':
+      return lb.reset_interval ? `reset ${lb.reset_interval}` : 'reset 1m'
+    default:
+      return '—'
+  }
+}
+
+function typeBadgeClass(t: BalancerType): string {
+  switch (t) {
+    case 'round-robin':
+      return 'text-primary border-primary/40 bg-primary/10'
+    case 'weighted':
+      return 'text-amber-200 border-amber-500/40 bg-amber-500/15'
+    case 'least-bytes':
+      return 'text-tertiary border-tertiary/40 bg-tertiary/10'
+    default:
+      return 'text-on-surface-variant border-outline-variant/30 bg-surface-container-highest'
+  }
+}
+
 function openCreate() {
   formMode.value = 'create'
   editing.value = null
   formOpen.value = true
 }
 
-function openEdit(p: Proxy) {
+function openEdit(lb: LoadBalancer) {
   formMode.value = 'edit'
-  editing.value = p
+  editing.value = lb
   formOpen.value = true
 }
 
-function openDelete(p: Proxy) {
-  deleting.value = p
+function openDelete(lb: LoadBalancer) {
+  deleting.value = lb
   deleteError.value = null
   deleteOpen.value = true
 }
@@ -117,7 +143,7 @@ async function confirmDelete() {
     await remove(name)
     deleteOpen.value = false
     deleting.value = null
-    toast.success(`Proxy "${name}" deleted`)
+    toast.success(`Load balancer "${name}" deleted`)
     await reloadFirst()
   }
   catch (e: unknown) {
@@ -136,18 +162,18 @@ async function confirmDelete() {
     <section class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-bold uppercase tracking-widest text-primary mb-1">
-          Resources
+          Network
         </p>
         <div class="flex items-center gap-3">
           <h2 class="text-3xl font-black tracking-tighter text-on-surface">
-            Proxies
+            Load Balancers
           </h2>
           <span class="text-xs font-bold text-on-surface-variant bg-surface-container-highest border border-outline-variant/20 rounded-full min-w-7 h-7 px-1.5 inline-flex items-center justify-center">
             {{ totalCount }}
           </span>
         </div>
         <p class="text-sm text-on-surface-variant mt-1 max-w-xl">
-          Manage outbound upstream proxies, authentication credentials, and labels.
+          Select upstream proxies from a pool using round-robin, weighted, or least-bytes strategies.
         </p>
       </div>
       <button
@@ -159,7 +185,7 @@ async function confirmDelete() {
           <line x1="12" y1="5" x2="12" y2="19" stroke-linecap="round" />
           <line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round" />
         </svg>
-        Add Proxy
+        Add Load Balancer
       </button>
     </section>
 
@@ -172,42 +198,42 @@ async function confirmDelete() {
         <input
           v-model="search"
           type="search"
-          placeholder="Search by name or host..."
+          placeholder="Search by name, title, type, or pool..."
           class="w-full bg-surface-container-low border border-outline-variant/15 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none transition-all text-on-surface placeholder:text-outline/50"
         >
       </div>
-      <div class="grid grid-cols-4 gap-1 p-1 rounded-lg bg-surface-container-lowest border border-outline-variant/15 self-start">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 rounded-lg bg-surface-container-lowest border border-outline-variant/15 self-start">
         <button
           type="button"
-          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
-          :class="protocolFilter === '' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="protocolFilter = ''"
+          class="px-3 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="typeFilter === '' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="typeFilter = ''"
         >
           All
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
-          :class="protocolFilter === 'http' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="protocolFilter = 'http'"
+          class="px-3 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="typeFilter === 'round-robin' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="typeFilter = 'round-robin'"
         >
-          HTTP
+          Round-robin
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
-          :class="protocolFilter === 'https' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="protocolFilter = 'https'"
+          class="px-3 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="typeFilter === 'weighted' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="typeFilter = 'weighted'"
         >
-          HTTPS
+          Weighted
         </button>
         <button
           type="button"
-          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
-          :class="protocolFilter === 'socks5' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="protocolFilter = 'socks5'"
+          class="px-3 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="typeFilter === 'least-bytes' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="typeFilter = 'least-bytes'"
         >
-          SOCKS5
+          Least-bytes
         </button>
       </div>
     </div>
@@ -225,16 +251,16 @@ async function confirmDelete() {
                 Name
               </th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                Protocol
+                Title
               </th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                Host:Port
+                Type
               </th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                Auth
+                Pool
               </th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                Labels
+                Details
               </th>
               <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
                 Created
@@ -247,52 +273,46 @@ async function confirmDelete() {
           <tbody>
             <tr v-if="loading && !items.length">
               <td colspan="7" class="px-6 py-12 text-center text-sm text-on-surface-variant">
-                Loading proxies…
+                Loading load balancers…
               </td>
             </tr>
             <tr v-else-if="!items.length">
               <td colspan="7" class="px-6 py-12 text-center text-sm text-on-surface-variant">
-                {{ search || protocolFilter ? 'No proxies match your filters.' : 'No proxies yet. Add one to get started.' }}
+                {{ search || typeFilter ? 'No load balancers match your filters.' : 'No load balancers yet. Add one to get started.' }}
               </td>
             </tr>
             <tr
-              v-for="p in items"
-              :key="p.id"
+              v-for="lb in items"
+              :key="lb.id"
               class="border-b border-outline-variant/10 last:border-0 hover:bg-white/[0.02] transition-colors"
             >
               <td class="px-6 py-4">
-                <span class="font-mono text-sm font-semibold text-on-surface">{{ p.id }}</span>
+                <span class="font-mono text-sm font-semibold text-primary">{{ lb.id }}</span>
               </td>
-              <td class="px-6 py-4">
-                <span class="text-[11px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-2 py-1 rounded">
-                  {{ p.protocol }}
-                </span>
-              </td>
-              <td class="px-6 py-4 font-mono text-sm text-on-surface-variant">
-                {{ p.host }}:{{ p.port }}
+              <td class="px-6 py-4 text-sm text-on-surface">
+                {{ lb.title || '—' }}
               </td>
               <td class="px-6 py-4">
                 <span
-                  class="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded"
-                  :class="p.auth ? 'text-tertiary bg-tertiary/10' : 'text-outline bg-white/5'"
+                  class="text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded border"
+                  :class="typeBadgeClass(lb.type)"
                 >
-                  {{ p.auth ? 'Yes' : 'No' }}
+                  {{ lb.type }}
                 </span>
               </td>
               <td class="px-6 py-4">
-                <div v-if="p.labels && Object.keys(p.labels).length" class="flex flex-wrap gap-1.5">
-                  <span
-                    v-for="(val, key) in p.labels"
-                    :key="`${key}-${val}`"
-                    class="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant border border-outline-variant/20"
-                  >
-                    {{ key }}={{ val }}
-                  </span>
-                </div>
-                <span v-else class="text-outline text-xs">—</span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-mono text-on-surface-variant">
+                  <svg class="w-3.5 h-3.5 text-outline shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+                  </svg>
+                  {{ lb.pool_id }}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-xs italic font-mono text-on-surface-variant">
+                {{ detailsText(lb) }}
               </td>
               <td class="px-6 py-4 text-sm text-on-surface-variant whitespace-nowrap">
-                {{ formatCreated(p.created_at) }}
+                {{ formatCreated(lb.created_at) }}
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center justify-end gap-1">
@@ -300,8 +320,8 @@ async function confirmDelete() {
                     type="button"
                     class="p-2 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors"
                     title="Edit"
-                    aria-label="Edit proxy"
-                    @click="openEdit(p)"
+                    aria-label="Edit load balancer"
+                    @click="openEdit(lb)"
                   >
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
@@ -312,8 +332,8 @@ async function confirmDelete() {
                     type="button"
                     class="p-2 rounded-lg text-outline hover:text-error hover:bg-error/10 transition-colors"
                     title="Delete"
-                    aria-label="Delete proxy"
-                    @click="openDelete(p)"
+                    aria-label="Delete load balancer"
+                    @click="openDelete(lb)"
                   >
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                       <polyline points="3 6 5 6 21 6" />
@@ -334,7 +354,7 @@ async function confirmDelete() {
         class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t border-outline-variant/15"
       >
         <p class="text-xs text-on-surface-variant">
-          Showing {{ showingFrom }} to {{ showingTo }} of {{ totalCount }} proxies
+          Showing {{ showingFrom }} to {{ showingTo }} of {{ totalCount }} load balancers
         </p>
         <div class="flex items-center gap-2">
           <button
@@ -360,7 +380,18 @@ async function confirmDelete() {
       </div>
     </div>
 
-    <OrganismsProxyFormDialog
+    <div class="flex items-start gap-3 text-sm text-on-surface-variant bg-surface-container-low/60 border border-outline-variant/15 rounded-xl px-4 py-3">
+      <svg class="w-4 h-4 mt-0.5 shrink-0 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" stroke-linecap="round" />
+        <circle cx="12" cy="16" r="0.5" fill="currentColor" />
+      </svg>
+      <p>
+        Load balancers reference a single pool. Weighted strategies require a static pool with member weights. Delete fails if a flow or router still references the balancer.
+      </p>
+    </div>
+
+    <OrganismsBalancerFormDialog
       :open="formOpen"
       :mode="formMode"
       :initial="editing"
@@ -368,7 +399,7 @@ async function confirmDelete() {
       @saved="onSaved"
     />
 
-    <OrganismsProxyDeleteDialog
+    <OrganismsBalancerDeleteDialog
       :open="deleteOpen"
       :name="deleting?.id || ''"
       :error="deleteError"

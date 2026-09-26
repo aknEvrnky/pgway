@@ -2,7 +2,7 @@
 const { isDark, toggle } = useDarkMode()
 const { width } = useSidebar()
 const auth = useAuth()
-const toast = useToast()
+const toast = useAppToast()
 const loggingOut = ref(false)
 const menuOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
