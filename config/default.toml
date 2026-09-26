@@ -31,6 +31,10 @@ rate_limit_rps = 100
 rate_limit_burst = 200
 
 [rest]
+# Start the REST API (dashboard backend; experimental). On by default for
+# backward compatibility — set to false when the dashboard is not used,
+# especially on untrusted networks (auth is incomplete).
+enabled = true
 # REST API listen address (pgway, pgway-cp).
 listen_addr = ":8081"
 

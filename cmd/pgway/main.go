@@ -167,7 +167,10 @@ func main() {
 	}
 
 	// REST adapter
-	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+	var restAdapter *rest.Adapter
+	if cfg.Rest.Enabled {
+		restAdapter = rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+	}
 
 	var probeAdapter *probes.Adapter
 	if cfg.Probes.Enabled {
@@ -193,10 +196,12 @@ func main() {
 		runErr <- httpAdapter.Run(sigCtx)
 	}()
 
-	go func() {
-		zap.L().Info("restapi started")
-		runErr <- restAdapter.Run(sigCtx)
-	}()
+	if restAdapter != nil {
+		go func() {
+			zap.L().Info("restapi started")
+			runErr <- restAdapter.Run(sigCtx)
+		}()
+	}
 
 	go func() {
 		zap.L().Info("event consumer started")
@@ -254,7 +259,9 @@ func main() {
 		zap.L().Error("http shutdown", zap.Error(err))
 	}
 
-	if err := restAdapter.Shutdown(shutdownCtx); err != nil {
-		zap.L().Error("rest shutdown", zap.Error(err))
+	if restAdapter != nil {
+		if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("rest shutdown", zap.Error(err))
+		}
 	}
 }

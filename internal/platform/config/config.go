@@ -64,6 +64,11 @@ func (c GRPCConfig) DialTarget() string {
 }
 
 type RestConfig struct {
+	// Enabled starts the REST API (dashboard backend; experimental).
+	// Default true for backward compatibility; disable when the dashboard
+	// is not used — the surface is experimental and auth is incomplete.
+	Enabled bool `mapstructure:"enabled"`
+	// ListenAddr is the REST API bind address.
 	ListenAddr string `mapstructure:"listen_addr"`
 }
 
@@ -197,6 +202,7 @@ func Load(path string) error {
 	viper.SetDefault("grpc.keepalive_timeout", 20*time.Second)
 	viper.SetDefault("grpc.rate_limit_rps", 100.0)
 	viper.SetDefault("grpc.rate_limit_burst", 200)
+	viper.SetDefault("rest.enabled", true)
 	viper.SetDefault("rest.listen_addr", ":8081")
 	viper.SetDefault("probes.enabled", false)
 	viper.SetDefault("probes.listen_addr", ":8082")
