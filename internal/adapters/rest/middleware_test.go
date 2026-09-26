@@ -46,6 +46,8 @@ type fakeCP struct {
 	pools     []*domain.Pool
 	balancer  *domain.LoadBalancer
 	balancers []*domain.LoadBalancer
+	router    *domain.Router
+	routers   []*domain.Router
 	deleteErr error
 	applyErr  error
 }
@@ -243,16 +245,99 @@ func (f *fakeCP) DeleteBalancer(_ context.Context, _ string) error {
 	return f.deleteErr
 }
 
-func (f *fakeCP) GetRouter(context.Context, string) (*domain.Router, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetRouter(_ context.Context, name string) (*domain.Router, error) {
+	if f.router != nil && f.router.Id == name {
+		cp := *f.router
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("router %q not found", name)
 }
-func (f *fakeCP) ListRouters(context.Context, domain.ListParams, domain.RouterFilter) (domain.ListResult[domain.Router], error) {
-	return domain.ListResult[domain.Router]{}, nil
+func (f *fakeCP) ListRouters(_ context.Context, params domain.ListParams, filter domain.RouterFilter) (domain.ListResult[domain.Router], error) {
+	all := f.routers
+	if len(all) == 0 && f.router != nil {
+		all = []*domain.Router{f.router}
+	}
+
+	matched := make([]*domain.Router, 0, len(all))
+	for _, rt := range all {
+		if filter.TargetBalancerId != "" {
+			found := false
+			for _, rule := range rt.Rules {
+				if rule != nil && rule.Target == filter.TargetBalancerId {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		if filter.HasCatchAll != nil {
+			has := false
+			for _, rule := range rt.Rules {
+				if rule != nil && rule.Match.Type == domain.MatchTypeCatchAll {
+					has = true
+					break
+				}
+			}
+			if *filter.HasCatchAll != has {
+				continue
+			}
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			hit := strings.Contains(strings.ToLower(rt.Id), q) || strings.Contains(strings.ToLower(rt.Title), q)
+			if !hit {
+				for _, rule := range rt.Rules {
+					if rule == nil {
+						continue
+					}
+					if strings.Contains(strings.ToLower(rule.Target), q) || strings.Contains(strings.ToLower(rule.Id), q) {
+						hit = true
+						break
+					}
+				}
+			}
+			if !hit {
+				continue
+			}
+		}
+		matched = append(matched, rt)
+	}
+
+	result := domain.ListResult[domain.Router]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, rt := range matched {
+			if rt.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
-func (f *fakeCP) ApplyRouterV1(context.Context, schema.Metadata, routerv1.RouterSpecV1) (*domain.Router, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) ApplyRouterV1(_ context.Context, _ schema.Metadata, _ routerv1.RouterSpecV1) (*domain.Router, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.router, nil
 }
-func (f *fakeCP) DeleteRouter(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteRouter(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 func (f *fakeCP) GetFlow(context.Context, string) (*domain.Flow, error) {
 	return nil, fmt.Errorf("n/a")

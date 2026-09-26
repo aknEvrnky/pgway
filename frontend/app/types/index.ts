@@ -120,11 +120,20 @@ export interface BalancerApplyRequest {
   }
 }
 
+export type MatchType = 'host' | 'host_suffix' | 'path_prefix' | 'path_regex' | 'method' | 'header' | 'catch_all'
+
+export interface RouterCondition {
+  type: MatchType
+  value: string
+}
+
 export interface Router {
   id: string
-  title: string
+  title?: string
   description?: string
   rules: RouterRule[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface RouterRule {
@@ -134,10 +143,40 @@ export interface RouterRule {
 }
 
 export interface RouterMatch {
-  type?: 'host' | 'host_suffix' | 'path_prefix' | 'path_regex' | 'method' | 'header' | 'catch_all'
+  type?: MatchType
   value?: string
-  all?: { type: string; value: string }[]
-  any?: { type: string; value: string }[]
+  all?: RouterCondition[]
+  any?: RouterCondition[]
+  not?: RouterCondition
+}
+
+export interface RouterListQuery {
+  search?: string
+  has_catch_all?: boolean | ''
+  target?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface RouterListResponse {
+  items: Router[]
+  next_cursor?: string
+  total_count: number
+}
+
+export interface RouterApplyRequest {
+  metadata: {
+    name: string
+  }
+  spec: {
+    title?: string
+    description?: string
+    rules: {
+      id: string
+      match: RouterMatch
+      target: string
+    }[]
+  }
 }
 
 export interface Flow {
