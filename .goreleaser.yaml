@@ -108,7 +108,7 @@ release:
     Download binaries from this release, or pull the image:
 
     ```bash
-    docker pull ghcr.io/aknEvrnky/pgway:{{ .Version }}
+    docker pull ghcr.io/aknevrnky/pgway:{{ .Version }}
     ```
 
     Check versions with `pgctl version` or `pgway -version`.
@@ -121,7 +121,7 @@ dockers_v2:
     dockerfile: Dockerfile.goreleaser
     ids: [pgway, pgway-cp, pgway-dp, pgctl]
     images:
-      - ghcr.io/aknEvrnky/pgway
+      - ghcr.io/aknevrnky/pgway
     tags:
       - "{{ .Version }}"
     platforms:
