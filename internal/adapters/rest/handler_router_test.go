@@ -217,3 +217,53 @@ func TestApplyRouter_InvalidSpec(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "rules")
 }
+
+func TestApplyRouter_MissingName(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	body := []byte(`{"metadata":{},"spec":{"rules":[{"id":"r1","match":{"type":"catch_all"},"target":"lb"}]}}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestApplyRouter_InvalidJSON(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader([]byte(`{`)))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestGetRouter_OK(t *testing.T) {
+	cp := &fakeCP{
+		router: &domain.Router{Id: "edge-router"},
+	}
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers/edge-router", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestDeleteRouter_OK(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/routers/edge-router", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+}

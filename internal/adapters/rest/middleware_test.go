@@ -40,20 +40,20 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 }
 
 type fakeCP struct {
-	proxy      *domain.Proxy
-	proxies    []*domain.Proxy
-	pool       *domain.Pool
-	pools      []*domain.Pool
-	balancer   *domain.LoadBalancer
-	balancers  []*domain.LoadBalancer
-	router     *domain.Router
-	routers    []*domain.Router
-	flow       *domain.Flow
-	flows      []*domain.Flow
-	entrypoint *domain.Entrypoint
+	proxy       *domain.Proxy
+	proxies     []*domain.Proxy
+	pool        *domain.Pool
+	pools       []*domain.Pool
+	balancer    *domain.LoadBalancer
+	balancers   []*domain.LoadBalancer
+	router      *domain.Router
+	routers     []*domain.Router
+	flow        *domain.Flow
+	flows       []*domain.Flow
+	entrypoint  *domain.Entrypoint
 	entrypoints []*domain.Entrypoint
-	deleteErr  error
-	applyErr   error
+	deleteErr   error
+	applyErr    error
 }
 
 func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {

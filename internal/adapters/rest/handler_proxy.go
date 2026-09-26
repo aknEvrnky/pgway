@@ -3,7 +3,6 @@ package rest
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
@@ -25,14 +24,10 @@ func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pageSize := defaultListPageSize
-	if raw := q.Get("page_size"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 1 {
-			writeError(w, http.StatusBadRequest, "page_size must be a positive integer")
-			return
-		}
-		pageSize = n
+	pageSize, err := parsePageSize(q.Get("page_size"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	cursor, err := decodePageToken(q.Get("page_token"))

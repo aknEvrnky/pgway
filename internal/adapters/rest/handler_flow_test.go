@@ -202,3 +202,63 @@ func TestDeleteFlow_NotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 }
+
+func TestApplyFlow_InvalidSpec(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	body := []byte(`{"metadata":{"name":"bad"},"spec":{}}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestApplyFlow_MissingName(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	body := []byte(`{"metadata":{},"spec":{"balancer_id":"lb"}}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestApplyFlow_InvalidJSON(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader([]byte(`{`)))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestListFlows_InvalidPageSize(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows?page_size=-3", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestDeleteFlow_OK(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/flows/edge-flow", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+}

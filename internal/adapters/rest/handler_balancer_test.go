@@ -263,6 +263,73 @@ func TestApplyBalancer_InvalidSpec(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "pool_id")
 }
 
+func TestListBalancers_InvalidPageSize(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers?page_size=nope", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestApplyBalancer_MissingName(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	body := []byte(`{"metadata":{},"spec":{"type":"round-robin","pool_id":"p"}}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestDeleteBalancer_OK(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/balancers/edge-rr", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+}
+
+func TestGetBalancer_OK(t *testing.T) {
+	cp := &fakeCP{
+		balancer: &domain.LoadBalancer{
+			Id:     "edge-rr",
+			Type:   domain.BalancerTypeRoundRobin,
+			PoolId: "static-1",
+		},
+	}
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers/edge-rr", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.Equal(t, "edge-rr", got["id"])
+}
+
+func TestGetBalancer_NotFound(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers/missing", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+}
+
 type assertErr string
 
 func (e assertErr) Error() string { return string(e) }

@@ -163,3 +163,25 @@ func TestApplyProxy_MissingRefBadRequest(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	assert.Contains(t, got["error"], "not found")
 }
+
+func TestListProxies_InvalidPageSize(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?page_size=abc", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestListProxies_InvalidPageToken(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?page_token=!!", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}

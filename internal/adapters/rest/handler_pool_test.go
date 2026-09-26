@@ -216,3 +216,52 @@ func TestApplyPool_InvalidSpec(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 	assert.Contains(t, rec.Body.String(), "members")
 }
+
+func TestApplyPool_MissingName(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	body := []byte(`{"metadata":{},"spec":{"type":"dynamic","selector":{"allow":{"a":"b"}}}}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/pools", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer ok")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestGetPool_OK(t *testing.T) {
+	cp := &fakeCP{
+		pool: &domain.Pool{Id: "static-1", Type: domain.PoolTypeStatic},
+	}
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools/static-1", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestDeletePool_OK(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/pools/static-1", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNoContent, rec.Code)
+}
+
+func TestListPools_InvalidPageSize(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?page_size=0", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
