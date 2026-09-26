@@ -17,11 +17,14 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
+	"github.com/aknEvrnky/pgway/internal/platform/tracing"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type handlerFakeAPI struct {
@@ -726,4 +729,76 @@ func TestHandler_FailOpenUnreachable_AllowsTraffic(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, int32(1), tr.roundTripCalls.Load())
+}
+
+func TestHandler_EmitsProxySpans(t *testing.T) {
+	_ = tracing.Shutdown(context.Background())
+	sr := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr))
+	tracing.InitManual(tp)
+	t.Cleanup(func() { _ = tracing.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{proxy: &domain.Proxy{Id: "p1"}, balancerID: "lb1"}
+	tr := &handlerFakeTransport{}
+	h := NewHandler(api, tr, 0, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	spans := sr.Ended()
+	require.Len(t, spans, 2)
+
+	byName := map[string]sdktrace.ReadOnlySpan{}
+	for _, s := range spans {
+		byName[s.Name()] = s
+	}
+	parent, ok := byName[tracing.SpanProxyRequest]
+	require.True(t, ok)
+	child, ok := byName[tracing.SpanProxyUpstream]
+	require.True(t, ok)
+	assert.Equal(t, parent.SpanContext().TraceID(), child.SpanContext().TraceID())
+
+	attrs := map[string]string{}
+	for _, kv := range parent.Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsString()
+	}
+	assert.Equal(t, "ep1", attrs["entrypoint"])
+	assert.Equal(t, metrics.ResultOK, attrs["result"])
+	assert.Equal(t, metrics.ProtocolHTTP, attrs["protocol"])
+	_, hasHost := attrs["host"]
+	assert.False(t, hasHost, "must not record high-cardinality host")
+	_, hasURL := attrs["url"]
+	assert.False(t, hasURL, "must not record raw URL")
+}
+
+func TestHandler_RejectPath_EmitsParentSpanOnly(t *testing.T) {
+	_ = tracing.Shutdown(context.Background())
+	sr := tracetest.NewSpanRecorder()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr))
+	tracing.InitManual(tp)
+	t.Cleanup(func() { _ = tracing.Shutdown(context.Background()) })
+
+	api := &handlerFakeAPI{executeErr: domain.ErrNotFound}
+	tr := &handlerFakeTransport{}
+	h := NewHandler(api, tr, 0, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	req = withEntrypoint(req, "ep1")
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	spans := sr.Ended()
+	require.Len(t, spans, 1)
+	assert.Equal(t, tracing.SpanProxyRequest, spans[0].Name())
+	attrs := map[string]string{}
+	for _, kv := range spans[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.AsString()
+	}
+	assert.Equal(t, metrics.ResultRejected, attrs["result"])
+	assert.Equal(t, int32(0), tr.roundTripCalls.Load())
 }
