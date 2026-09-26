@@ -25,13 +25,35 @@ export interface ProxyApplyRequest {
   }
 }
 
+export interface PoolMember {
+  proxy_id: string
+  weight: number
+}
+
 export interface Pool {
   id: string
-  title: string
+  title?: string
   type: 'static' | 'dynamic'
   labels?: Record<string, string>
-  proxyIds?: string[]
-  selector?: { allow: Record<string, string> }
+  members?: PoolMember[]
+  selector?: { allow?: Record<string, string> }
+  created_at?: string
+  updated_at?: string
+}
+
+export type PoolType = Pool['type']
+
+export interface PoolApplyRequest {
+  metadata: {
+    name: string
+    labels?: Record<string, string>
+  }
+  spec: {
+    title?: string
+    type: PoolType
+    members?: { proxy_id: string; weight?: number }[]
+    selector?: { allow: Record<string, string> }
+  }
 }
 
 export interface LoadBalancer {

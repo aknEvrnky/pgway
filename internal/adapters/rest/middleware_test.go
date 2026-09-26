@@ -40,6 +40,7 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 
 type fakeCP struct {
 	proxy     *domain.Proxy
+	pool      *domain.Pool
 	deleteErr error
 	applyErr  error
 }
@@ -71,16 +72,28 @@ func (f *fakeCP) DeleteProxy(_ context.Context, _ string) error {
 	return f.deleteErr
 }
 
-func (f *fakeCP) GetPool(context.Context, string) (*domain.Pool, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetPool(_ context.Context, name string) (*domain.Pool, error) {
+	if f.pool != nil && f.pool.Id == name {
+		cp := *f.pool
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("pool %q not found", name)
 }
-func (f *fakeCP) ListPools(context.Context, domain.ListParams, domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
-	return domain.ListResult[domain.Pool]{}, nil
+func (f *fakeCP) ListPools(_ context.Context, _ domain.ListParams, _ domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
+	if f.pool == nil {
+		return domain.ListResult[domain.Pool]{}, nil
+	}
+	return domain.ListResult[domain.Pool]{Items: []*domain.Pool{f.pool}}, nil
 }
-func (f *fakeCP) ApplyPoolV1(context.Context, schema.Metadata, poolv1.PoolSpecV1) (*domain.Pool, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) ApplyPoolV1(_ context.Context, _ schema.Metadata, _ poolv1.PoolSpecV1) (*domain.Pool, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.pool, nil
 }
-func (f *fakeCP) DeletePool(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeletePool(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 func (f *fakeCP) GetBalancer(context.Context, string) (*domain.LoadBalancer, error) {
 	return nil, fmt.Errorf("n/a")
