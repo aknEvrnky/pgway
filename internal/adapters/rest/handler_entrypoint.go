@@ -102,3 +102,18 @@ func (a *Adapter) applyEntrypoint(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, ep)
 }
+
+func (a *Adapter) deleteEntrypoint(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+
+	if err := a.cp.DeleteEntrypoint(r.Context(), name); err != nil {
+		writeCPError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

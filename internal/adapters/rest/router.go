@@ -37,6 +37,7 @@ func (a *Adapter) routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/entrypoints", a.listEntrypoints)
 	mux.HandleFunc("GET /api/v1/entrypoints/{name}", a.getEntrypoint)
 	mux.HandleFunc("POST /api/v1/entrypoints", a.applyEntrypoint)
+	mux.HandleFunc("DELETE /api/v1/entrypoints/{name}", a.deleteEntrypoint)
 
 	var handler http.Handler = mux
 	// Order matters: the per-user bucket runs post-auth, the per-IP bucket

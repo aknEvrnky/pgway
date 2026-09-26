@@ -1,9 +1,15 @@
 import type { Entrypoint, EntrypointApplyRequest, EntrypointListQuery, EntrypointListResponse } from '~/types'
 
-const DEFAULT_PAGE_SIZE = 100
+const DEFAULT_PAGE_SIZE = 20
 
 export function useEntrypoints() {
   const { apiFetch } = useApi()
+
+  const items = useState<Entrypoint[]>('entrypoints-items', () => [])
+  const totalCount = useState('entrypoints-total-count', () => 0)
+  const nextCursor = useState<string | null>('entrypoints-next-cursor', () => null)
+  const loading = useState('entrypoints-loading', () => false)
+  const error = useState<string | null>('entrypoints-error', () => null)
 
   async function list(query: EntrypointListQuery = {}) {
     const params = new URLSearchParams()
@@ -18,6 +24,25 @@ export function useEntrypoints() {
     return apiFetch<EntrypointListResponse>(`/api/v1/entrypoints${qs ? `?${qs}` : ''}`)
   }
 
+  async function refresh(query: EntrypointListQuery = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await list({ ...query, page_size: query.page_size ?? DEFAULT_PAGE_SIZE })
+      items.value = res.items || []
+      totalCount.value = res.total_count ?? 0
+      nextCursor.value = res.next_cursor || null
+      return res
+    }
+    catch (e: unknown) {
+      error.value = e instanceof Error ? e.message : 'failed to load entrypoints'
+      throw e
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
   async function get(name: string) {
     return apiFetch<Entrypoint>(`/api/v1/entrypoints/${encodeURIComponent(name)}`)
   }
@@ -29,5 +54,23 @@ export function useEntrypoints() {
     })
   }
 
-  return { list, get, apply }
+  async function remove(name: string) {
+    await apiFetch(`/api/v1/entrypoints/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  return {
+    items,
+    totalCount,
+    nextCursor,
+    loading,
+    error,
+    pageSize: DEFAULT_PAGE_SIZE,
+    list,
+    refresh,
+    get,
+    apply,
+    remove,
+  }
 }
