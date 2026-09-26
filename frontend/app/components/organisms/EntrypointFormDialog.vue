@@ -27,6 +27,8 @@ const formError = ref('')
 const saving = ref(false)
 const flows = ref<Flow[]>([])
 const flowsLoading = ref(false)
+const listenClash = ref<string | null>(null)
+let listenCheckTimer: ReturnType<typeof setTimeout> | null = null
 
 const dialogTitle = computed(() => (props.mode === 'edit' ? 'Edit Entrypoint' : 'Add Entrypoint'))
 const modeBadge = computed(() => (props.mode === 'edit' ? 'Edit' : 'Create'))
@@ -60,6 +62,7 @@ watch(
   async () => {
     if (!props.open) return
     formError.value = ''
+    listenClash.value = null
     saving.value = false
     if (props.mode === 'edit' && props.initial) {
       name.value = props.initial.id
@@ -78,8 +81,20 @@ watch(
       flowId.value = props.defaultFlowId || ''
     }
     await loadFlows()
+    await checkListenClash()
   },
   { immediate: true },
+)
+
+watch(
+  () => [host.value, port.value, protocol.value, name.value] as const,
+  () => {
+    if (!props.open) return
+    if (listenCheckTimer) clearTimeout(listenCheckTimer)
+    listenCheckTimer = setTimeout(() => {
+      checkListenClash().catch(() => {})
+    }, 300)
+  },
 )
 
 async function loadFlows() {
@@ -93,6 +108,36 @@ async function loadFlows() {
   }
   finally {
     flowsLoading.value = false
+  }
+}
+
+/**
+ * CP does not reject duplicate host:port; DP bind fails later.
+ * Warn in the form when another entrypoint already uses the same listen tuple.
+ */
+async function checkListenClash() {
+  listenClash.value = null
+  const h = host.value.trim()
+  const p = Number(port.value)
+  if (!h || !Number.isFinite(p) || p < 1 || p > 65535) return
+
+  try {
+    const res = await apiFetch<{ items: Entrypoint[] }>(
+      `/api/v1/entrypoints?host=${encodeURIComponent(h)}&page_size=100`,
+    )
+    const self = props.mode === 'edit' ? props.initial?.id : undefined
+    const clash = (res.items || []).find(ep =>
+      ep.id !== self
+      && ep.host === h
+      && ep.port === Math.floor(p)
+      && (ep.protocol || 'http') === protocol.value,
+    )
+    if (clash) {
+      listenClash.value = `Listen ${protocol.value}://${h}:${Math.floor(p)} is already used by entrypoint “${clash.id}” (flow ${clash.flow_id}). Control Plane allows this, but the data plane will fail to bind the socket.`
+    }
+  }
+  catch {
+    // non-blocking
   }
 }
 
@@ -124,6 +169,12 @@ function buildBody(): EntrypointApplyRequest {
 
 async function onSave() {
   formError.value = ''
+  await checkListenClash()
+  if (listenClash.value) {
+    formError.value = listenClash.value
+    useAppToast().error('Listen address already in use')
+    return
+  }
   saving.value = true
   try {
     const ep = await apply(buildBody())
@@ -384,7 +435,22 @@ function flowOptionLabel(f: Flow) {
             </div>
           </div>
 
-          <p v-if="formError" class="text-error text-sm" role="alert">
+          <div
+            v-if="listenClash"
+            class="flex items-start gap-2.5 text-sm text-amber-100/95 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3.5 py-2.5"
+            role="status"
+          >
+            <svg class="w-4 h-4 mt-0.5 shrink-0 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" stroke-linecap="round" />
+              <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+            </svg>
+            <p class="leading-relaxed">
+              {{ listenClash }}
+            </p>
+          </div>
+
+          <p v-if="formError && formError !== listenClash" class="text-error text-sm" role="alert">
             {{ formError }}
           </p>
         </div>
@@ -408,7 +474,7 @@ function flowOptionLabel(f: Flow) {
             <button
               type="button"
               class="bg-gradient-to-br from-primary to-primary-container text-on-primary-container font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-primary/10 disabled:opacity-60 flex items-center gap-2"
-              :disabled="saving"
+              :disabled="saving || !!listenClash"
               @click="onSave"
             >
               <svg v-if="!saving" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">

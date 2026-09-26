@@ -9,7 +9,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  saved: []
+  saved: [balancer: { id: string }]
 }>()
 
 const { apply } = useBalancers()
@@ -122,9 +122,9 @@ async function onSave() {
   saving.value = true
   try {
     const body = buildBody()
-    await apply(body)
+    const balancer = await apply(body)
     useAppToast().success(props.mode === 'edit' ? 'Load balancer updated' : 'Load balancer created')
-    emit('saved')
+    emit('saved', { id: balancer.id })
     emit('close')
   }
   catch (e: unknown) {

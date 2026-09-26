@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  saved: []
+  saved: [router: { id: string }]
 }>()
 
 const MATCH_TYPES: MatchType[] = [
@@ -275,9 +275,10 @@ async function onSave() {
   formError.value = ''
   saving.value = true
   try {
-    await apply(buildBody())
+    const body = buildBody()
+    const router = await apply(body)
     useAppToast().success(props.mode === 'edit' ? 'Router updated' : 'Router created')
-    emit('saved')
+    emit('saved', { id: router.id })
     emit('close')
   }
   catch (e: unknown) {

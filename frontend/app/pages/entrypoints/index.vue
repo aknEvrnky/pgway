@@ -403,7 +403,7 @@ async function confirmDelete() {
           Entrypoint Lifecycle &amp; Ingress Binding
         </p>
         <p>
-          Each entrypoint binds a network socket (host:port) to an existing Flow. Deleting an entrypoint stops listening on that address; the underlying Flow remains intact. Duplicate listen addresses on the same host are rejected.
+          Each entrypoint binds a network socket (host:port) to an existing Flow. Deleting an entrypoint stops listening on that address; the underlying Flow remains intact. Prefer unique listen addresses — the Control Plane does not reject duplicates, but the data plane will fail to bind a second socket on the same host:port.
         </p>
       </div>
     </div>

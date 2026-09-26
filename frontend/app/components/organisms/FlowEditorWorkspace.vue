@@ -89,8 +89,10 @@ function flowDirtyKey(id?: string) {
 
 function syncFlowDirtyApply() {
   if (!bundle.value) return
-  const flow = bundle.value.flow
-  markDirty(flowDirtyKey(flow.id), 'Flow', flow.id || '__draft__', async () => {
+  const flowId = bundle.value.flow.id
+  markDirty(flowDirtyKey(flowId), 'Flow', flowId || '__draft__', async () => {
+    const flow = bundle.value?.flow
+    if (!flow) throw new Error('flow bundle missing')
     const err = validateFlowForStore(flow)
     if (err) throw new Error(err)
     await applyFlow({
@@ -177,6 +179,29 @@ function patchFlow(patch: Partial<Pick<Flow, 'router_id' | 'balancer_id'>>) {
   bundle.value = { ...bundle.value, flow }
   syncFlowDirtyApply()
   reloadAfterLocalPatch().catch(() => {})
+}
+
+function unbindRouter() {
+  if (!bundle.value?.flow.router_id) return
+  const wasSelected = selectedKind.value === 'router'
+  patchFlow({ router_id: undefined })
+  toast.info('Router unbound — Deploy to save flow')
+  if (wasSelected) {
+    selectedKind.value = 'flow'
+    selectedId.value = bundle.value?.flow.id || '__draft__'
+  }
+}
+
+function unbindBalancer() {
+  if (!bundle.value?.flow.balancer_id) return
+  const unboundId = bundle.value.flow.balancer_id
+  const wasSelected = selectedKind.value === 'balancer' && selectedId.value === unboundId
+  patchFlow({ balancer_id: undefined })
+  toast.info('Balancer unbound — Deploy to save flow')
+  if (wasSelected) {
+    selectedKind.value = 'flow'
+    selectedId.value = bundle.value?.flow.id || '__draft__'
+  }
 }
 
 function openAttach(kind: FlowGraphKind) {
@@ -431,8 +456,23 @@ async function reloadAfterLocalPatch() {
   }
 }
 
-async function onResourceSaved() {
+async function onResourceSaved(resource?: { id: string }) {
+  const kind = formKind.value
+  const mode = formMode.value
   formOpen.value = false
+
+  // Creating router/balancer from the editor should wire the flow binding.
+  if (mode === 'create' && resource?.id && kind === 'router') {
+    patchFlow({ router_id: resource.id })
+    toast.info(`Router ${resource.id} bound — Deploy to save flow`)
+    return
+  }
+  if (mode === 'create' && resource?.id && kind === 'balancer') {
+    patchFlow({ balancer_id: resource.id })
+    toast.info(`Balancer ${resource.id} bound — Deploy to save flow`)
+    return
+  }
+
   if (isDraft.value || dirty.value.size) await reloadAfterLocalPatch()
   else await reload()
 }
@@ -656,6 +696,8 @@ async function confirmDetachEntrypoint() {
       @patch-flow-name="patchFlowName"
       @edit="openEdit"
       @detach-entrypoint="openDetachEntrypoint"
+      @unbind-router="unbindRouter"
+      @unbind-balancer="unbindBalancer"
       @deploy="deploy"
     />
 

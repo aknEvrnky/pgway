@@ -20,6 +20,8 @@ const emit = defineEmits<{
   patchFlowName: [name: string]
   edit: [kind: FlowGraphKind]
   detachEntrypoint: []
+  unbindRouter: []
+  unbindBalancer: []
   deploy: []
 }>()
 
@@ -43,6 +45,25 @@ const selectedResource = computed(() => {
 
 const flowDraft = computed(() => props.bundle?.flow)
 
+const isFlowBoundRouter = computed(() =>
+  !!(flowDraft.value?.router_id
+    && props.selectedKind === 'router'
+    && props.selectedId === flowDraft.value.router_id),
+)
+
+const isFlowBoundBalancer = computed(() =>
+  !!(flowDraft.value?.balancer_id
+    && props.selectedKind === 'balancer'
+    && props.selectedId === flowDraft.value.balancer_id),
+)
+
+/** Balancer appears via a router rule, not as flow.balancer_id. */
+const balancerViaRouterOnly = computed(() => {
+  if (props.selectedKind !== 'balancer' || !props.selectedId) return false
+  if (flowDraft.value?.balancer_id === props.selectedId) return false
+  return !!flowDraft.value?.router_id
+})
+
 const kindLabel = computed(() => {
   const k = props.selectedKind
   if (!k) return ''
@@ -57,13 +78,15 @@ const storeError = computed(() => {
 
 const canDeploy = computed(() => {
   if (props.deploying) return false
-  if (props.draft) return !storeError.value
+  if (storeError.value) return false
+  if (props.draft) return true
   return props.dirtyCount > 0
 })
 
 const deployLabel = computed(() => {
   if (props.deploying) return props.draft ? 'Creating…' : 'Deploying…'
-  if (props.draft) return storeError.value ? 'Complete required fields' : 'Create Flow'
+  if (storeError.value) return 'Complete required fields'
+  if (props.draft) return 'Create Flow'
   if (props.dirtyCount) return `Deploy Changes (${props.dirtyCount})`
   return 'No Changes'
 })
@@ -163,7 +186,17 @@ function poolSelectorPairs(p: Pool): [string, string][] {
           </p>
 
           <div class="space-y-1.5">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Router ID</label>
+            <div class="flex items-center justify-between gap-2">
+              <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Router ID</label>
+              <button
+                v-if="flowDraft.router_id"
+                type="button"
+                class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-error"
+                @click="emit('unbindRouter')"
+              >
+                Clear
+              </button>
+            </div>
             <input
               :value="flowDraft.router_id || ''"
               type="text"
@@ -173,7 +206,17 @@ function poolSelectorPairs(p: Pool): [string, string][] {
             >
           </div>
           <div class="space-y-1.5">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Balancer ID</label>
+            <div class="flex items-center justify-between gap-2">
+              <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Balancer ID</label>
+              <button
+                v-if="flowDraft.balancer_id"
+                type="button"
+                class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant hover:text-error"
+                @click="emit('unbindBalancer')"
+              >
+                Clear
+              </button>
+            </div>
             <input
               :value="flowDraft.balancer_id || ''"
               type="text"
@@ -183,7 +226,7 @@ function poolSelectorPairs(p: Pool): [string, string][] {
             >
           </div>
 
-          <p v-if="draft && storeError" class="text-[11px] text-amber-200/90">
+          <p v-if="storeError" class="text-[11px] text-amber-200/90">
             {{ storeError }}
           </p>
         </section>
@@ -242,6 +285,18 @@ function poolSelectorPairs(p: Pool): [string, string][] {
             <p v-else class="text-[11px] text-on-surface-variant">
               No rules yet.
             </p>
+            <div v-if="isFlowBoundRouter" class="pt-2 space-y-2">
+              <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                Unbind clears <span class="font-mono">flow.router_id</span>. The router resource is kept.
+              </p>
+              <button
+                type="button"
+                class="w-full text-sm font-bold text-on-surface-variant bg-surface-container-highest/40 hover:bg-error-container/25 hover:text-error border border-outline-variant/25 rounded-xl px-4 py-2.5 transition-colors"
+                @click="emit('unbindRouter')"
+              >
+                Unbind from flow
+              </button>
+            </div>
           </template>
 
           <template v-else-if="selectedKind === 'balancer'">
@@ -250,6 +305,21 @@ function poolSelectorPairs(p: Pool): [string, string][] {
             </p>
             <p class="text-[11px] font-mono text-on-surface-variant">
               pool_id={{ (selectedResource as LoadBalancer).pool_id }}
+            </p>
+            <div v-if="isFlowBoundBalancer" class="pt-2 space-y-2">
+              <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                Unbind clears <span class="font-mono">flow.balancer_id</span>. The balancer resource is kept.
+              </p>
+              <button
+                type="button"
+                class="w-full text-sm font-bold text-on-surface-variant bg-surface-container-highest/40 hover:bg-error-container/25 hover:text-error border border-outline-variant/25 rounded-xl px-4 py-2.5 transition-colors"
+                @click="emit('unbindBalancer')"
+              >
+                Unbind from flow
+              </button>
+            </div>
+            <p v-else-if="balancerViaRouterOnly" class="text-[11px] text-on-surface-variant pt-1">
+              Bound via router rules — unbind by editing the router or clearing flow.router_id.
             </p>
           </template>
 
