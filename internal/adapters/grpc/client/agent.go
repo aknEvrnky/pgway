@@ -33,7 +33,7 @@ func (c *Client) Register(ctx context.Context, regToken string, agent domain.Age
 		},
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, "", mapAgentAuth(err)
 	}
 
 	return &domain.Agent{Id: resp.AgentId}, resp.AgentToken, nil
@@ -61,7 +61,6 @@ func mapAgentAuth(err error) error {
 	}
 	return err
 }
-
 
 func (c *Client) ListAgents(ctx context.Context, params domain.ListParams, filter domain.AgentFilter) (domain.ListResult[domain.Agent], error) {
 	resp, err := c.agent.ListAgents(ctx, &controlplanev1.ListAgentsRequest{
