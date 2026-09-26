@@ -10,6 +10,7 @@ const props = defineProps<{
     subtitle?: string
     resourceId: string
     dirty?: boolean
+    sourceHandles?: number
   }
 }>()
 
@@ -24,11 +25,24 @@ const kindLabel: Record<string, string> = {
 
 const style = computed(() => flowNodeInline(props.data.kind))
 const accent = computed(() => FLOW_NODE_COLORS[props.data.kind] || '#94a3b8')
+
+const sourceHandleIds = computed(() => {
+  const n = props.data.sourceHandles
+  if (!n || n <= 1) return [null] as (string | null)[]
+  return Array.from({ length: n }, (_, i) => `out-${i}`)
+})
+
+function sourceHandleTop(index: number, total: number): string {
+  if (total <= 1) return '50%'
+  // Spread handles between ~22% and ~78% of node height.
+  const t = 22 + (index / (total - 1)) * 56
+  return `${t}%`
+}
 </script>
 
 <template>
   <div
-    class="min-w-[150px] rounded-xl border px-3 py-2.5 shadow-lg text-left"
+    class="w-[200px] rounded-xl border px-3 py-2.5 shadow-lg text-left box-border relative"
     :class="data.dirty ? 'ring-2 ring-amber-400/60' : ''"
     :style="{
       borderColor: style.borderColor,
@@ -54,10 +68,16 @@ const accent = computed(() => FLOW_NODE_COLORS[props.data.kind] || '#94a3b8')
       {{ data.subtitle }}
     </p>
     <Handle
+      v-for="(hid, i) in sourceHandleIds"
+      :id="hid ?? undefined"
+      :key="hid ?? 'out'"
       type="source"
       :position="Position.Right"
       class="!w-2 !h-2 !border-0"
-      :style="{ backgroundColor: accent }"
+      :style="{
+        backgroundColor: accent,
+        top: sourceHandleTop(i, sourceHandleIds.length),
+      }"
     />
   </div>
 </template>
