@@ -3,20 +3,61 @@ package rest
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 )
 
+type listPoolsResponse struct {
+	Items      []*domain.Pool `json:"items"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+	TotalCount int            `json:"total_count"`
+}
+
 func (a *Adapter) listPools(w http.ResponseWriter, r *http.Request) {
-	result, err := a.cp.ListPools(r.Context(), domain.ListParams{}, domain.PoolFilter{})
+	q := r.URL.Query()
+
+	poolType := q.Get("type")
+	if poolType != "" && poolType != string(domain.PoolTypeStatic) && poolType != string(domain.PoolTypeDynamic) {
+		writeError(w, http.StatusBadRequest, `type must be "static" or "dynamic"`)
+		return
+	}
+
+	pageSize := defaultListPageSize
+	if raw := q.Get("page_size"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeError(w, http.StatusBadRequest, "page_size must be a positive integer")
+			return
+		}
+		pageSize = n
+	}
+
+	cursor, err := decodePageToken(q.Get("page_token"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid page_token")
+		return
+	}
+
+	result, err := a.cp.ListPools(r.Context(), domain.ListParams{
+		PageSize: pageSize,
+		Cursor:   cursor,
+	}, domain.PoolFilter{
+		Search: q.Get("search"),
+		Type:   poolType,
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, result.Items)
+	writeJSON(w, http.StatusOK, listPoolsResponse{
+		Items:      result.Items,
+		NextCursor: encodePageToken(result.NextCursor),
+		TotalCount: result.TotalCount,
+	})
 }
 
 func (a *Adapter) getPool(w http.ResponseWriter, r *http.Request) {

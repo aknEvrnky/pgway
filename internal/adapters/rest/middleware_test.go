@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
@@ -40,7 +41,9 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 
 type fakeCP struct {
 	proxy     *domain.Proxy
+	proxies   []*domain.Proxy
 	pool      *domain.Pool
+	pools     []*domain.Pool
 	deleteErr error
 	applyErr  error
 }
@@ -56,11 +59,49 @@ func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error)
 	}
 	return nil, fmt.Errorf("proxy %q not found", name)
 }
-func (f *fakeCP) ListProxies(_ context.Context, _ domain.ListParams, _ domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
-	if f.proxy == nil {
-		return domain.ListResult[domain.Proxy]{}, nil
+func (f *fakeCP) ListProxies(_ context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
+	all := f.proxies
+	if len(all) == 0 && f.proxy != nil {
+		all = []*domain.Proxy{f.proxy}
 	}
-	return domain.ListResult[domain.Proxy]{Items: []*domain.Proxy{f.proxy}}, nil
+
+	matched := make([]*domain.Proxy, 0, len(all))
+	for _, p := range all {
+		if filter.Protocol != "" && string(p.Protocol) != filter.Protocol {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(p.Id), q) && !strings.Contains(strings.ToLower(p.Host), q) {
+				continue
+			}
+		}
+		matched = append(matched, p)
+	}
+
+	result := domain.ListResult[domain.Proxy]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, p := range matched {
+			if p.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
 func (f *fakeCP) ApplyProxyV1(_ context.Context, _ schema.Metadata, _ proxyv1.ProxySpecV1) (*domain.Proxy, error) {
 	if f.applyErr != nil {
@@ -79,11 +120,49 @@ func (f *fakeCP) GetPool(_ context.Context, name string) (*domain.Pool, error) {
 	}
 	return nil, fmt.Errorf("pool %q not found", name)
 }
-func (f *fakeCP) ListPools(_ context.Context, _ domain.ListParams, _ domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
-	if f.pool == nil {
-		return domain.ListResult[domain.Pool]{}, nil
+func (f *fakeCP) ListPools(_ context.Context, params domain.ListParams, filter domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
+	all := f.pools
+	if len(all) == 0 && f.pool != nil {
+		all = []*domain.Pool{f.pool}
 	}
-	return domain.ListResult[domain.Pool]{Items: []*domain.Pool{f.pool}}, nil
+
+	matched := make([]*domain.Pool, 0, len(all))
+	for _, p := range all {
+		if filter.Type != "" && string(p.Type) != filter.Type {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(p.Id), q) && !strings.Contains(strings.ToLower(p.Title), q) {
+				continue
+			}
+		}
+		matched = append(matched, p)
+	}
+
+	result := domain.ListResult[domain.Pool]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, p := range matched {
+			if p.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
 func (f *fakeCP) ApplyPoolV1(_ context.Context, _ schema.Metadata, _ poolv1.PoolSpecV1) (*domain.Pool, error) {
 	if f.applyErr != nil {

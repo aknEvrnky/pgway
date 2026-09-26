@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type listPoolsEnvelope struct {
+	Items      []*domain.Pool `json:"items"`
+	NextCursor string         `json:"next_cursor"`
+	TotalCount int            `json:"total_count"`
+}
 
 func TestListPools_OK(t *testing.T) {
 	cp := &fakeCP{
@@ -33,10 +40,85 @@ func TestListPools_OK(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	var got []*domain.Pool
+	var got listPoolsEnvelope
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Len(t, got, 1)
-	assert.Equal(t, "static-1", got[0].Id)
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, "static-1", got.Items[0].Id)
+	assert.Equal(t, 1, got.TotalCount)
+	assert.Empty(t, got.NextCursor)
+}
+
+func TestListPools_FilterByType(t *testing.T) {
+	cp := &fakeCP{
+		pools: []*domain.Pool{
+			{Id: "s1", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}},
+			{Id: "d1", Type: domain.PoolTypeDynamic, Selector: &domain.LabelSelector{Allow: map[string]string{"k": "v"}}},
+		},
+	}
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?type=dynamic", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var got listPoolsEnvelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Len(t, got.Items, 1)
+	assert.Equal(t, "d1", got.Items[0].Id)
+	assert.Equal(t, 1, got.TotalCount)
+}
+
+func TestListPools_InvalidType(t *testing.T) {
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?type=weighted", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.Contains(t, rec.Body.String(), "static")
+}
+
+func TestListPools_Pagination(t *testing.T) {
+	cp := &fakeCP{
+		pools: []*domain.Pool{
+			{Id: "a", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}},
+			{Id: "b", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}},
+			{Id: "c", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}},
+		},
+	}
+	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?page_size=2", nil)
+	req.Header.Set("Authorization", "Bearer ok")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	var page1 listPoolsEnvelope
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &page1))
+	require.Len(t, page1.Items, 2)
+	assert.Equal(t, 3, page1.TotalCount)
+	require.NotEmpty(t, page1.NextCursor)
+
+	raw, err := base64.RawURLEncoding.DecodeString(page1.NextCursor)
+	require.NoError(t, err)
+	assert.Equal(t, "c", string(raw))
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/v1/pools?page_size=2&page_token="+page1.NextCursor, nil)
+	req2.Header.Set("Authorization", "Bearer ok")
+	rec2 := httptest.NewRecorder()
+	h.ServeHTTP(rec2, req2)
+
+	assert.Equal(t, http.StatusOK, rec2.Code)
+	var page2 listPoolsEnvelope
+	require.NoError(t, json.Unmarshal(rec2.Body.Bytes(), &page2))
+	require.Len(t, page2.Items, 1)
+	assert.Equal(t, "c", page2.Items[0].Id)
+	assert.Empty(t, page2.NextCursor)
 }
 
 func TestApplyPool_StaticOK(t *testing.T) {

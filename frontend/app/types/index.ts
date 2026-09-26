@@ -11,6 +11,19 @@ export interface Proxy {
 
 export type ProxyProtocol = Proxy['protocol']
 
+export interface ProxyListQuery {
+  search?: string
+  protocol?: ProxyProtocol | ''
+  page_size?: number
+  page_token?: string
+}
+
+export interface ProxyListResponse {
+  items: Proxy[]
+  next_cursor?: string
+  total_count: number
+}
+
 export interface ProxyApplyRequest {
   metadata: {
     name: string
@@ -42,6 +55,19 @@ export interface Pool {
 }
 
 export type PoolType = Pool['type']
+
+export interface PoolListQuery {
+  search?: string
+  type?: PoolType | ''
+  page_size?: number
+  page_token?: string
+}
+
+export interface PoolListResponse {
+  items: Pool[]
+  next_cursor?: string
+  total_count: number
+}
 
 export interface PoolApplyRequest {
   metadata: {

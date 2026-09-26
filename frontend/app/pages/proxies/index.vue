@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { Proxy } from '~/types'
+import type { Proxy, ProxyProtocol } from '~/types'
 
-const { items, loading, error, refresh, remove } = useProxies()
+const { items, totalCount, nextCursor, loading, error, pageSize, refresh, remove } = useProxies()
+const toast = useToast()
 
 const search = ref('')
+const protocolFilter = ref<ProxyProtocol | ''>('')
+const pageToken = ref<string | undefined>(undefined)
+const cursorStack = ref<string[]>([])
+
 const formOpen = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const editing = ref<Proxy | null>(null)
@@ -13,27 +18,66 @@ const deleting = ref<Proxy | null>(null)
 const deleteError = ref<string | null>(null)
 const deleteLoading = ref(false)
 
+const pageIndex = computed(() => cursorStack.value.length)
+const showingFrom = computed(() => {
+  if (!totalCount.value || !items.value.length) return 0
+  return pageIndex.value * pageSize + 1
+})
+const showingTo = computed(() => {
+  if (!items.value.length) return 0
+  return pageIndex.value * pageSize + items.value.length
+})
+const canPrev = computed(() => pageIndex.value > 0)
+const canNext = computed(() => !!nextCursor.value)
+
+async function loadPage(token?: string) {
+  await refresh({
+    search: search.value,
+    protocol: protocolFilter.value,
+    page_size: pageSize,
+    page_token: token,
+  })
+}
+
+function resetToFirstPage() {
+  cursorStack.value = []
+  pageToken.value = undefined
+}
+
+async function reloadFirst() {
+  resetToFirstPage()
+  await loadPage(undefined)
+}
+
 onMounted(() => {
-  refresh().catch(() => {})
+  reloadFirst().catch(() => {})
 })
 
-const filtered = computed(() => {
-  const q = search.value.trim().toLowerCase()
-  if (!q) return items.value
-  return items.value.filter((p) => {
-    const labelBlob = Object.entries(p.labels || {})
-      .map(([k, v]) => `${k}:${v}`)
-      .join(' ')
-      .toLowerCase()
-    return (
-      p.id.toLowerCase().includes(q)
-      || p.host.toLowerCase().includes(q)
-      || p.protocol.toLowerCase().includes(q)
-      || `${p.host}:${p.port}`.includes(q)
-      || labelBlob.includes(q)
-    )
-  })
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+watch(search, () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    reloadFirst().catch(() => {})
+  }, 250)
 })
+
+watch(protocolFilter, () => {
+  reloadFirst().catch(() => {})
+})
+
+async function goNext() {
+  if (!nextCursor.value) return
+  cursorStack.value.push(pageToken.value || '')
+  pageToken.value = nextCursor.value
+  await loadPage(pageToken.value)
+}
+
+async function goPrev() {
+  if (!canPrev.value) return
+  const prev = cursorStack.value.pop()
+  pageToken.value = prev || undefined
+  await loadPage(pageToken.value)
+}
 
 function formatCreated(iso?: string) {
   if (!iso) return '—'
@@ -60,25 +104,30 @@ function openDelete(p: Proxy) {
   deleteOpen.value = true
 }
 
+async function onSaved() {
+  await reloadFirst().catch(() => {})
+}
+
 async function confirmDelete() {
   if (!deleting.value) return
   deleteLoading.value = true
   deleteError.value = null
   try {
-    await remove(deleting.value.id)
+    const name = deleting.value.id
+    await remove(name)
     deleteOpen.value = false
     deleting.value = null
+    toast.success(`Proxy "${name}" deleted`)
+    await reloadFirst()
   }
   catch (e: unknown) {
-    deleteError.value = e instanceof Error ? e.message : 'delete failed'
+    const msg = e instanceof Error ? e.message : 'delete failed'
+    deleteError.value = msg
+    toast.error(msg)
   }
   finally {
     deleteLoading.value = false
   }
-}
-
-async function onSaved() {
-  // refresh already done in apply; keep for clarity
 }
 </script>
 
@@ -89,9 +138,14 @@ async function onSaved() {
         <p class="text-xs font-bold uppercase tracking-widest text-primary mb-1">
           Resources
         </p>
-        <h2 class="text-3xl font-black tracking-tighter text-on-surface">
-          Proxies
-        </h2>
+        <div class="flex items-center gap-3">
+          <h2 class="text-3xl font-black tracking-tighter text-on-surface">
+            Proxies
+          </h2>
+          <span class="text-xs font-bold text-on-surface-variant bg-surface-container-highest border border-outline-variant/20 rounded-full min-w-7 h-7 px-1.5 inline-flex items-center justify-center">
+            {{ totalCount }}
+          </span>
+        </div>
         <p class="text-sm text-on-surface-variant mt-1 max-w-xl">
           Manage outbound upstream proxies, authentication credentials, and labels.
         </p>
@@ -109,17 +163,53 @@ async function onSaved() {
       </button>
     </section>
 
-    <div class="relative max-w-md">
-      <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="11" cy="11" r="8" />
-        <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
-      </svg>
-      <input
-        v-model="search"
-        type="search"
-        placeholder="Search by name, host, or label..."
-        class="w-full bg-surface-container-low border border-outline-variant/15 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none transition-all text-on-surface placeholder:text-outline/50"
-      >
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div class="relative flex-1 max-w-md">
+        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-outline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" />
+        </svg>
+        <input
+          v-model="search"
+          type="search"
+          placeholder="Search by name or host..."
+          class="w-full bg-surface-container-low border border-outline-variant/15 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none transition-all text-on-surface placeholder:text-outline/50"
+        >
+      </div>
+      <div class="grid grid-cols-4 gap-1 p-1 rounded-lg bg-surface-container-lowest border border-outline-variant/15 self-start">
+        <button
+          type="button"
+          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="protocolFilter === '' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="protocolFilter = ''"
+        >
+          All
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="protocolFilter === 'http' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="protocolFilter = 'http'"
+        >
+          HTTP
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="protocolFilter === 'https' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="protocolFilter = 'https'"
+        >
+          HTTPS
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-2 text-xs font-bold rounded-md transition-colors"
+          :class="protocolFilter === 'socks5' ? 'bg-surface-container-highest text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'"
+          @click="protocolFilter = 'socks5'"
+        >
+          SOCKS5
+        </button>
+      </div>
     </div>
 
     <p v-if="error" class="text-error text-sm" role="alert">
@@ -160,13 +250,13 @@ async function onSaved() {
                 Loading proxies…
               </td>
             </tr>
-            <tr v-else-if="!filtered.length">
+            <tr v-else-if="!items.length">
               <td colspan="7" class="px-6 py-12 text-center text-sm text-on-surface-variant">
-                {{ search ? 'No proxies match your search.' : 'No proxies yet. Add one to get started.' }}
+                {{ search || protocolFilter ? 'No proxies match your filters.' : 'No proxies yet. Add one to get started.' }}
               </td>
             </tr>
             <tr
-              v-for="p in filtered"
+              v-for="p in items"
               :key="p.id"
               class="border-b border-outline-variant/10 last:border-0 hover:bg-white/[0.02] transition-colors"
             >
@@ -237,6 +327,36 @@ async function onSaved() {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div
+        v-if="totalCount > 0"
+        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-t border-outline-variant/15"
+      >
+        <p class="text-xs text-on-surface-variant">
+          Showing {{ showingFrom }} to {{ showingTo }} of {{ totalCount }} proxies
+        </p>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-bold rounded-lg border border-outline-variant/20 text-on-surface-variant hover:text-on-surface hover:border-primary/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            :disabled="!canPrev || loading"
+            @click="goPrev"
+          >
+            Prev
+          </button>
+          <span class="text-xs font-bold text-on-surface-variant min-w-6 text-center">
+            {{ pageIndex + 1 }}
+          </span>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-bold rounded-lg border border-outline-variant/20 text-on-surface-variant hover:text-on-surface hover:border-primary/40 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            :disabled="!canNext || loading"
+            @click="goNext"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
 
