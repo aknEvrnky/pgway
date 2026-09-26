@@ -79,6 +79,36 @@ func main() {
 	}
 	defer cpClient.Close()
 
+	runErr := make(chan error, 2)
+
+	link := agenthost.NewLinkState(agenthost.LinkStateConfig{
+		Strategy:             cfg.Dataplane.CPDisconnectStrategy,
+		UnreachableThreshold: cfg.Dataplane.CPDisconnectUnreachableThreshold,
+		RecoverThreshold:     cfg.Dataplane.CPDisconnectRecoverThreshold,
+		Log:                  zap.L(),
+	})
+
+	// Probes start before bootstrap so liveness answers while CP is
+	// unreachable at startup; readiness stays bootstrap_pending until the
+	// first successful bootstrap.
+	gate := probes.NewReadyGate(probes.ReadyGateConfig{
+		Link:             link,
+		RequireGRPC:      false,
+		RequireBootstrap: true,
+	})
+	var probeAdapter *probes.Adapter
+	if cfg.Probes.Enabled {
+		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
+		go func() {
+			// Log at the source: main's select reads runErr only after
+			// bootstrap, which can wait forever while CP is down.
+			if err := probeAdapter.Run(); err != nil {
+				zap.L().Error("probes server failed", zap.Error(err))
+				runErr <- err
+			}
+		}()
+	}
+
 	agent := domain.Agent{
 		Id:      cfg.Agent.Name,
 		Version: "dev",
@@ -93,12 +123,14 @@ func main() {
 	}
 
 	store := agentstate.NewStore(cfg.Agent.StatePath)
-	boot, err := agenthost.BootstrapCredentials(
+	boot, err := agenthost.BootstrapCredentialsWithRetry(
 		context.Background(),
+		zap.L(),
 		store,
 		cfg.Agent.RegistrationToken,
 		agent,
 		cpClient,
+		agenthost.RetryOptions{},
 	)
 	if err != nil {
 		zap.L().Fatal("agent bootstrap", zap.Error(err))
@@ -109,16 +141,14 @@ func main() {
 	app := api.NewApplication(cpClient, cpClient, zap.L())
 	ctx := context.Background()
 
-	link := agenthost.NewLinkState(agenthost.LinkStateConfig{
-		Strategy:             cfg.Dataplane.CPDisconnectStrategy,
-		UnreachableThreshold: cfg.Dataplane.CPDisconnectUnreachableThreshold,
-		RecoverThreshold:     cfg.Dataplane.CPDisconnectRecoverThreshold,
-		Log:                  zap.L(),
-	})
-
-	if err := app.Bootstrap(ctx); err != nil {
+	if err := agenthost.RetryTransient(ctx, zap.L(), "initial snapshot",
+		func(c context.Context) error { return app.Bootstrap(c) },
+		agenthost.IsAuthRejected,
+		agenthost.RetryOptions{},
+	); err != nil {
 		zap.L().Fatal("bootstrap", zap.Error(err))
 	}
+	gate.MarkBootstrapped()
 
 	proxyTransport := net.NewAdapter(net.TransportConfig{
 		MaxIdleConns:        cfg.Proxy.MaxIdleConns,
@@ -133,15 +163,6 @@ func main() {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
-	gate := probes.NewReadyGate(probes.ReadyGateConfig{
-		Link:        link,
-		RequireGRPC: false,
-	})
-	var probeAdapter *probes.Adapter
-	if cfg.Probes.Enabled {
-		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
-	}
-
 	localBus := memory.NewPubSub(10)
 	eventConsumer := consumer.NewConsumer(zap.L(), localBus, consumer.CoalesceConfig{
 		Window:    cfg.Dataplane.EventCoalesceWindow,
@@ -151,7 +172,6 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	runErr := make(chan error, 2)
 	hbErr := make(chan error, 1)
 	watchErr := make(chan error, 1)
 	consumeErr := make(chan error, 1)
@@ -160,12 +180,6 @@ func main() {
 		zap.L().Info("gateway started")
 		runErr <- httpAdapter.Run(sigCtx)
 	}()
-
-	if probeAdapter != nil {
-		go func() {
-			runErr <- probeAdapter.Run()
-		}()
-	}
 
 	go func() {
 		hbErr <- agenthost.RunHeartbeat(sigCtx, zap.L(), cpClient, cfg.Agent.HeartbeatInterval, agenthost.HeartbeatOptions{

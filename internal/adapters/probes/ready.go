@@ -10,6 +10,7 @@ import (
 const (
 	ReasonOK                 = "ok"
 	ReasonShuttingDown       = "shutting_down"
+	ReasonBootstrapPending   = "bootstrap_pending"
 	ReasonStorageUnavailable = "storage_unavailable"
 	ReasonGRPCNotServing     = "grpc_not_serving"
 	ReasonCPUnreachable      = "cp_unreachable"
@@ -17,9 +18,10 @@ const (
 
 // ReadyGateConfig configures which readiness checks apply for a binary.
 type ReadyGateConfig struct {
-	Storage     ports.StoragePinger // nil = skip
-	Link        ports.CPLinkStatus  // nil = skip
-	RequireGRPC bool                // true for pgway / pgway-cp
+	Storage         ports.StoragePinger // nil = skip
+	Link            ports.CPLinkStatus  // nil = skip
+	RequireGRPC     bool                // true for pgway / pgway-cp
+	RequireBootstrap bool               // true for pgway-dp: not ready until MarkBootstrapped
 }
 
 // ReadyGate evaluates process readiness for /readyz.
@@ -27,6 +29,9 @@ type ReadyGate struct {
 	storage     ports.StoragePinger
 	link        ports.CPLinkStatus
 	requireGRPC bool
+
+	requireBootstrap bool
+	bootstrapped     bool
 
 	mu           sync.Mutex
 	shuttingDown bool
@@ -36,9 +41,10 @@ type ReadyGate struct {
 // NewReadyGate builds a gate; starts not-ready when RequireGRPC is set.
 func NewReadyGate(cfg ReadyGateConfig) *ReadyGate {
 	return &ReadyGate{
-		storage:     cfg.Storage,
-		link:        cfg.Link,
-		requireGRPC: cfg.RequireGRPC,
+		storage:          cfg.Storage,
+		link:             cfg.Link,
+		requireGRPC:      cfg.RequireGRPC,
+		requireBootstrap: cfg.RequireBootstrap,
 	}
 }
 
@@ -56,18 +62,30 @@ func (g *ReadyGate) MarkGRPCServing(serving bool) {
 	g.grpcServing = serving
 }
 
+// MarkBootstrapped flips readiness past the bootstrap_pending latch.
+func (g *ReadyGate) MarkBootstrapped() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.bootstrapped = true
+}
+
 // Check returns ready=true with reason "ok", or ready=false with a short reason.
 func (g *ReadyGate) Check(ctx context.Context) (ready bool, reason string) {
 	g.mu.Lock()
 	shuttingDown := g.shuttingDown
 	grpcServing := g.grpcServing
 	requireGRPC := g.requireGRPC
+	requireBootstrap := g.requireBootstrap
+	bootstrapped := g.bootstrapped
 	storage := g.storage
 	link := g.link
 	g.mu.Unlock()
 
 	if shuttingDown {
 		return false, ReasonShuttingDown
+	}
+	if requireBootstrap && !bootstrapped {
+		return false, ReasonBootstrapPending
 	}
 	if storage != nil {
 		if err := storage.Ping(ctx); err != nil {

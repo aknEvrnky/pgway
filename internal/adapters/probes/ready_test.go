@@ -84,3 +84,30 @@ func TestReadyGate_CPDegradedIsReady(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, ReasonOK, reason)
 }
+
+func TestReadyGate_BootstrapPendingBeforeMark(t *testing.T) {
+	g := NewReadyGate(ReadyGateConfig{RequireBootstrap: true})
+	ok, reason := g.Check(context.Background())
+	assert.False(t, ok)
+	assert.Equal(t, ReasonBootstrapPending, reason)
+
+	g.MarkBootstrapped()
+	ok, reason = g.Check(context.Background())
+	assert.True(t, ok)
+	assert.Equal(t, ReasonOK, reason)
+}
+
+func TestReadyGate_BootstrapPendingBeatsHealthyLink(t *testing.T) {
+	link := staticLink{snap: ports.CPLinkSnapshot{State: ports.CPLinkConnected}}
+	g := NewReadyGate(ReadyGateConfig{RequireBootstrap: true, Link: link})
+	ok, reason := g.Check(context.Background())
+	assert.False(t, ok)
+	assert.Equal(t, ReasonBootstrapPending, reason)
+}
+
+func TestReadyGate_NoBootstrapRequirementUnaffected(t *testing.T) {
+	g := NewReadyGate(ReadyGateConfig{})
+	ok, reason := g.Check(context.Background())
+	assert.True(t, ok)
+	assert.Equal(t, ReasonOK, reason)
+}
