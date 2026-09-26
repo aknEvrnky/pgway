@@ -2,6 +2,7 @@ package agenthost
 
 import (
 	"context"
+	"errors"
 	"io/fs"
 	"testing"
 
@@ -12,8 +13,9 @@ import (
 )
 
 type memStore struct {
-	creds *ports.AgentHostCredentials
-	err   error
+	creds        *ports.AgentHostCredentials
+	err          error
+	saveFailures int
 }
 
 func (m *memStore) Load(context.Context) (*ports.AgentHostCredentials, error) {
@@ -27,6 +29,10 @@ func (m *memStore) Load(context.Context) (*ports.AgentHostCredentials, error) {
 }
 
 func (m *memStore) Save(_ context.Context, creds *ports.AgentHostCredentials) error {
+	if m.saveFailures > 0 {
+		m.saveFailures--
+		return errors.New("disk full")
+	}
 	m.creds = creds
 	return nil
 }

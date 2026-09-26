@@ -42,3 +42,13 @@ func TestRegisterLeavesTransientErrorsUntouched(t *testing.T) {
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, ports.ErrAgentUnauthenticated)
 }
+
+func TestRegisterMapsAlreadyExists(t *testing.T) {
+	c := &Client{}
+	c.agent = &stubAgentService{registerErr: status.Error(codes.AlreadyExists, "agent name taken")}
+
+	_, _, err := c.Register(context.Background(), "tok", domain.Agent{Id: "edge-1"})
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, domain.ErrAgentExists)
+}

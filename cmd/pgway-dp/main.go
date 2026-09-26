@@ -100,7 +100,12 @@ func main() {
 	if cfg.Probes.Enabled {
 		probeAdapter = probes.New(cfg.Probes.ListenAddr, gate)
 		go func() {
-			runErr <- probeAdapter.Run()
+			// Log at the source: main's select reads runErr only after
+			// bootstrap, which can wait forever while CP is down.
+			if err := probeAdapter.Run(); err != nil {
+				zap.L().Error("probes server failed", zap.Error(err))
+				runErr <- err
+			}
 		}()
 	}
 

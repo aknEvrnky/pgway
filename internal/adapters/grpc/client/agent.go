@@ -33,10 +33,22 @@ func (c *Client) Register(ctx context.Context, regToken string, agent domain.Age
 		},
 	})
 	if err != nil {
-		return nil, "", mapAgentAuth(err)
+		return nil, "", mapAgentRegister(err)
 	}
 
 	return &domain.Agent{Id: resp.AgentId}, resp.AgentToken, nil
+}
+
+// mapAgentRegister adds terminal registration outcomes on top of the auth
+// mapping: a taken agent name can never succeed by retrying.
+func mapAgentRegister(err error) error {
+	if err == nil {
+		return nil
+	}
+	if status.Code(err) == codes.AlreadyExists {
+		return fmt.Errorf("%w: %w", domain.ErrAgentExists, err)
+	}
+	return mapAgentAuth(err)
 }
 
 func (c *Client) Heartbeat(ctx context.Context) (time.Time, error) {

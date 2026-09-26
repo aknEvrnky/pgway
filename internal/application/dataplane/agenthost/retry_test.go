@@ -83,6 +83,7 @@ func TestIsPermanentBootstrapError(t *testing.T) {
 		{"config", fmt.Errorf("wrap: %w", ErrBootstrapConfig), true},
 		{"state", fmt.Errorf("wrap: %w", ErrBootstrapState), true},
 		{"auth", fmt.Errorf("register agent: %w: boom", ports.ErrAgentUnauthenticated), true},
+		{"already_exists", fmt.Errorf("register agent: %w: boom", domain.ErrAgentExists), true},
 		{"transient", errors.New("rpc error: connection refused"), false},
 	}
 	for _, tt := range tests {
@@ -90,6 +91,17 @@ func TestIsPermanentBootstrapError(t *testing.T) {
 			assert.Equal(t, tt.want, IsPermanentBootstrapError(tt.err))
 		})
 	}
+}
+
+func TestBootstrapCredentialsWithRetry_SaveFailureIsFatal(t *testing.T) {
+	store := &memStore{saveFailures: 1}
+	reg := &flakyRegistrar{}
+
+	_, err := BootstrapCredentialsWithRetry(context.Background(), nil, store, "reg", domain.Agent{Id: "edge-1"}, reg, fastRetry)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrBootstrapState)
+	assert.Equal(t, 1, reg.calls)
 }
 
 func TestRetryTransient_ContextCanceledDuringBackoff(t *testing.T) {
