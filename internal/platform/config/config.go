@@ -66,10 +66,19 @@ func (c GRPCConfig) DialTarget() string {
 type RestConfig struct {
 	// Enabled starts the REST API (dashboard backend; experimental).
 	// Default true for backward compatibility; disable when the dashboard
-	// is not used — the surface is experimental and auth is incomplete.
+	// is not used.
 	Enabled bool `mapstructure:"enabled"`
-	// ListenAddr is the REST API bind address.
+	// ListenAddr is the REST API bind address. Default is loopback-only.
 	ListenAddr string `mapstructure:"listen_addr"`
+	// CORSAllowOrigins lists browser Origins allowed for CORS. Empty means
+	// no cross-origin access (no Access-Control-Allow-Origin echo).
+	CORSAllowOrigins []string `mapstructure:"cors_allow_origins"`
+	// RateLimitRPS is the token-bucket refill rate for REST, applied per
+	// client IP before auth and per user after auth. Zero disables both.
+	RateLimitRPS float64 `mapstructure:"rate_limit_rps"`
+	// RateLimitBurst is the token-bucket capacity. Required >= 1 when
+	// RateLimitRPS is enabled.
+	RateLimitBurst int `mapstructure:"rate_limit_burst"`
 }
 
 // ProbesConfig controls the opt-in process liveness/readiness HTTP listener.
@@ -203,7 +212,10 @@ func Load(path string) error {
 	viper.SetDefault("grpc.rate_limit_rps", 100.0)
 	viper.SetDefault("grpc.rate_limit_burst", 200)
 	viper.SetDefault("rest.enabled", true)
-	viper.SetDefault("rest.listen_addr", ":8081")
+	viper.SetDefault("rest.listen_addr", "127.0.0.1:8081")
+	viper.SetDefault("rest.cors_allow_origins", []string{})
+	viper.SetDefault("rest.rate_limit_rps", 100.0)
+	viper.SetDefault("rest.rate_limit_burst", 200)
 	viper.SetDefault("probes.enabled", false)
 	viper.SetDefault("probes.listen_addr", ":8082")
 	viper.SetDefault("auth.token_ttl", 720*time.Hour)
@@ -271,6 +283,12 @@ func Load(path string) error {
 	}
 	if cfg.GRPC.RateLimitRPS > 0 && cfg.GRPC.RateLimitBurst < 1 {
 		return fmt.Errorf("grpc.rate_limit_burst must be >= 1 when grpc.rate_limit_rps is enabled")
+	}
+	if cfg.Rest.RateLimitRPS > 0 && cfg.Rest.RateLimitBurst < 1 {
+		return fmt.Errorf("rest.rate_limit_burst must be >= 1 when rest.rate_limit_rps is enabled")
+	}
+	if cfg.Rest.CORSAllowOrigins == nil {
+		cfg.Rest.CORSAllowOrigins = []string{}
 	}
 	if cfg.Proxy.MaxIdleConns < 0 {
 		return fmt.Errorf("proxy.max_idle_conns must be >= 0")

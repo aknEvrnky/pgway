@@ -9,8 +9,8 @@ import (
 )
 
 // Authenticator resolves bearer tokens to principals. It is the single
-// verification point shared by every transport (the gRPC interceptor today, a
-// REST middleware tomorrow). Issuance lives elsewhere: Service mints user
+// verification point shared by every transport (gRPC interceptors and the
+// REST management API). Issuance lives elsewhere: Service mints user
 // tokens, AgentCredentialService mints agent tokens.
 type Authenticator struct {
 	users  ports.UserRepositoryPort

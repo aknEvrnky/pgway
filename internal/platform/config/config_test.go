@@ -42,8 +42,11 @@ func defaultWant(host string) Config {
 			RateLimitBurst:    200,
 		},
 		Rest: RestConfig{
-			Enabled:    true,
-			ListenAddr: ":8081",
+			Enabled:          true,
+			ListenAddr:       "127.0.0.1:8081",
+			CORSAllowOrigins: []string{},
+			RateLimitRPS:     100,
+			RateLimitBurst:   200,
 		},
 		Probes: ProbesConfig{
 			Enabled:    false,
@@ -430,6 +433,20 @@ rate_limit_burst = 0
 `))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "grpc.rate_limit_burst")
+}
+
+func TestLoad_RestRateLimitBurstRequiredWhenEnabled(t *testing.T) {
+	viper.Reset()
+	err := Load(writeConfig(t, `
+[badger]
+path = "/data/pgway"
+
+[rest]
+rate_limit_rps = 10
+rate_limit_burst = 0
+`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rest.rate_limit_burst")
 }
 
 func TestLoad_EventCoalesceMaxBufferRequiredWhenEnabled(t *testing.T) {

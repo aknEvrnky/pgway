@@ -155,7 +155,7 @@ func main() {
 
 	var restAdapter *rest.Adapter
 	if cfg.Rest.Enabled {
-		restAdapter = rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+		restAdapter = rest.NewRestAdapter(cpService, authenticator, authService, cfg.Rest)
 	}
 
 	var probeAdapter *probes.Adapter

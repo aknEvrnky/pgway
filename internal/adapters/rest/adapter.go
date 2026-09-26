@@ -6,20 +6,29 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"
 )
 
 type Adapter struct {
-	cp     ports.ControlPlane
-	server *http.Server
+	cp            ports.ControlPlane
+	authenticator ports.TokenAuthenticator
+	authManager   ports.AuthManager
+	cfg           config.RestConfig
+	server        *http.Server
 }
 
-func NewRestAdapter(cp ports.ControlPlane, addr string) *Adapter {
-	a := &Adapter{cp: cp}
+func NewRestAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, cfg config.RestConfig) *Adapter {
+	a := &Adapter{
+		cp:            cp,
+		authenticator: authenticator,
+		authManager:   authManager,
+		cfg:           cfg,
+	}
 
 	a.server = &http.Server{
-		Addr:         addr,
+		Addr:         cfg.ListenAddr,
 		Handler:      a.routes(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 60 * time.Second,
@@ -27,6 +36,11 @@ func NewRestAdapter(cp ports.ControlPlane, addr string) *Adapter {
 	}
 
 	return a
+}
+
+// Handler exposes the HTTP handler for tests.
+func (a *Adapter) Handler() http.Handler {
+	return a.server.Handler
 }
 
 func (a *Adapter) Run(ctx context.Context) error {
