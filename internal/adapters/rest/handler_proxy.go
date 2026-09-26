@@ -16,7 +16,7 @@ func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, result.Items)
+	writeJSON(w, http.StatusOK, redactProxies(result.Items))
 }
 
 func (a *Adapter) getProxy(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +32,7 @@ func (a *Adapter) getProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, proxy)
+	writeJSON(w, http.StatusOK, redactProxy(proxy))
 }
 
 type applyProxyRequest struct {
@@ -63,7 +63,7 @@ func (a *Adapter) applyProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, proxy)
+	writeJSON(w, http.StatusOK, redactProxy(proxy))
 }
 
 func (a *Adapter) deleteProxy(w http.ResponseWriter, r *http.Request) {

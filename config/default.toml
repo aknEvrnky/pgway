@@ -32,11 +32,15 @@ rate_limit_burst = 200
 
 [rest]
 # Start the REST API (dashboard backend; experimental). On by default for
-# backward compatibility — set to false when the dashboard is not used,
-# especially on untrusted networks (auth is incomplete).
+# backward compatibility — set to false when the dashboard is not used.
 enabled = true
-# REST API listen address (pgway, pgway-cp).
-listen_addr = ":8081"
+# Prefer loopback until you put a reverse proxy / trusted network in front.
+listen_addr = "127.0.0.1:8081"
+# Browser Origins allowed for CORS. Empty = no cross-origin (no reflective Origin).
+cors_allow_origins = []
+# Per-client token-bucket for REST (0 = off). Same model as grpc.rate_limit_*.
+rate_limit_rps = 100
+rate_limit_burst = 200
 
 [probes]
 # Opt-in process liveness/readiness HTTP listener (K8s probes). Off by default.
