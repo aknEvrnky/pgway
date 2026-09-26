@@ -52,10 +52,10 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 - ✅ Token authentication for gRPC, user management (`pgctl init/login/user`)
 - ✅ Weighted load balancing
 - ✅ Least-bytes load balancing
+- ✅ OpenTelemetry metrics
+- ✅ OpenTelemetry tracing
 - 🚧 Dashboard (in progress), REST API (in flux)
-- 🔜 Prometheus metrics
 - 🔜 Health checks with automatic pool recovery
-- 🔜 Authentication for REST / dashboard
 
 ## License
 
