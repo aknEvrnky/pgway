@@ -30,16 +30,18 @@ func NewRoundRobin(pool *domain.Pool) (*RoundRobin, error) {
 		return nil, fmt.Errorf("pool %q proxies not resolved", pool.Id)
 	}
 
+	// Empty is allowed at build/bootstrap (e.g. dynamic pool with no label
+	// matches yet). Next() returns ErrNoProxy until proxies appear and the
+	// balancer is rebuilt.
 	r.window = uint32(len(pool.ResolvedProxies()))
-
-	if r.window == 0 {
-		return nil, domain.ErrNoProxy
-	}
 
 	return r, nil
 }
 
 func (r *RoundRobin) Next() (*domain.Proxy, error) {
+	if r.window == 0 {
+		return nil, domain.ErrNoProxy
+	}
 	val := (r.counter.Add(1) - 1) % r.window
 	proxy := r.pool.ResolvedProxies()[val]
 	return proxy, nil

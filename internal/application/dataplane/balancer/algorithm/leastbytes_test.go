@@ -31,7 +31,14 @@ func TestNewLeastBytes(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrNoPool)
 
 	empty := &domain.Pool{Id: "p", Type: domain.PoolTypeStatic}
-	_, err = NewLeastBytes(empty, time.Minute)
+	empty.LoadResolvedProxies(nil)
+	lbEmpty, err := NewLeastBytes(empty, time.Minute)
+	require.NoError(t, err)
+	_, err = lbEmpty.Next()
+	require.ErrorIs(t, err, domain.ErrNoProxy)
+
+	unresolved := &domain.Pool{Id: "p", Type: domain.PoolTypeStatic}
+	_, err = NewLeastBytes(unresolved, time.Minute)
 	require.Error(t, err)
 
 	lb, err := NewLeastBytes(lbTestPool("a", "b"), 0)
