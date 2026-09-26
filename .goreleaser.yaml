@@ -1,0 +1,134 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: pgway
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pgway
+    binary: pgway
+    main: ./cmd/pgway
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Version={{.Version}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Commit={{.Commit}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Date={{.Date}}
+
+  - id: pgway-cp
+    binary: pgway-cp
+    main: ./cmd/pgway-cp
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Version={{.Version}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Commit={{.Commit}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Date={{.Date}}
+
+  - id: pgway-dp
+    binary: pgway-dp
+    main: ./cmd/pgway-dp
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Version={{.Version}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Commit={{.Commit}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Date={{.Date}}
+
+  - id: pgctl
+    binary: pgctl
+    main: ./cmd/pgctl
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Version={{.Version}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Commit={{.Commit}}
+      - -X github.com/aknEvrnky/pgway/internal/platform/version.Date={{.Date}}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE*
+      - README*
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^chore"
+      - "^ci"
+      - "^test"
+      - "^Merge pull request"
+      - "^Merge branch"
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))?!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\(.+\))?!?:.+$'
+      order: 1
+    - title: Documentation
+      regexp: '^.*?docs(\(.+\))?!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+release:
+  prerelease: auto
+  footer: |
+    ## Install
+
+    Download binaries from this release, or pull the image:
+
+    ```bash
+    docker pull ghcr.io/aknEvrnky/pgway:{{ .Version }}
+    ```
+
+    Check versions with `pgctl version` or `pgway -version`.
+
+# Distroless image with all four linux binaries (ldflags from builds above).
+# Pre-releases do not publish a floating :latest tag.
+# dockers_v2 builds+pushes a multi-arch manifest in the publish phase.
+dockers_v2:
+  - id: pgway
+    dockerfile: Dockerfile.goreleaser
+    ids: [pgway, pgway-cp, pgway-dp, pgctl]
+    images:
+      - ghcr.io/aknEvrnky/pgway
+    tags:
+      - "{{ .Version }}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    annotations:
+      "org.opencontainers.image.description": "pgway proxy gateway (all-in-one image with pgway, pgway-cp, pgway-dp, pgctl)"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"

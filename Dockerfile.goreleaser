@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1
+# Used by GoReleaser dockers_v2: copies prebuilt linux binaries per TARGETPLATFORM.
+
+FROM gcr.io/distroless/static:nonroot
+
+ARG TARGETPLATFORM
+
+COPY $TARGETPLATFORM/pgway $TARGETPLATFORM/pgway-cp $TARGETPLATFORM/pgway-dp $TARGETPLATFORM/pgctl /usr/local/bin/
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/usr/local/bin/pgway"]
