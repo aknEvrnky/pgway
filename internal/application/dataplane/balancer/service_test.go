@@ -19,9 +19,10 @@ var (
 
 func TestService_Bootstrap(t *testing.T) {
 	for _, tt := range []struct {
-		name        string
-		cp          *dptest.ControlPlane
-		expectedErr string
+		name          string
+		cp            *dptest.ControlPlane
+		expectedErr   string
+		nextErrNoProxy bool
 	}{
 		{
 			name: "successful bootstrap",
@@ -50,7 +51,7 @@ func TestService_Bootstrap(t *testing.T) {
 				Balancers: []*domain.LoadBalancer{testLB},
 				Pools:     map[string]*domain.Pool{"pool-1": testPool},
 			},
-			expectedErr: `balancer "lb-1": no proxy`,
+			nextErrNoProxy: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,6 +68,11 @@ func TestService_Bootstrap(t *testing.T) {
 			instance, err := svc.Get(testLB.Id)
 			require.NoError(t, err)
 			assert.NotNil(t, instance)
+
+			if tt.nextErrNoProxy {
+				_, nextErr := instance.Next()
+				assert.ErrorIs(t, nextErr, domain.ErrNoProxy)
+			}
 		})
 	}
 }

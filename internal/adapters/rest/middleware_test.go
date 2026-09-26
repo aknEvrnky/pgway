@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
@@ -39,7 +40,20 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 }
 
 type fakeCP struct {
-	proxy *domain.Proxy
+	proxy       *domain.Proxy
+	proxies     []*domain.Proxy
+	pool        *domain.Pool
+	pools       []*domain.Pool
+	balancer    *domain.LoadBalancer
+	balancers   []*domain.LoadBalancer
+	router      *domain.Router
+	routers     []*domain.Router
+	flow        *domain.Flow
+	flows       []*domain.Flow
+	entrypoint  *domain.Entrypoint
+	entrypoints []*domain.Entrypoint
+	deleteErr   error
+	applyErr    error
 }
 
 func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {
@@ -53,71 +67,422 @@ func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error)
 	}
 	return nil, fmt.Errorf("proxy %q not found", name)
 }
-func (f *fakeCP) ListProxies(_ context.Context, _ domain.ListParams, _ domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
-	if f.proxy == nil {
-		return domain.ListResult[domain.Proxy]{}, nil
+func (f *fakeCP) ListProxies(_ context.Context, params domain.ListParams, filter domain.ProxyFilter) (domain.ListResult[domain.Proxy], error) {
+	all := f.proxies
+	if len(all) == 0 && f.proxy != nil {
+		all = []*domain.Proxy{f.proxy}
 	}
-	return domain.ListResult[domain.Proxy]{Items: []*domain.Proxy{f.proxy}}, nil
+
+	matched := make([]*domain.Proxy, 0, len(all))
+	for _, p := range all {
+		if filter.Protocol != "" && string(p.Protocol) != filter.Protocol {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(p.Id), q) && !strings.Contains(strings.ToLower(p.Host), q) {
+				continue
+			}
+		}
+		matched = append(matched, p)
+	}
+
+	result := domain.ListResult[domain.Proxy]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, p := range matched {
+			if p.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
 func (f *fakeCP) ApplyProxyV1(_ context.Context, _ schema.Metadata, _ proxyv1.ProxySpecV1) (*domain.Proxy, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
 	return f.proxy, nil
 }
-func (f *fakeCP) DeleteProxy(_ context.Context, _ string) error { return nil }
+func (f *fakeCP) DeleteProxy(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
-func (f *fakeCP) GetPool(context.Context, string) (*domain.Pool, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetPool(_ context.Context, name string) (*domain.Pool, error) {
+	if f.pool != nil && f.pool.Id == name {
+		cp := *f.pool
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("pool %q not found", name)
 }
-func (f *fakeCP) ListPools(context.Context, domain.ListParams, domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
-	return domain.ListResult[domain.Pool]{}, nil
-}
-func (f *fakeCP) ApplyPoolV1(context.Context, schema.Metadata, poolv1.PoolSpecV1) (*domain.Pool, error) {
-	return nil, fmt.Errorf("n/a")
-}
-func (f *fakeCP) DeletePool(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) ListPools(_ context.Context, params domain.ListParams, filter domain.PoolFilter) (domain.ListResult[domain.Pool], error) {
+	all := f.pools
+	if len(all) == 0 && f.pool != nil {
+		all = []*domain.Pool{f.pool}
+	}
 
-func (f *fakeCP) GetBalancer(context.Context, string) (*domain.LoadBalancer, error) {
-	return nil, fmt.Errorf("n/a")
-}
-func (f *fakeCP) ListBalancers(context.Context, domain.ListParams, domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
-	return domain.ListResult[domain.LoadBalancer]{}, nil
-}
-func (f *fakeCP) ApplyBalancerV1(context.Context, schema.Metadata, balancerv1.BalancerSpecV1) (*domain.LoadBalancer, error) {
-	return nil, fmt.Errorf("n/a")
-}
-func (f *fakeCP) DeleteBalancer(context.Context, string) error { return fmt.Errorf("n/a") }
+	matched := make([]*domain.Pool, 0, len(all))
+	for _, p := range all {
+		if filter.Type != "" && string(p.Type) != filter.Type {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(p.Id), q) && !strings.Contains(strings.ToLower(p.Title), q) {
+				continue
+			}
+		}
+		matched = append(matched, p)
+	}
 
-func (f *fakeCP) GetRouter(context.Context, string) (*domain.Router, error) {
-	return nil, fmt.Errorf("n/a")
+	result := domain.ListResult[domain.Pool]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, p := range matched {
+			if p.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
-func (f *fakeCP) ListRouters(context.Context, domain.ListParams, domain.RouterFilter) (domain.ListResult[domain.Router], error) {
-	return domain.ListResult[domain.Router]{}, nil
+func (f *fakeCP) ApplyPoolV1(_ context.Context, _ schema.Metadata, _ poolv1.PoolSpecV1) (*domain.Pool, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.pool, nil
 }
-func (f *fakeCP) ApplyRouterV1(context.Context, schema.Metadata, routerv1.RouterSpecV1) (*domain.Router, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) DeletePool(_ context.Context, _ string) error {
+	return f.deleteErr
 }
-func (f *fakeCP) DeleteRouter(context.Context, string) error { return fmt.Errorf("n/a") }
 
-func (f *fakeCP) GetFlow(context.Context, string) (*domain.Flow, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetBalancer(_ context.Context, name string) (*domain.LoadBalancer, error) {
+	if f.balancer != nil && f.balancer.Id == name {
+		cp := *f.balancer
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("balancer %q not found", name)
 }
-func (f *fakeCP) ListFlows(context.Context, domain.ListParams, domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
-	return domain.ListResult[domain.Flow]{}, nil
+func (f *fakeCP) ListBalancers(_ context.Context, params domain.ListParams, filter domain.BalancerFilter) (domain.ListResult[domain.LoadBalancer], error) {
+	all := f.balancers
+	if len(all) == 0 && f.balancer != nil {
+		all = []*domain.LoadBalancer{f.balancer}
+	}
+
+	matched := make([]*domain.LoadBalancer, 0, len(all))
+	for _, lb := range all {
+		if filter.Type != "" && string(lb.Type) != filter.Type {
+			continue
+		}
+		if filter.PoolId != "" && lb.PoolId != filter.PoolId {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(lb.Id), q) &&
+				!strings.Contains(strings.ToLower(lb.Title), q) &&
+				!strings.Contains(strings.ToLower(string(lb.Type)), q) &&
+				!strings.Contains(strings.ToLower(lb.PoolId), q) {
+				continue
+			}
+		}
+		matched = append(matched, lb)
+	}
+
+	result := domain.ListResult[domain.LoadBalancer]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, lb := range matched {
+			if lb.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
+}
+func (f *fakeCP) ApplyBalancerV1(_ context.Context, _ schema.Metadata, _ balancerv1.BalancerSpecV1) (*domain.LoadBalancer, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.balancer, nil
+}
+func (f *fakeCP) DeleteBalancer(_ context.Context, _ string) error {
+	return f.deleteErr
+}
+
+func (f *fakeCP) GetRouter(_ context.Context, name string) (*domain.Router, error) {
+	if f.router != nil && f.router.Id == name {
+		cp := *f.router
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("router %q not found", name)
+}
+func (f *fakeCP) ListRouters(_ context.Context, params domain.ListParams, filter domain.RouterFilter) (domain.ListResult[domain.Router], error) {
+	all := f.routers
+	if len(all) == 0 && f.router != nil {
+		all = []*domain.Router{f.router}
+	}
+
+	matched := make([]*domain.Router, 0, len(all))
+	for _, rt := range all {
+		if filter.TargetBalancerId != "" {
+			found := false
+			for _, rule := range rt.Rules {
+				if rule != nil && rule.Target == filter.TargetBalancerId {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+		}
+		if filter.HasCatchAll != nil {
+			has := false
+			for _, rule := range rt.Rules {
+				if rule != nil && rule.Match.Type == domain.MatchTypeCatchAll {
+					has = true
+					break
+				}
+			}
+			if *filter.HasCatchAll != has {
+				continue
+			}
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			hit := strings.Contains(strings.ToLower(rt.Id), q) || strings.Contains(strings.ToLower(rt.Title), q)
+			if !hit {
+				for _, rule := range rt.Rules {
+					if rule == nil {
+						continue
+					}
+					if strings.Contains(strings.ToLower(rule.Target), q) || strings.Contains(strings.ToLower(rule.Id), q) {
+						hit = true
+						break
+					}
+				}
+			}
+			if !hit {
+				continue
+			}
+		}
+		matched = append(matched, rt)
+	}
+
+	result := domain.ListResult[domain.Router]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, rt := range matched {
+			if rt.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
+}
+func (f *fakeCP) ApplyRouterV1(_ context.Context, _ schema.Metadata, _ routerv1.RouterSpecV1) (*domain.Router, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.router, nil
+}
+func (f *fakeCP) DeleteRouter(_ context.Context, _ string) error {
+	return f.deleteErr
+}
+
+func (f *fakeCP) GetFlow(_ context.Context, name string) (*domain.Flow, error) {
+	if f.flow != nil && f.flow.Id == name {
+		cp := *f.flow
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("flow %q not found", name)
+}
+func (f *fakeCP) ListFlows(_ context.Context, params domain.ListParams, filter domain.FlowFilter) (domain.ListResult[domain.Flow], error) {
+	all := f.flows
+	if len(all) == 0 && f.flow != nil {
+		all = []*domain.Flow{f.flow}
+	}
+
+	matched := make([]*domain.Flow, 0, len(all))
+	for _, fl := range all {
+		if filter.RouterId != "" && fl.RouterId != filter.RouterId {
+			continue
+		}
+		if filter.BalancerId != "" && fl.BalancerId != filter.BalancerId {
+			continue
+		}
+		switch filter.Mode {
+		case "router":
+			if fl.RouterId == "" {
+				continue
+			}
+		case "direct":
+			if fl.RouterId != "" || fl.BalancerId == "" {
+				continue
+			}
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(fl.Id), q) &&
+				!strings.Contains(strings.ToLower(fl.RouterId), q) &&
+				!strings.Contains(strings.ToLower(fl.BalancerId), q) {
+				continue
+			}
+		}
+		matched = append(matched, fl)
+	}
+
+	result := domain.ListResult[domain.Flow]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, fl := range matched {
+			if fl.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
 func (f *fakeCP) ApplyFlowV1(context.Context, schema.Metadata, flowv1.FlowSpecV1) (*domain.Flow, error) {
-	return nil, fmt.Errorf("n/a")
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.flow, nil
 }
-func (f *fakeCP) DeleteFlow(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteFlow(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
-func (f *fakeCP) GetEntrypoint(context.Context, string) (*domain.Entrypoint, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) GetEntrypoint(_ context.Context, name string) (*domain.Entrypoint, error) {
+	if f.entrypoint != nil && f.entrypoint.Id == name {
+		cp := *f.entrypoint
+		return &cp, nil
+	}
+	return nil, fmt.Errorf("entrypoint %q not found", name)
 }
-func (f *fakeCP) ListEntrypoints(context.Context, domain.ListParams, domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
-	return domain.ListResult[domain.Entrypoint]{}, nil
+func (f *fakeCP) ListEntrypoints(_ context.Context, params domain.ListParams, filter domain.EntrypointFilter) (domain.ListResult[domain.Entrypoint], error) {
+	all := f.entrypoints
+	if len(all) == 0 && f.entrypoint != nil {
+		all = []*domain.Entrypoint{f.entrypoint}
+	}
+	matched := make([]*domain.Entrypoint, 0, len(all))
+	for _, ep := range all {
+		if filter.FlowId != "" && ep.FlowId != filter.FlowId {
+			continue
+		}
+		if filter.Protocol != "" && string(ep.Protocol) != filter.Protocol {
+			continue
+		}
+		if filter.Host != "" && !strings.Contains(strings.ToLower(ep.Host), strings.ToLower(filter.Host)) {
+			continue
+		}
+		if filter.Search != "" {
+			q := strings.ToLower(filter.Search)
+			if !strings.Contains(strings.ToLower(ep.Id), q) && !strings.Contains(strings.ToLower(ep.Title), q) {
+				continue
+			}
+		}
+		matched = append(matched, ep)
+	}
+	result := domain.ListResult[domain.Entrypoint]{TotalCount: len(matched)}
+	start := 0
+	if params.Cursor != "" {
+		for i, ep := range matched {
+			if ep.Id == params.Cursor {
+				start = i
+				break
+			}
+		}
+	}
+	if params.PageSize <= 0 {
+		result.Items = matched[start:]
+		return result, nil
+	}
+	end := start + params.PageSize
+	if end > len(matched) {
+		end = len(matched)
+	}
+	result.Items = matched[start:end]
+	if end < len(matched) {
+		result.NextCursor = matched[end].Id
+	}
+	return result, nil
 }
-func (f *fakeCP) ApplyEntrypointV1(context.Context, schema.Metadata, entrypointv1.EntrypointSpecV1) (*domain.Entrypoint, error) {
-	return nil, fmt.Errorf("n/a")
+func (f *fakeCP) ApplyEntrypointV1(_ context.Context, _ schema.Metadata, _ entrypointv1.EntrypointSpecV1) (*domain.Entrypoint, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
+	return f.entrypoint, nil
 }
-func (f *fakeCP) DeleteEntrypoint(context.Context, string) error { return fmt.Errorf("n/a") }
+func (f *fakeCP) DeleteEntrypoint(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 var _ ports.ControlPlane = (*fakeCP)(nil)
 var _ ports.TokenAuthenticator = (*fakeAuth)(nil)

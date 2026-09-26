@@ -56,11 +56,11 @@ func (r *RouterRepository) List(ctx context.Context, params domain.ListParams, f
 }
 
 func buildRouterPredicate(f domain.RouterFilter) func(*domain.Router) bool {
-	if f.Search == "" && f.TargetBalancerId == "" {
+	if f.Search == "" && f.TargetBalancerId == "" && f.HasCatchAll == nil {
 		return nil
 	}
 	return func(r *domain.Router) bool {
-		if f.Search != "" && !containsFold(r.Id, f.Search) && !containsFold(r.Title, f.Search) {
+		if f.Search != "" && !routerMatchesSearch(r, f.Search) {
 			return false
 		}
 		if f.TargetBalancerId != "" {
@@ -75,8 +75,41 @@ func buildRouterPredicate(f domain.RouterFilter) func(*domain.Router) bool {
 				return false
 			}
 		}
+		if f.HasCatchAll != nil {
+			has := routerHasCatchAll(r)
+			if *f.HasCatchAll != has {
+				return false
+			}
+		}
 		return true
 	}
+}
+
+func routerMatchesSearch(r *domain.Router, q string) bool {
+	if containsFold(r.Id, q) || containsFold(r.Title, q) || containsFold(r.Description, q) {
+		return true
+	}
+	for _, rule := range r.Rules {
+		if rule == nil {
+			continue
+		}
+		if containsFold(rule.Id, q) || containsFold(rule.Target, q) {
+			return true
+		}
+		if containsFold(string(rule.Match.Type), q) || containsFold(rule.Match.Value, q) {
+			return true
+		}
+	}
+	return false
+}
+
+func routerHasCatchAll(r *domain.Router) bool {
+	for _, rule := range r.Rules {
+		if rule != nil && rule.Match.Type == domain.MatchTypeCatchAll {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *RouterRepository) Find(ctx context.Context, id string) (*domain.Router, error) {

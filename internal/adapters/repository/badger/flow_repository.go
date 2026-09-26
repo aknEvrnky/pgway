@@ -56,11 +56,14 @@ func (r *FlowRepository) List(ctx context.Context, params domain.ListParams, fil
 }
 
 func buildFlowPredicate(f domain.FlowFilter) func(*domain.Flow) bool {
-	if f.Search == "" && f.RouterId == "" && f.BalancerId == "" {
+	if f.Search == "" && f.RouterId == "" && f.BalancerId == "" && f.Mode == "" {
 		return nil
 	}
 	return func(flow *domain.Flow) bool {
-		if f.Search != "" && !containsFold(flow.Id, f.Search) {
+		if f.Search != "" &&
+			!containsFold(flow.Id, f.Search) &&
+			!containsFold(flow.RouterId, f.Search) &&
+			!containsFold(flow.BalancerId, f.Search) {
 			return false
 		}
 		if f.RouterId != "" && flow.RouterId != f.RouterId {
@@ -68,6 +71,16 @@ func buildFlowPredicate(f domain.FlowFilter) func(*domain.Flow) bool {
 		}
 		if f.BalancerId != "" && flow.BalancerId != f.BalancerId {
 			return false
+		}
+		switch f.Mode {
+		case "router":
+			if flow.RouterId == "" {
+				return false
+			}
+		case "direct":
+			if flow.RouterId != "" || flow.BalancerId == "" {
+				return false
+			}
 		}
 		return true
 	}

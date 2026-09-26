@@ -25,9 +25,6 @@ func NewLeastBytes(pool *domain.Pool, resetInterval time.Duration) (*LeastBytes,
 	if !pool.HasProxiesResolved() {
 		return nil, fmt.Errorf("pool %q proxies not resolved", pool.Id)
 	}
-	if len(pool.ResolvedProxies()) == 0 {
-		return nil, domain.ErrNoProxy
-	}
 	if resetInterval <= 0 {
 		resetInterval = domain.DefaultLeastBytesResetInterval
 	}

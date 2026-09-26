@@ -33,7 +33,7 @@ func TestNewRoundRobin(t *testing.T) {
 	}{
 		{"Round-Robin non-empty pool", rrTestPool, nil},
 		{"Round-Robin with empty pool", nil, domain.ErrNoPool},
-		{"Round-Robin with empty proxies", emptyPool, domain.ErrNoProxy},
+		{"Round-Robin with empty proxies", emptyPool, nil},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			rr, err := NewRoundRobin(tt.pool)
@@ -48,6 +48,16 @@ func TestNewRoundRobin(t *testing.T) {
 			assert.ErrorIs(t, err, tt.expectedErr)
 		})
 	}
+}
+
+func TestRoundRobin_Next_EmptyProxies(t *testing.T) {
+	emptyPool := &domain.Pool{Id: "empty"}
+	emptyPool.LoadResolvedProxies(nil)
+	rr, err := NewRoundRobin(emptyPool)
+	require.NoError(t, err)
+
+	_, err = rr.Next()
+	assert.ErrorIs(t, err, domain.ErrNoProxy)
 }
 
 func TestRoundRobin_Next(t *testing.T) {

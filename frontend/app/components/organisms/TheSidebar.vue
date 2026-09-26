@@ -11,7 +11,7 @@ const navItems = [
   { label: 'Flows', to: '/flows', icon: 'flow' },
   { label: 'Entrypoints', to: '/entrypoints', icon: 'entrypoint' },
   { label: 'Agents', to: '/agents', icon: 'agent' },
-  { label: 'Settings', to: '/settings', icon: 'settings' },
+  // { label: 'Settings', to: '/settings', icon: 'settings' },
 ]
 
 const footerItems = [
@@ -70,16 +70,15 @@ function isActive(to: string) {
         </svg>
         <!-- Proxies -->
         <svg v-else-if="item.icon === 'proxy'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="2" y="6" width="20" height="12" rx="2" />
-          <circle cx="7" cy="12" r="1.5" fill="currentColor" />
-          <line x1="12" y1="9" x2="12" y2="15" />
-          <circle cx="17" cy="12" r="1.5" fill="currentColor" />
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20" />
+          <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
         </svg>
         <!-- Pools -->
         <svg v-else-if="item.icon === 'pool'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <ellipse cx="12" cy="6" rx="8" ry="3" />
-          <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
-          <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 12l10 5 10-5" />
+          <path d="M2 17l10 5 10-5" />
         </svg>
         <!-- Load Balancer -->
         <svg v-else-if="item.icon === 'lb'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -106,9 +105,13 @@ function isActive(to: string) {
         </svg>
         <!-- Entrypoints -->
         <svg v-else-if="item.icon === 'entrypoint'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
-          <polyline points="10 17 15 12 10 7" />
-          <line x1="15" y1="12" x2="3" y2="12" />
+          <rect x="2" y="4" width="14" height="16" rx="2" />
+          <path d="M2 8h14" />
+          <circle cx="5" cy="6" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="7.5" cy="6" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="10" cy="6" r="0.75" fill="currentColor" stroke="none" />
+          <path d="M22 12h-8" stroke-linecap="round" />
+          <path d="M17 9l-3 3 3 3" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <!-- Agents -->
         <svg v-else-if="item.icon === 'agent'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -116,11 +119,12 @@ function isActive(to: string) {
           <line x1="8" y1="21" x2="16" y2="21" />
           <line x1="12" y1="17" x2="12" y2="21" />
         </svg>
-        <!-- Settings -->
+        <!-- Settings (hidden until settings exist)
         <svg v-else-if="item.icon === 'settings'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
         </svg>
+        -->
         <span v-if="!isCollapsed" class="text-sm font-medium">{{ item.label }}</span>
       </NuxtLink>
     </nav>

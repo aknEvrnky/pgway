@@ -32,9 +32,8 @@ func NewWeighted(pool *domain.Pool) (*Weighted, error) {
 	}
 
 	proxies := pool.ResolvedProxies()
-	if len(proxies) == 0 {
-		return nil, domain.ErrNoProxy
-	}
+	// Empty is allowed at build/bootstrap; Next() returns ErrNoProxy until
+	// members resolve and the balancer is rebuilt.
 	if len(proxies) != len(pool.Members) {
 		return nil, fmt.Errorf("pool %q resolved proxy count %d != members %d", pool.Id, len(proxies), len(pool.Members))
 	}
@@ -63,6 +62,10 @@ func NewWeighted(pool *domain.Pool) (*Weighted, error) {
 func (w *Weighted) Next() (*domain.Proxy, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+
+	if len(w.proxies) == 0 {
+		return nil, domain.ErrNoProxy
+	}
 
 	best := -1
 	for i := range w.proxies {

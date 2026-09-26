@@ -9,14 +9,50 @@ import (
 	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
 )
 
+type listProxiesResponse struct {
+	Items      []*domain.Proxy `json:"items"`
+	NextCursor string          `json:"next_cursor,omitempty"`
+	TotalCount int             `json:"total_count"`
+}
+
 func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
-	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{}, domain.ProxyFilter{})
+	q := r.URL.Query()
+
+	protocol := q.Get("protocol")
+	if protocol != "" && !domain.Protocol(protocol).IsValid() {
+		writeError(w, http.StatusBadRequest, `protocol must be "http", "https", or "socks5"`)
+		return
+	}
+
+	pageSize, err := parsePageSize(q.Get("page_size"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	cursor, err := decodePageToken(q.Get("page_token"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid page_token")
+		return
+	}
+
+	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{
+		PageSize: pageSize,
+		Cursor:   cursor,
+	}, domain.ProxyFilter{
+		Search:   q.Get("search"),
+		Protocol: protocol,
+	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, redactProxies(result.Items))
+	writeJSON(w, http.StatusOK, listProxiesResponse{
+		Items:      redactProxies(result.Items),
+		NextCursor: encodePageToken(result.NextCursor),
+		TotalCount: result.TotalCount,
+	})
 }
 
 func (a *Adapter) getProxy(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +95,7 @@ func (a *Adapter) applyProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy, err := a.cp.ApplyProxyV1(r.Context(), req.Metadata, req.Spec)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeCPError(w, err)
 		return
 	}
 
@@ -74,7 +110,7 @@ func (a *Adapter) deleteProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.cp.DeleteProxy(r.Context(), name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeCPError(w, err)
 		return
 	}
 

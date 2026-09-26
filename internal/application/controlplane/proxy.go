@@ -37,12 +37,18 @@ func (s *Service) ApplyProxyV1(ctx context.Context, meta schema.Metadata, spec p
 		return nil, fmt.Errorf("proxy validation: %w", err)
 	}
 
-	// 5 - set timestamps
+	// 5 - set timestamps; preserve auth on update when manual apply omits auth
 	now := time.Now()
 	existing, err := s.proxyRepo.Find(ctx, proxy.Id)
 	var existingCreated time.Time
 	if err == nil {
 		existingCreated = existing.CreatedAt
+		if spec.URL == "" && spec.Auth == nil && existing.Auth != nil {
+			proxy.Auth = &domain.BasicAuth{
+				User: existing.Auth.User,
+				Pass: existing.Auth.Pass,
+			}
+		}
 	}
 	proxy.CreatedAt, err = resolveCreatedAt(existingCreated, err, now)
 	if err != nil {

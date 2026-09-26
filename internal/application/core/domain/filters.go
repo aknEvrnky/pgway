@@ -23,6 +23,8 @@ type RouterFilter struct {
 	Search string
 	// TargetBalancerId matches routers with any rule Target equal to this balancer ID.
 	TargetBalancerId string
+	// HasCatchAll, when non-nil, keeps only routers that do/don't include a catch_all rule.
+	HasCatchAll *bool
 }
 
 type EntrypointFilter struct {
@@ -36,6 +38,8 @@ type FlowFilter struct {
 	Search     string
 	RouterId   string
 	BalancerId string
+	// Mode: "" (any), "router" (router_id set), "direct" (balancer only, no router).
+	Mode string
 }
 
 type UserFilter struct {

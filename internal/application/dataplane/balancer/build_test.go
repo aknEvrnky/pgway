@@ -28,6 +28,12 @@ func TestBuild(t *testing.T) {
 		return p
 	}()
 
+	emptyDynamicPool := func() *domain.Pool {
+		p := &domain.Pool{Id: "pool-dyn-empty", Type: domain.PoolTypeDynamic}
+		p.LoadResolvedProxies(nil)
+		return p
+	}()
+
 	for _, tt := range []struct {
 		name                 string
 		lb                   *domain.LoadBalancer
@@ -39,6 +45,13 @@ func TestBuild(t *testing.T) {
 			name:                 "it builds round robin load balancer",
 			p:                    poolWithProxy,
 			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "round-robin", PoolId: "pool-1"},
+			expectedBalancerType: &algorithm.RoundRobin{},
+			expectedErr:          nil,
+		},
+		{
+			name:                 "round-robin allows empty dynamic pool at build",
+			p:                    emptyDynamicPool,
+			lb:                   &domain.LoadBalancer{Id: "lb-1", Type: "round-robin", PoolId: "pool-dyn-empty"},
 			expectedBalancerType: &algorithm.RoundRobin{},
 			expectedErr:          nil,
 		},

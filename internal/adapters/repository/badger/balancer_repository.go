@@ -60,7 +60,11 @@ func buildBalancerPredicate(f domain.BalancerFilter) func(*domain.LoadBalancer) 
 		return nil
 	}
 	return func(lb *domain.LoadBalancer) bool {
-		if f.Search != "" && !containsFold(lb.Id, f.Search) && !containsFold(lb.Title, f.Search) {
+		if f.Search != "" &&
+			!containsFold(lb.Id, f.Search) &&
+			!containsFold(lb.Title, f.Search) &&
+			!containsFold(string(lb.Type), f.Search) &&
+			!containsFold(lb.PoolId, f.Search) {
 			return false
 		}
 		if f.Type != "" && string(lb.Type) != f.Type {
