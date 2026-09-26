@@ -143,7 +143,10 @@ func main() {
 	}
 	gate.MarkGRPCServing(true)
 
-	restAdapter := rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+	var restAdapter *rest.Adapter
+	if cfg.Rest.Enabled {
+		restAdapter = rest.NewRestAdapter(cpService, cfg.Rest.ListenAddr)
+	}
 
 	var probeAdapter *probes.Adapter
 	if cfg.Probes.Enabled {
@@ -163,11 +166,13 @@ func main() {
 		}
 	}()
 
-	go func() {
-		if err := restAdapter.Run(sigCtx); err != nil {
-			zap.L().Fatal("rest serve", zap.Error(err))
-		}
-	}()
+	if restAdapter != nil {
+		go func() {
+			if err := restAdapter.Run(sigCtx); err != nil {
+				zap.L().Fatal("rest serve", zap.Error(err))
+			}
+		}()
+	}
 
 	<-sigCtx.Done()
 	zap.L().Info("shutting down control plane")
@@ -184,7 +189,9 @@ func main() {
 
 	grpcserver.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
-	if err := restAdapter.Shutdown(shutdownCtx); err != nil {
-		zap.L().Error("rest shutdown", zap.Error(err))
+	if restAdapter != nil {
+		if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+			zap.L().Error("rest shutdown", zap.Error(err))
+		}
 	}
 }

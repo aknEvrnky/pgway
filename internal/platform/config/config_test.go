@@ -41,7 +41,10 @@ func defaultWant(host string) Config {
 			RateLimitRPS:      100,
 			RateLimitBurst:    200,
 		},
-		Rest: RestConfig{ListenAddr: ":8081"},
+		Rest: RestConfig{
+			Enabled:    true,
+			ListenAddr: ":8081",
+		},
 		Probes: ProbesConfig{
 			Enabled:    false,
 			ListenAddr: ":8082",
@@ -111,6 +114,7 @@ path = "/data/pgway"
 listen_addr = ":7000"
 
 [rest]
+enabled = false
 listen_addr = ":7001"
 
 [auth]
@@ -121,6 +125,7 @@ token_ttl = "1h"
 				w.Token = "file-token"
 				w.Badger.Path = "/data/pgway"
 				w.GRPC.ListenAddr = ":7000"
+				w.Rest.Enabled = false
 				w.Rest.ListenAddr = ":7001"
 				w.Auth.TokenTTL = time.Hour
 				return w
@@ -145,6 +150,19 @@ path = "/data/pgway"
 			want: func() Config {
 				w := defaultWant(host)
 				w.Token = "env-token"
+				return w
+			}(),
+		},
+		{
+			name: "rest enabled env overrides file",
+			file: `
+[rest]
+enabled = true
+`,
+			env: map[string]string{"PGWAY_REST_ENABLED": "false"},
+			want: func() Config {
+				w := defaultWant(host)
+				w.Rest.Enabled = false
 				return w
 			}(),
 		},
