@@ -59,7 +59,7 @@ func (a *Adapter) applyProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy, err := a.cp.ApplyProxyV1(r.Context(), req.Metadata, req.Spec)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeCPError(w, err)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (a *Adapter) deleteProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := a.cp.DeleteProxy(r.Context(), name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeCPError(w, err)
 		return
 	}
 

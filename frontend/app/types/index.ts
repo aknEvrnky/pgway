@@ -5,6 +5,24 @@ export interface Proxy {
   port: number
   auth?: { user: string; pass: string }
   labels?: Record<string, string>
+  created_at?: string
+  updated_at?: string
+}
+
+export type ProxyProtocol = Proxy['protocol']
+
+export interface ProxyApplyRequest {
+  metadata: {
+    name: string
+    labels?: Record<string, string>
+  }
+  spec: {
+    url?: string
+    protocol?: string
+    host?: string
+    port?: number
+    auth?: { user: string; pass: string }
+  }
 }
 
 export interface Pool {

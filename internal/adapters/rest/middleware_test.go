@@ -39,7 +39,9 @@ func (f *fakeAuth) Authenticate(_ context.Context, token string) (*domain.Princi
 }
 
 type fakeCP struct {
-	proxy *domain.Proxy
+	proxy     *domain.Proxy
+	deleteErr error
+	applyErr  error
 }
 
 func (f *fakeCP) GetProxy(_ context.Context, name string) (*domain.Proxy, error) {
@@ -60,9 +62,14 @@ func (f *fakeCP) ListProxies(_ context.Context, _ domain.ListParams, _ domain.Pr
 	return domain.ListResult[domain.Proxy]{Items: []*domain.Proxy{f.proxy}}, nil
 }
 func (f *fakeCP) ApplyProxyV1(_ context.Context, _ schema.Metadata, _ proxyv1.ProxySpecV1) (*domain.Proxy, error) {
+	if f.applyErr != nil {
+		return nil, f.applyErr
+	}
 	return f.proxy, nil
 }
-func (f *fakeCP) DeleteProxy(_ context.Context, _ string) error { return nil }
+func (f *fakeCP) DeleteProxy(_ context.Context, _ string) error {
+	return f.deleteErr
+}
 
 func (f *fakeCP) GetPool(context.Context, string) (*domain.Pool, error) {
 	return nil, fmt.Errorf("n/a")
