@@ -249,6 +249,44 @@ export interface EntrypointApplyRequest {
   }
 }
 
+export type UserRole = 'admin' | 'member'
+
+export interface ManagedUser {
+  id: string
+  role: UserRole
+  created_at?: string
+  updated_at?: string
+}
+
+export interface UserListQuery {
+  search?: string
+  role?: UserRole | ''
+  page_size?: number
+  page_token?: string
+}
+
+export interface UserListResponse {
+  items: ManagedUser[]
+  next_cursor?: string
+  total_count: number
+}
+
+export interface CreateUserRequest {
+  username: string
+  password?: string
+  role?: UserRole
+}
+
+export interface CreateUserResponse {
+  user: ManagedUser
+  generated_password?: string
+}
+
+export interface ChangeUserPasswordRequest {
+  old_password?: string
+  new_password?: string
+}
+
 export type FlowGraphKind = 'entrypoint' | 'flow' | 'router' | 'balancer' | 'pool' | 'proxy'
 
 export interface MetricCardData {

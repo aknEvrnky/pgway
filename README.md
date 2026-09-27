@@ -75,7 +75,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 - ✅ OpenTelemetry metrics
 - ✅ OpenTelemetry tracing
 - ✅ GitHub Releases + multi-arch GHCR images (GoReleaser, tag-triggered)
-- 🚧 Dashboard / REST — experimental; resource CRUD + flow editor shipped, agents/users/settings later
+- 🚧 Dashboard / REST — experimental; resource CRUD + flow editor + admin Users shipped; agents/settings later
 - 🔜 Health checks with automatic pool recovery
 - 🔜 Homebrew formula ([#100](https://github.com/aknEvrnky/pgway/issues/100)) — after dashboard stabilizes
 

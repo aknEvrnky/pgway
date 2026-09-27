@@ -491,7 +491,7 @@ func userPrincipal() *domain.Principal {
 	return &domain.Principal{User: &domain.User{Id: "alice", Role: domain.RoleAdmin}}
 }
 
-func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, authMgr ports.AuthManager, cp ports.ControlPlane) http.Handler {
+func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, authMgr ports.AuthManager, cp ports.ControlPlane, usersOpt ...ports.UserManager) http.Handler {
 	t.Helper()
 	if cfg.ListenAddr == "" {
 		cfg.ListenAddr = "127.0.0.1:0"
@@ -499,7 +499,11 @@ func testAdapter(t *testing.T, cfg config.RestConfig, auth *fakeAuth, authMgr po
 	if cfg.CORSAllowOrigins == nil {
 		cfg.CORSAllowOrigins = []string{}
 	}
-	a := rest.NewRestAdapter(cp, auth, authMgr, cfg)
+	var users ports.UserManager
+	if len(usersOpt) > 0 {
+		users = usersOpt[0]
+	}
+	a := rest.NewRestAdapter(cp, auth, authMgr, users, cfg)
 	return a.Handler()
 }
 
