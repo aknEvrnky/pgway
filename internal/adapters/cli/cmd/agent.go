@@ -7,8 +7,16 @@ import (
 	"time"
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
-	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/spf13/cobra"
+)
+
+const (
+	// defaultRegistrationTokenTTL mirrors the server default
+	// (auth.registration_token_ttl).
+	defaultRegistrationTokenTTL = 24 * time.Hour
+	// agentHeartbeatThreshold mirrors the server default
+	// (agent.heartbeat_threshold): within → active, beyond → disconnected.
+	agentHeartbeatThreshold = 30 * time.Second
 )
 
 func newAgentCmd(d *Deps) *cobra.Command {
@@ -44,7 +52,7 @@ func newAgentTokenCreateCmd(d *Deps) *cobra.Command {
   pgctl agent token create --ttl 2h`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if ttl <= 0 {
-				ttl = config.Get().Auth.RegistrationTokenTTL
+				return fmt.Errorf("--ttl must be positive")
 			}
 
 			token, err := d.Client.CreateRegistrationToken(cmd.Context(), ttl)
@@ -58,7 +66,7 @@ func newAgentTokenCreateCmd(d *Deps) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().DurationVar(&ttl, "ttl", 0, "token lifetime (default: auth.registration_token_ttl from config)")
+	cmd.Flags().DurationVar(&ttl, "ttl", defaultRegistrationTokenTTL, "token lifetime (must be > 0, default 24h)")
 
 	return cmd
 }
@@ -87,7 +95,7 @@ func newAgentListCmd(d *Deps) *cobra.Command {
 				return nil
 			}
 
-			threshold := config.Get().Agent.HeartbeatThreshold
+			threshold := agentHeartbeatThreshold
 			now := time.Now()
 			rows := make([]agentListRow, 0, len(result.Items))
 			for _, a := range result.Items {

@@ -1,16 +1,12 @@
-# pgway default configuration.
-# Every key can also be set via a PGWAY_-prefixed env var (e.g. PGWAY_TOKEN,
+# pgway default configuration (pgway, pgway-cp, pgway-dp — pgctl does not
+# read a config file; it takes --host/--port/--token-path flags).
+# Every key can also be set via a PGWAY_-prefixed env var (e.g.
 # PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN) or, for the file location,
 # the --config flag. Nested keys use underscores in env names (badger.path →
 # PGWAY_BADGER_PATH). Precedence:
 #   flags > env vars > this file > built-in defaults.
 
 log_level = "info"
-
-# Outgoing control-plane auth token — pgctl in distributed mode.
-# Prefer the PGWAY_TOKEN env var for secrets; leave empty for all-in-one.
-# pgway-dp uses an agent token from agent.state_path after registration.
-token = ""
 
 [badger]
 # BadgerDB data directory (pgway, pgway-cp).
@@ -19,7 +15,8 @@ path = "/var/pgway/lib"
 gc_interval = "5m"
 
 [grpc]
-# gRPC listen address for the control plane. pgway-dp / pgctl dial this address.
+# gRPC listen address for the control plane. pgway-dp dials grpc.dial_addr,
+# which falls back to this address when unset.
 listen_addr = ":9090"
 # gRPC keepalive ping interval (server + client). 0 disables.
 keepalive_interval = "1m"

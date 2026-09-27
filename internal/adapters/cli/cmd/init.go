@@ -13,6 +13,10 @@ func newInitCmd(d *Deps) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create the first admin user with the server's bootstrap token",
+		Annotations: map[string]string{
+			// InitAdmin is auth-exempt — no token file needed to dial
+			tokenlessAnnotation: "true",
+		},
 		Long: `Initializes pgway by creating the first admin user.
 
 The bootstrap token is printed to the server **stderr** on first start (not in structured logs). Pass it via
@@ -46,12 +50,12 @@ The bootstrap token is printed to the server **stderr** on first start (not in s
 				return err
 			}
 
-			if err := writeCredentials(token); err != nil {
+			if err := writeTokenFile(d.TokenPath, token); err != nil {
 				return fmt.Errorf("admin created but storing token failed: %w", err)
 			}
 
 			fmt.Printf("admin user %q created\n", user.Id)
-			fmt.Printf("token stored in ~/.pgctl/credentials\n")
+			fmt.Printf("token stored in %s\n", d.TokenPath)
 			fmt.Printf("token: %s\n", token)
 
 			return nil

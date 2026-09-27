@@ -14,9 +14,6 @@ import (
 type Config struct {
 	// LogLevel sets the global zap log level (debug|info|warn|error).
 	LogLevel string `mapstructure:"log_level"`
-	// Token authenticates outgoing control-plane calls (pgctl).
-	// pgway-dp uses an agent token from the state file after registration.
-	Token string `mapstructure:"token"`
 
 	Badger    BadgerConfig    `mapstructure:"badger"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
@@ -38,7 +35,7 @@ type BadgerConfig struct {
 
 type GRPCConfig struct {
 	ListenAddr string `mapstructure:"listen_addr"`
-	// DialAddr is the CP address clients dial (pgctl, pgway-dp). When empty,
+	// DialAddr is the CP address pgway-dp dials. When empty,
 	// DialTarget falls back to ListenAddr (convenient for all-in-one / local).
 	DialAddr string `mapstructure:"dial_addr"`
 	// KeepaliveInterval is how often idle gRPC connections send pings.
@@ -203,7 +200,6 @@ func Load(path string) error {
 	}
 
 	viper.SetDefault("log_level", "info")
-	viper.SetDefault("token", "")
 	viper.SetDefault("badger.path", "/var/pgway/lib")
 	viper.SetDefault("badger.gc_interval", 5*time.Minute)
 	viper.SetDefault("grpc.listen_addr", ":9090")
@@ -248,7 +244,7 @@ func Load(path string) error {
 	viper.SetDefault("otel.traces_enabled", false)
 	viper.SetDefault("otel.trace_sample_ratio", 0.1)
 
-	// PGWAY_TOKEN, PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
+	// PGWAY_BADGER_PATH, PGWAY_AGENT_REGISTRATION_TOKEN, etc.
 	viper.SetEnvPrefix("pgway")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()

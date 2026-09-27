@@ -29,7 +29,6 @@ func hostname(t *testing.T) string {
 func defaultWant(host string) Config {
 	return Config{
 		LogLevel: "info",
-		Token:    "",
 		Badger: BadgerConfig{
 			Path:       "/var/pgway/lib",
 			GCInterval: 5 * time.Minute,
@@ -108,8 +107,6 @@ func TestLoad(t *testing.T) {
 		{
 			name: "reads all fields from file",
 			file: `
-token = "file-token"
-
 [badger]
 path = "/data/pgway"
 
@@ -125,7 +122,6 @@ token_ttl = "1h"
 `,
 			want: func() Config {
 				w := defaultWant(host)
-				w.Token = "file-token"
 				w.Badger.Path = "/data/pgway"
 				w.GRPC.ListenAddr = ":7000"
 				w.Dashboard.Enabled = false
@@ -148,11 +144,14 @@ path = "/data/pgway"
 		},
 		{
 			name: "env var overrides file value",
-			file: `token = "file-token"`,
-			env:  map[string]string{"PGWAY_TOKEN": "env-token"},
+			file: `
+[grpc]
+dial_addr = "file-host:9090"
+`,
+			env: map[string]string{"PGWAY_GRPC_DIAL_ADDR": "env-host:7000"},
 			want: func() Config {
 				w := defaultWant(host)
-				w.Token = "env-token"
+				w.GRPC.DialAddr = "env-host:7000"
 				return w
 			}(),
 		},

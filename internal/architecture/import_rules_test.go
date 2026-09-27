@@ -13,7 +13,7 @@ type pkg struct {
 }
 
 func TestImportRules(t *testing.T) {
-	cmd := exec.Command("go", "list", "-json", "github.com/aknEvrnky/pgway/internal/...")
+	cmd := exec.Command("go", "list", "-json", "github.com/aknEvrnky/pgway/internal/...", "github.com/aknEvrnky/pgway/cmd/...")
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("go list: %v", err)
@@ -35,6 +35,9 @@ func TestImportRules(t *testing.T) {
 		portsPkg           = "github.com/aknEvrnky/pgway/internal/ports"
 		domainPkg          = "github.com/aknEvrnky/pgway/internal/application/core/domain"
 		applicationPrefix  = "github.com/aknEvrnky/pgway/internal/application/"
+		cliAdapterPrefix   = "github.com/aknEvrnky/pgway/internal/adapters/cli"
+		cmdPgctlPkg        = "github.com/aknEvrnky/pgway/cmd/pgctl"
+		platformConfigPref = "github.com/aknEvrnky/pgway/internal/platform/config"
 	)
 
 	for _, p := range pkgs {
@@ -47,6 +50,14 @@ func TestImportRules(t *testing.T) {
 			if p.ImportPath == portsPkg || strings.HasPrefix(p.ImportPath, portsPkg+"/") {
 				if strings.HasPrefix(imp, applicationPrefix) && imp != domainPkg {
 					t.Errorf("ports must not import %s (only core/domain allowed)", imp)
+				}
+			}
+			// pgctl is config-file free: address comes from --host/--port and
+			// the token from --token-path. A config import here would silently
+			// reintroduce the config.toml dependency.
+			if strings.HasPrefix(p.ImportPath, cliAdapterPrefix) || p.ImportPath == cmdPgctlPkg {
+				if strings.HasPrefix(imp, platformConfigPref) {
+					t.Errorf("%s must not import %s (pgctl is config-file free)", p.ImportPath, imp)
 				}
 			}
 		}
