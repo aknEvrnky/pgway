@@ -22,6 +22,7 @@ export function useAuth() {
     const res = await apiFetch<LoginResponse>('/api/v1/auth/login', {
       method: 'POST',
       body: { username, password },
+      skipAuthRedirect: true,
     })
     bearer.value = res.token
     user.value = res.user
@@ -30,7 +31,10 @@ export function useAuth() {
 
   async function logout() {
     try {
-      await apiFetch('/api/v1/auth/logout', { method: 'POST' })
+      await apiFetch('/api/v1/auth/logout', {
+        method: 'POST',
+        skipAuthRedirect: true,
+      })
     }
     catch {
       // always clear local session
@@ -44,7 +48,9 @@ export function useAuth() {
       return
     }
     try {
-      const me = await apiFetch<AuthUser>('/api/v1/auth/me')
+      // 401 here is expected when logged out — do not bounce to /login from apiFetch;
+      // auth middleware decides navigation.
+      const me = await apiFetch<AuthUser>('/api/v1/auth/me', { skipAuthRedirect: true })
       user.value = me
     }
     catch {
