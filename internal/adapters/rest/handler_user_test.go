@@ -67,7 +67,6 @@ func (f *fakeUserManager) CreateUser(_ context.Context, username, password strin
 	generated := ""
 	if password == "" {
 		generated = "temp-generated-pass"
-		password = generated
 	}
 	if role == "" {
 		role = domain.RoleMember
