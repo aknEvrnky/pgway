@@ -36,12 +36,12 @@ func newLoginCmd(d *Deps) *cobra.Command {
 				return err
 			}
 
-			if err := writeCredentials(token); err != nil {
+			if err := writeTokenFile(d.TokenPath, token); err != nil {
 				return fmt.Errorf("login succeeded but storing token failed: %w", err)
 			}
 
 			fmt.Printf("logged in as %q\n", username)
-			fmt.Printf("token stored in ~/.pgctl/credentials\n")
+			fmt.Printf("token stored in %s\n", d.TokenPath)
 			fmt.Printf("token: %s\n", token)
 
 			return nil
@@ -69,7 +69,7 @@ func newLogoutCmd(d *Deps) *cobra.Command {
 				return err
 			}
 
-			if err := removeCredentials(); err != nil {
+			if err := removeTokenFile(d.TokenPath); err != nil {
 				return err
 			}
 

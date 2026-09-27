@@ -20,6 +20,9 @@ type ConnectFunc func(addr, token string) (Client, error)
 // command's PersistentPreRunE, after flags are parsed.
 type Deps struct {
 	Client Client
-	// Token is the resolved bearer token used for this invocation.
+	// Token is the bearer token read from TokenPath for this invocation.
 	Token string
+	// TokenPath is the resolved token file; login/init write and logout
+	// removes it.
+	TokenPath string
 }

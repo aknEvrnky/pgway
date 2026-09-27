@@ -3,20 +3,20 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/cli/cmd"
 	grpcclient "github.com/aknEvrnky/pgway/internal/adapters/grpc/client"
-	"github.com/aknEvrnky/pgway/internal/platform/config"
 )
 
 func main() {
-	// config is loaded inside the root command's PersistentPreRunE so the
-	// --config and --token flags are parsed before the client is dialed
+	// pgctl is config-file free: address and token are resolved in the root
+	// command's PersistentPreRunE from --host/--port/--token-path. Keepalive
+	// is hardcoded to the server defaults — the process is short-lived.
 	connect := func(addr, token string) (cmd.Client, error) {
-		cfg := config.Get()
 		return grpcclient.NewClient(addr, token, grpcclient.KeepaliveConfig{
-			Interval: cfg.GRPC.KeepaliveInterval,
-			Timeout:  cfg.GRPC.KeepaliveTimeout,
+			Interval: time.Minute,
+			Timeout:  20 * time.Second,
 		})
 	}
 

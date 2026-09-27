@@ -1,20 +1,27 @@
 package cmd
 
 import (
-	"github.com/aknEvrnky/pgway/internal/platform/config"
+	"net"
+	"strconv"
+
 	"github.com/aknEvrnky/pgway/internal/platform/version"
 	"github.com/spf13/cobra"
 )
 
-// NewRootCmd builds the pgctl command tree. Config is loaded in
-// PersistentPreRunE (after flag parsing) so --config takes effect; the token
-// resolution order is then: --token flag > config/env (token key or
-// PGWAY_TOKEN) > credentials file.
+const (
+	defaultHost = "127.0.0.1"
+	defaultPort = 9090
+)
+
+// NewRootCmd builds the pgctl command tree. pgctl is config-file free: the
+// control plane address comes from --host/--port flags, the bearer token
+// only from the file at --token-path (default $HOME/.pgctl/credentials).
 func NewRootCmd(connect ConnectFunc) *cobra.Command {
 	deps := &Deps{}
 
-	var tokenFlag string
-	var configFlag string
+	var host string
+	var port int
+	var tokenPath string
 
 	root := &cobra.Command{
 		Use:     "pgctl",
@@ -22,6 +29,7 @@ func NewRootCmd(connect ConnectFunc) *cobra.Command {
 		Version: version.String(),
 		// version / help must not dial the control plane.
 		SilenceUsage: true,
+		// version / help must not dial the control plane.
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == "version" || cmd.Name() == "help" {
 				return nil
@@ -29,26 +37,26 @@ func NewRootCmd(connect ConnectFunc) *cobra.Command {
 			if v, err := cmd.Flags().GetBool("version"); err == nil && v {
 				return nil
 			}
-			if err := config.Load(configFlag); err != nil {
-				return err
-			}
-			cfg := config.Get()
 
-			token := tokenFlag
-			if token == "" {
-				token = cfg.Token
-			}
-			if token == "" {
-				token = readCredentials()
+			if tokenPath == "" {
+				p, err := defaultTokenPath()
+				if err != nil {
+					return err
+				}
+				tokenPath = p
 			}
 
-			client, err := connect(cfg.GRPC.DialTarget(), token)
+			token := readTokenFile(tokenPath)
+			addr := net.JoinHostPort(host, strconv.Itoa(port))
+
+			client, err := connect(addr, token)
 			if err != nil {
 				return err
 			}
 
 			deps.Client = client
 			deps.Token = token
+			deps.TokenPath = tokenPath
 
 			return nil
 		},
@@ -60,8 +68,9 @@ func NewRootCmd(connect ConnectFunc) *cobra.Command {
 	}
 	root.SetVersionTemplate(version.Line("pgctl") + "\n")
 
-	root.PersistentFlags().StringVar(&tokenFlag, "token", "", "bearer token for control plane authentication")
-	root.PersistentFlags().StringVar(&configFlag, "config", "", "path to config file (default: search /etc/pgway, $HOME/.pgway, .)")
+	root.PersistentFlags().StringVarP(&host, "host", "H", defaultHost, "control plane host")
+	root.PersistentFlags().IntVarP(&port, "port", "P", defaultPort, "control plane port")
+	root.PersistentFlags().StringVar(&tokenPath, "token-path", "", "bearer token file (default: $HOME/.pgctl/credentials)")
 
 	root.AddCommand(
 		newVersionCmd(),

@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-// credentialsPath is where pgctl login stores the bearer token.
-func credentialsPath() (string, error) {
+// defaultTokenPath is where pgctl stores the bearer token when
+// --token-path is not given.
+func defaultTokenPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("resolve home dir: %w", err)
@@ -16,12 +17,7 @@ func credentialsPath() (string, error) {
 	return filepath.Join(home, ".pgctl", "credentials"), nil
 }
 
-func readCredentials() string {
-	path, err := credentialsPath()
-	if err != nil {
-		return ""
-	}
-
+func readTokenFile(path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
@@ -30,31 +26,21 @@ func readCredentials() string {
 	return strings.TrimSpace(string(data))
 }
 
-func writeCredentials(token string) error {
-	path, err := credentialsPath()
-	if err != nil {
-		return err
-	}
-
+func writeTokenFile(path, token string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
 
 	if err := os.WriteFile(path, []byte(token+"\n"), 0o600); err != nil {
-		return fmt.Errorf("write credentials: %w", err)
+		return fmt.Errorf("write token file: %w", err)
 	}
 
 	return nil
 }
 
-func removeCredentials() error {
-	path, err := credentialsPath()
-	if err != nil {
-		return err
-	}
-
+func removeTokenFile(path string) error {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove credentials: %w", err)
+		return fmt.Errorf("remove token file: %w", err)
 	}
 
 	return nil

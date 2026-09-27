@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,57 +18,58 @@ type fakeClient struct {
 
 func (fakeClient) Close() error { return nil }
 
-// TestRootCmdTokenResolution verifies the PersistentPreRunE resolution order
-// (--token flag > config/env token > credentials file) and that --config
-// selects the config file that supplies grpc.listen_addr and the token.
-func TestRootCmdTokenResolution(t *testing.T) {
+// TestRootCmdConnectionResolution verifies the post-config-decoupling
+// connection model: the address comes from --host/--port flags (defaults
+// 127.0.0.1:9090) and the bearer token comes only from the token file
+// (--token-path, default $HOME/.pgctl/credentials). No config.toml is read
+// anywhere — every case runs without one, which is the decoupling
+// regression test.
+func TestRootCmdConnectionResolution(t *testing.T) {
 	tests := []struct {
 		name        string
-		configBody  string
-		credentials string // written to ~/.pgctl/credentials when non-empty
-		tokenFlag   string // passed as --token when non-empty
-		wantToken   string
+		credentials string // written to $HOME/.pgctl/credentials when non-empty
+		customToken string // written to a temp file passed via --token-path
+		args        []string
 		wantAddr    string
+		wantToken   string
 	}{
 		{
-			name: "flag wins over config and credentials",
-			configBody: `token = "config-token"
-
-[grpc]
-listen_addr = ":7001"
-`,
+			name:        "defaults dial loopback 9090 and read default token file",
 			credentials: "cred-token",
-			tokenFlag:   "flag-token",
-			wantToken:   "flag-token",
-			wantAddr:    ":7001",
-		},
-		{
-			name: "config token used when no flag",
-			configBody: `token = "config-token"
-
-[grpc]
-listen_addr = ":7002"
-`,
-			credentials: "cred-token",
-			wantToken:   "config-token",
-			wantAddr:    ":7002",
-		},
-		{
-			name: "credentials file used when no flag or config token",
-			configBody: `
-[grpc]
-listen_addr = ":7003"
-`,
-			credentials: "cred-token",
+			args:        []string{"noop"},
+			wantAddr:    "127.0.0.1:9090",
 			wantToken:   "cred-token",
-			wantAddr:    ":7003",
+		},
+		{
+			name:        "long flags override host and port",
+			credentials: "cred-token",
+			args:        []string{"noop", "--host", "cp.internal", "--port", "7001"},
+			wantAddr:    "cp.internal:7001",
+			wantToken:   "cred-token",
+		},
+		{
+			name:        "shorthand flags -H and -P",
+			credentials: "cred-token",
+			args:        []string{"noop", "-H", "10.0.0.5", "-P", "7002"},
+			wantAddr:    "10.0.0.5:7002",
+			wantToken:   "cred-token",
+		},
+		{
+			name:        "custom token path",
+			customToken: "vault-token",
+			args:        []string{"noop"},
+			wantAddr:    "127.0.0.1:9090",
+			wantToken:   "vault-token",
+		},
+		{
+			name:     "missing token file means empty token",
+			args:     []string{"noop"},
+			wantAddr: "127.0.0.1:9090",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			viper.Reset()
-
 			home := t.TempDir()
 			t.Setenv("HOME", home)
 			if tt.credentials != "" {
@@ -77,8 +77,12 @@ listen_addr = ":7003"
 				require.NoError(t, os.WriteFile(filepath.Join(home, ".pgctl", "credentials"), []byte(tt.credentials), 0o600))
 			}
 
-			configPath := filepath.Join(t.TempDir(), "config.toml")
-			require.NoError(t, os.WriteFile(configPath, []byte(tt.configBody), 0o600))
+			args := append([]string(nil), tt.args...)
+			if tt.customToken != "" {
+				p := filepath.Join(t.TempDir(), "custom-token")
+				require.NoError(t, os.WriteFile(p, []byte(tt.customToken), 0o600))
+				args = append(args, "--token-path", p)
+			}
 
 			var gotAddr, gotToken string
 			connect := func(addr, token string) (Client, error) {
@@ -92,27 +96,11 @@ listen_addr = ":7003"
 				Use:  "noop",
 				RunE: func(*cobra.Command, []string) error { return nil },
 			})
-
-			args := []string{"noop", "--config", configPath}
-			if tt.tokenFlag != "" {
-				args = append(args, "--token", tt.tokenFlag)
-			}
 			root.SetArgs(args)
 
 			require.NoError(t, root.Execute())
-			assert.Equal(t, tt.wantToken, gotToken)
 			assert.Equal(t, tt.wantAddr, gotAddr)
+			assert.Equal(t, tt.wantToken, gotToken)
 		})
 	}
-}
-
-func TestRootCmdConfigLoadError(t *testing.T) {
-	viper.Reset()
-	t.Setenv("HOME", t.TempDir())
-
-	root := NewRootCmd(func(string, string) (Client, error) { return fakeClient{}, nil })
-	root.AddCommand(&cobra.Command{Use: "noop", RunE: func(*cobra.Command, []string) error { return nil }})
-	root.SetArgs([]string{"noop", "--config", filepath.Join(t.TempDir(), "missing.toml")})
-
-	assert.Error(t, root.Execute())
 }
