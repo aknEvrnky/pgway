@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import (
 	"net/http"

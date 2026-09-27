@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import "net/http"
 
@@ -45,6 +45,9 @@ func (a *Adapter) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/v1/entrypoints/{name}", a.deleteEntrypoint)
 
 	var handler http.Handler = mux
+	if _, ok := a.contentFS(); ok {
+		handler = a.withSPA(mux)
+	}
 	// Order matters: the per-user bucket runs post-auth, the per-IP bucket
 	// pre-auth so token brute-force is capped before authentication.
 	handler = a.rateLimit(userLimitKey)(handler)

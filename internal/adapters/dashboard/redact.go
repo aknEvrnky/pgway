@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import "github.com/aknEvrnky/pgway/internal/application/core/domain"
 

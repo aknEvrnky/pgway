@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ func TestListEntrypoints(t *testing.T) {
 			{Id: "api-gateway", Protocol: "http", Host: "0.0.0.0", Port: 8443, FlowId: "api-flow"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints?page_size=10", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -51,7 +51,7 @@ func TestListEntrypoints_FilterFlowId(t *testing.T) {
 			{Id: "api-gateway", Protocol: "http", Host: "127.0.0.1", Port: 8443, FlowId: "api-flow"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints?flow_id=api-flow", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -73,7 +73,7 @@ func TestListEntrypoints_Pagination(t *testing.T) {
 			{Id: "c", Protocol: "http", Host: "0.0.0.0", Port: 3, FlowId: "f"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -102,7 +102,7 @@ func TestListEntrypoints_Pagination(t *testing.T) {
 }
 
 func TestListEntrypoints_InvalidPageSize(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints?page_size=0", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -113,7 +113,7 @@ func TestListEntrypoints_InvalidPageSize(t *testing.T) {
 }
 
 func TestListEntrypoints_InvalidPageToken(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints?page_token=!!", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -127,7 +127,7 @@ func TestGetEntrypoint_OK(t *testing.T) {
 	cp := &fakeCP{
 		entrypoint: &domain.Entrypoint{Id: "public-http", Protocol: "http", Host: "0.0.0.0", Port: 8080, FlowId: "edge-flow"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints/public-http", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -141,7 +141,7 @@ func TestGetEntrypoint_OK(t *testing.T) {
 }
 
 func TestGetEntrypoint_NotFound(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/entrypoints/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -155,7 +155,7 @@ func TestApplyEntrypoint_OK(t *testing.T) {
 	cp := &fakeCP{
 		entrypoint: &domain.Entrypoint{Id: "public-http", Protocol: "http", Host: "0.0.0.0", Port: 8080, FlowId: "edge-flow"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"public-http"},"spec":{"protocol":"http","host":"0.0.0.0","port":8080,"flow_id":"edge-flow"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/entrypoints", bytes.NewReader(body))
@@ -171,7 +171,7 @@ func TestApplyEntrypoint_OK(t *testing.T) {
 }
 
 func TestApplyEntrypoint_MissingName(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{},"spec":{"protocol":"http","host":"0.0.0.0","port":8080,"flow_id":"edge-flow"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/entrypoints", bytes.NewReader(body))
@@ -184,7 +184,7 @@ func TestApplyEntrypoint_MissingName(t *testing.T) {
 }
 
 func TestApplyEntrypoint_InvalidSpec(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{"name":"ep"},"spec":{"protocol":"http","host":"0.0.0.0","port":0,"flow_id":"edge-flow"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/entrypoints", bytes.NewReader(body))
@@ -197,7 +197,7 @@ func TestApplyEntrypoint_InvalidSpec(t *testing.T) {
 }
 
 func TestApplyEntrypoint_InvalidJSON(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/entrypoints", bytes.NewReader([]byte(`{`)))
 	req.Header.Set("Authorization", "Bearer ok")
@@ -217,7 +217,7 @@ func TestApplyEntrypoint_MissingRef(t *testing.T) {
 			MissingName:  "missing-flow",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"public-http"},"spec":{"protocol":"http","host":"0.0.0.0","port":8080,"flow_id":"missing-flow"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/entrypoints", bytes.NewReader(body))
@@ -233,7 +233,7 @@ func TestDeleteEntrypoint_OK(t *testing.T) {
 	cp := &fakeCP{
 		entrypoint: &domain.Entrypoint{Id: "public-http", Host: "0.0.0.0", Port: 8080, FlowId: "edge-flow"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/entrypoints/public-http", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -245,7 +245,7 @@ func TestDeleteEntrypoint_OK(t *testing.T) {
 
 func TestDeleteEntrypoint_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/entrypoints/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")

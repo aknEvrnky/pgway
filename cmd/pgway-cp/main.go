@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/adapters/dashboard"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	agentapp "github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
@@ -153,9 +153,9 @@ func main() {
 	}
 	gate.MarkGRPCServing(true)
 
-	var restAdapter *rest.Adapter
-	if cfg.Rest.Enabled {
-		restAdapter = rest.NewRestAdapter(cpService, authenticator, authService, authService, cfg.Rest)
+	var dashAdapter *dashboard.Adapter
+	if cfg.Dashboard.Enabled {
+		dashAdapter = dashboard.NewAdapter(cpService, authenticator, authService, authService, cfg.Dashboard)
 	}
 
 	var probeAdapter *probes.Adapter
@@ -176,10 +176,11 @@ func main() {
 		}
 	}()
 
-	if restAdapter != nil {
+	if dashAdapter != nil {
 		go func() {
-			if err := restAdapter.Run(sigCtx); err != nil {
-				zap.L().Fatal("rest serve", zap.Error(err))
+			zap.L().Info("dashboard started")
+			if err := dashAdapter.Run(sigCtx); err != nil {
+				zap.L().Fatal("dashboard serve", zap.Error(err))
 			}
 		}()
 	}
@@ -199,8 +200,8 @@ func main() {
 
 	grpcserver.GracefulStopWithTimeout(grpcServer, 5*time.Second)
 
-	if restAdapter != nil {
-		if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+	if dashAdapter != nil {
+		if err := dashAdapter.Shutdown(shutdownCtx); err != nil {
 			zap.L().Error("rest shutdown", zap.Error(err))
 		}
 	}

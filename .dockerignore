@@ -10,5 +10,4 @@ config.toml
 build/
 var/
 docs/
-frontend/
 *.md

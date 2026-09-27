@@ -11,3 +11,4 @@ var/
 
 docs/
 dist/
+internal/adapters/dashboard/ui/dist/

@@ -2,6 +2,15 @@
 # Local / CI image build from source. Release images are built by GoReleaser
 # via Dockerfile.goreleaser from prebuilt linux binaries (same ldflags).
 
+FROM node:22-bookworm AS frontend
+
+WORKDIR /fe
+COPY frontend/package.json frontend/yarn.lock ./
+RUN corepack enable && yarn install --frozen-lockfile
+COPY frontend/ .
+# Empty apiBase → same-origin relative /api/v1 in the embedded SPA.
+RUN NUXT_PUBLIC_API_BASE= yarn generate
+
 FROM golang:1.27-bookworm AS builder
 
 ARG VERSION=dev
@@ -14,12 +23,13 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+COPY --from=frontend /fe/.output/public ./internal/adapters/dashboard/ui/dist
 
 ENV CGO_ENABLED=0
 RUN mkdir -p /out \
 	&& LDFLAGS="-s -w -X github.com/aknEvrnky/pgway/internal/platform/version.Version=${VERSION} -X github.com/aknEvrnky/pgway/internal/platform/version.Commit=${COMMIT} -X github.com/aknEvrnky/pgway/internal/platform/version.Date=${DATE}" \
-	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway ./cmd/pgway \
-	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway-cp ./cmd/pgway-cp \
+	&& go build -tags embeddashboard -trimpath -ldflags="${LDFLAGS}" -o /out/pgway ./cmd/pgway \
+	&& go build -tags embeddashboard -trimpath -ldflags="${LDFLAGS}" -o /out/pgway-cp ./cmd/pgway-cp \
 	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgway-dp ./cmd/pgway-dp \
 	&& go build -trimpath -ldflags="${LDFLAGS}" -o /out/pgctl ./cmd/pgctl
 

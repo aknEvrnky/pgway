@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import (
 	"encoding/json"
@@ -6,21 +6,21 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
-	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
+	flowv1 "github.com/aknEvrnky/pgway/internal/schema/flow/v1"
 )
 
-type listPoolsResponse struct {
-	Items      []*domain.Pool `json:"items"`
+type listFlowsResponse struct {
+	Items      []*domain.Flow `json:"items"`
 	NextCursor string         `json:"next_cursor,omitempty"`
 	TotalCount int            `json:"total_count"`
 }
 
-func (a *Adapter) listPools(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) listFlows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	poolType := q.Get("type")
-	if poolType != "" && poolType != string(domain.PoolTypeStatic) && poolType != string(domain.PoolTypeDynamic) {
-		writeError(w, http.StatusBadRequest, `type must be "static" or "dynamic"`)
+	mode := q.Get("mode")
+	if mode != "" && mode != "router" && mode != "direct" {
+		writeError(w, http.StatusBadRequest, `mode must be "router" or "direct"`)
 		return
 	}
 
@@ -36,48 +36,50 @@ func (a *Adapter) listPools(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := a.cp.ListPools(r.Context(), domain.ListParams{
+	result, err := a.cp.ListFlows(r.Context(), domain.ListParams{
 		PageSize: pageSize,
 		Cursor:   cursor,
-	}, domain.PoolFilter{
-		Search: q.Get("search"),
-		Type:   poolType,
+	}, domain.FlowFilter{
+		Search:     q.Get("search"),
+		RouterId:   q.Get("router_id"),
+		BalancerId: q.Get("balancer_id"),
+		Mode:       mode,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, listPoolsResponse{
+	writeJSON(w, http.StatusOK, listFlowsResponse{
 		Items:      result.Items,
 		NextCursor: encodePageToken(result.NextCursor),
 		TotalCount: result.TotalCount,
 	})
 }
 
-func (a *Adapter) getPool(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) getFlow(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	pool, err := a.cp.GetPool(r.Context(), name)
+	flow, err := a.cp.GetFlow(r.Context(), name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, pool)
+	writeJSON(w, http.StatusOK, flow)
 }
 
-type applyPoolRequest struct {
+type applyFlowRequest struct {
 	Metadata schema.Metadata   `json:"metadata"`
-	Spec     poolv1.PoolSpecV1 `json:"spec"`
+	Spec     flowv1.FlowSpecV1 `json:"spec"`
 }
 
-func (a *Adapter) applyPool(w http.ResponseWriter, r *http.Request) {
-	var req applyPoolRequest
+func (a *Adapter) applyFlow(w http.ResponseWriter, r *http.Request) {
+	var req applyFlowRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -93,23 +95,23 @@ func (a *Adapter) applyPool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pool, err := a.cp.ApplyPoolV1(r.Context(), req.Metadata, req.Spec)
+	flow, err := a.cp.ApplyFlowV1(r.Context(), req.Metadata, req.Spec)
 	if err != nil {
 		writeCPError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, pool)
+	writeJSON(w, http.StatusOK, flow)
 }
 
-func (a *Adapter) deletePool(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) deleteFlow(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	if err := a.cp.DeletePool(r.Context(), name); err != nil {
+	if err := a.cp.DeleteFlow(r.Context(), name); err != nil {
 		writeCPError(w, err)
 		return
 	}

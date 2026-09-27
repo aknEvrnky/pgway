@@ -10,7 +10,7 @@ import (
 
 // Authenticator resolves bearer tokens to principals. It is the single
 // verification point shared by every transport (gRPC interceptors and the
-// REST management API). Issuance lives elsewhere: Service mints user
+// dashboard HTTP surface). Issuance lives elsewhere: Service mints user
 // tokens, AgentCredentialService mints agent tokens.
 type Authenticator struct {
 	users  ports.UserRepositoryPort

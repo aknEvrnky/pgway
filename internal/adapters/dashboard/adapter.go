@@ -1,8 +1,9 @@
-package rest
+package dashboard
 
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"net/http"
 	"time"
 
@@ -16,11 +17,13 @@ type Adapter struct {
 	authenticator ports.TokenAuthenticator
 	authManager   ports.AuthManager
 	users         ports.UserManager
-	cfg           config.RestConfig
+	cfg           config.DashboardConfig
 	server        *http.Server
+	// staticFS overrides the build-tagged UI embed (tests only).
+	staticFS fs.FS
 }
 
-func NewRestAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, users ports.UserManager, cfg config.RestConfig) *Adapter {
+func NewAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, users ports.UserManager, cfg config.DashboardConfig) *Adapter {
 	a := &Adapter{
 		cp:            cp,
 		authenticator: authenticator,
@@ -45,8 +48,15 @@ func (a *Adapter) Handler() http.Handler {
 	return a.server.Handler
 }
 
+// SetStaticFS installs a UI filesystem (tests) and remounts routes so the SPA
+// catch-all is registered. Production uses the build-tagged ui embed instead.
+func (a *Adapter) SetStaticFS(fsys fs.FS) {
+	a.staticFS = fsys
+	a.server.Handler = a.routes()
+}
+
 func (a *Adapter) Run(ctx context.Context) error {
-	zap.L().Info("starting rest server", zap.String("addr", a.server.Addr))
+	zap.L().Info("starting dashboard server", zap.String("addr", a.server.Addr))
 	err := a.server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil

@@ -10,13 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aknEvrnky/pgway/internal/adapters/dashboard"
 	"github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/http"
 	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	proxyadapter "github.com/aknEvrnky/pgway/internal/adapters/proxy/net"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
-	"github.com/aknEvrnky/pgway/internal/adapters/rest"
 	agentapp "github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
 	cpapi "github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
@@ -176,10 +176,10 @@ func main() {
 		zap.L().Fatal("init http adapter", zap.Error(err))
 	}
 
-	// REST adapter
-	var restAdapter *rest.Adapter
-	if cfg.Rest.Enabled {
-		restAdapter = rest.NewRestAdapter(cpService, authenticator, authService, authService, cfg.Rest)
+	// Dashboard (JSON API + optional embedded UI)
+	var dashAdapter *dashboard.Adapter
+	if cfg.Dashboard.Enabled {
+		dashAdapter = dashboard.NewAdapter(cpService, authenticator, authService, authService, cfg.Dashboard)
 	}
 
 	var probeAdapter *probes.Adapter
@@ -206,10 +206,10 @@ func main() {
 		runErr <- httpAdapter.Run(sigCtx)
 	}()
 
-	if restAdapter != nil {
+	if dashAdapter != nil {
 		go func() {
-			zap.L().Info("restapi started")
-			runErr <- restAdapter.Run(sigCtx)
+			zap.L().Info("dashboard started")
+			runErr <- dashAdapter.Run(sigCtx)
 		}()
 	}
 
@@ -269,8 +269,8 @@ func main() {
 		zap.L().Error("http shutdown", zap.Error(err))
 	}
 
-	if restAdapter != nil {
-		if err := restAdapter.Shutdown(shutdownCtx); err != nil {
+	if dashAdapter != nil {
+		if err := dashAdapter.Shutdown(shutdownCtx); err != nil {
 			zap.L().Error("rest shutdown", zap.Error(err))
 		}
 	}

@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestListRouters_OK(t *testing.T) {
 			},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -64,7 +64,7 @@ func TestListRouters_FilterHasCatchAll(t *testing.T) {
 			},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers?has_catch_all=true", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -79,7 +79,7 @@ func TestListRouters_FilterHasCatchAll(t *testing.T) {
 }
 
 func TestListRouters_InvalidHasCatchAll(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers?has_catch_all=maybe", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -97,7 +97,7 @@ func TestListRouters_Pagination(t *testing.T) {
 			{Id: "c", Rules: []*domain.RouterRule{{Id: "r", Match: domain.RouterMatch{Type: domain.MatchTypeCatchAll}, Target: "lb"}}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -136,7 +136,7 @@ func TestApplyRouter_OK(t *testing.T) {
 			},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"edge-router"},"spec":{"rules":[{"id":"r1","match":{"type":"catch_all"},"target":"edge-rr"}]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader(body))
@@ -160,7 +160,7 @@ func TestApplyRouter_MissingRefBadRequest(t *testing.T) {
 			MissingName:  "missing-lb",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"edge-router"},"spec":{"rules":[{"id":"r1","match":{"type":"catch_all"},"target":"missing-lb"}]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader(body))
@@ -181,7 +181,7 @@ func TestDeleteRouter_InUseConflict(t *testing.T) {
 			Dependents:   []api.ResourceDependent{{Type: "flow", Name: "main"}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/routers/edge-router", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -194,7 +194,7 @@ func TestDeleteRouter_InUseConflict(t *testing.T) {
 
 func TestDeleteRouter_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/routers/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -205,7 +205,7 @@ func TestDeleteRouter_NotFound(t *testing.T) {
 }
 
 func TestApplyRouter_InvalidSpec(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{"name":"bad"},"spec":{"rules":[]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader(body))
@@ -219,7 +219,7 @@ func TestApplyRouter_InvalidSpec(t *testing.T) {
 }
 
 func TestApplyRouter_MissingName(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{},"spec":{"rules":[{"id":"r1","match":{"type":"catch_all"},"target":"lb"}]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader(body))
@@ -232,7 +232,7 @@ func TestApplyRouter_MissingName(t *testing.T) {
 }
 
 func TestApplyRouter_InvalidJSON(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/routers", bytes.NewReader([]byte(`{`)))
 	req.Header.Set("Authorization", "Bearer ok")
@@ -247,7 +247,7 @@ func TestGetRouter_OK(t *testing.T) {
 	cp := &fakeCP{
 		router: &domain.Router{Id: "edge-router"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/routers/edge-router", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -258,7 +258,7 @@ func TestGetRouter_OK(t *testing.T) {
 }
 
 func TestDeleteRouter_OK(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/routers/edge-router", nil)
 	req.Header.Set("Authorization", "Bearer ok")
