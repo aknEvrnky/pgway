@@ -21,9 +21,9 @@ func (fakeClient) Close() error { return nil }
 // TestRootCmdConnectionResolution verifies the post-config-decoupling
 // connection model: the address comes from --host/--port flags (defaults
 // 127.0.0.1:9090) and the bearer token comes only from the token file
-// (--token-path, default $HOME/.pgctl/credentials). No config.toml is read
-// anywhere — every case runs without one, which is the decoupling
-// regression test.
+// (--token-path, default $HOME/.pgctl/credentials). Each case runs with a
+// decoy config file and PGWAY_* env vars planted on the old resolution
+// paths — the decoupling regression test.
 func TestRootCmdConnectionResolution(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -72,6 +72,17 @@ func TestRootCmdConnectionResolution(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("HOME", home)
+
+			// Decoy config file and env vars on the old resolution paths: if
+			// pgctl ever regains config/env support, these values leak into
+			// the assertions below instead of the flag/file-derived ones.
+			require.NoError(t, os.MkdirAll(filepath.Join(home, ".pgway"), 0o700))
+			decoy := filepath.Join(home, ".pgway", "config.toml")
+			require.NoError(t, os.WriteFile(decoy, []byte("token = \"config-token\"\n\n[grpc]\nlisten_addr = \":6666\"\ndial_addr = \"config-host:6667\"\n"), 0o600))
+			t.Setenv("PGWAY_TOKEN", "env-token")
+			t.Setenv("PGWAY_GRPC_LISTEN_ADDR", "env-host:6668")
+			t.Setenv("PGWAY_GRPC_DIAL_ADDR", "env-host:6669")
+
 			if tt.credentials != "" {
 				require.NoError(t, os.MkdirAll(filepath.Join(home, ".pgctl"), 0o700))
 				require.NoError(t, os.WriteFile(filepath.Join(home, ".pgctl", "credentials"), []byte(tt.credentials), 0o600))
