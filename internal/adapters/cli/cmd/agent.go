@@ -66,7 +66,7 @@ func newAgentTokenCreateCmd(d *Deps) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().DurationVar(&ttl, "ttl", defaultRegistrationTokenTTL, "token lifetime")
+	cmd.Flags().DurationVar(&ttl, "ttl", defaultRegistrationTokenTTL, "token lifetime (must be > 0, default 24h)")
 
 	return cmd
 }

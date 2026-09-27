@@ -26,6 +26,25 @@ func readTokenFile(path string) string {
 	return strings.TrimSpace(string(data))
 }
 
+// requireTokenFile is the fail-fast variant of readTokenFile for commands
+// whose RPCs all require auth: a missing or blank token file errors with a
+// pointer to the file instead of surfacing as a deferred server-side
+// Unauthenticated.
+func requireTokenFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("no token file at %s (run pgctl login, or pass --token-path)", path)
+		}
+		return "", fmt.Errorf("read token file: %w", err)
+	}
+
+	if token := strings.TrimSpace(string(data)); token != "" {
+		return token, nil
+	}
+	return "", fmt.Errorf("token file %s is empty (run pgctl login to rewrite it)", path)
+}
+
 func writeTokenFile(path, token string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)

@@ -62,9 +62,11 @@ func TestRootCmdConnectionResolution(t *testing.T) {
 			wantToken:   "vault-token",
 		},
 		{
-			name:     "missing token file means empty token",
-			args:     []string{"noop"},
-			wantAddr: "127.0.0.1:9090",
+			name:        "bare IPv6 host is bracketed by JoinHostPort",
+			credentials: "cred-token",
+			args:        []string{"noop", "-H", "::1"},
+			wantAddr:    "[::1]:9090",
+			wantToken:   "cred-token",
 		},
 	}
 
@@ -114,4 +116,111 @@ func TestRootCmdConnectionResolution(t *testing.T) {
 			assert.Equal(t, tt.wantToken, gotToken)
 		})
 	}
+}
+
+// TestRootCmdFlagValidation pins fail-fast flag checking: an invalid port or
+// a host that smuggles a port / brackets must error before dialing, instead
+// of surfacing as a deferred generic Unavailable at the first RPC.
+func TestRootCmdFlagValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{name: "port zero", args: []string{"--port", "0"}, wantErr: "--port"},
+		{name: "port negative", args: []string{"--port", "-1"}, wantErr: "--port"},
+		{name: "port too large", args: []string{"--port", "65536"}, wantErr: "--port"},
+		{name: "host with port", args: []string{"--host", "cp:9090"}, wantErr: "--host"},
+		{name: "bracketed IPv6 host", args: []string{"--host", "[::1]"}, wantErr: "--host"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dialed := false
+			root := newTestRoot(func(addr, token string) (Client, error) {
+				dialed = true
+				return fakeClient{}, nil
+			}, "noop")
+			root.SetArgs(append([]string{"noop"}, tt.args...))
+
+			err := root.Execute()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+			assert.False(t, dialed, "invalid flags must fail before dialing")
+		})
+	}
+}
+
+// TestRootCmdTokenRequired pins token fail-fast semantics: commands whose
+// RPCs all require auth error with a pointer to the token file (missing or
+// empty) instead of a server-side Unauthenticated, while commands marked
+// tokenless (login/init — their RPCs are exempt) dial without a token file.
+func TestRootCmdTokenRequired(t *testing.T) {
+	tests := []struct {
+		name        string
+		leaf        string
+		credentials string // "" = no file, "empty" = present but blank
+		wantErr     string
+		wantToken   string
+	}{
+		{
+			name:    "missing token file errors for authed commands",
+			leaf:    "noop",
+			wantErr: "no token file at",
+		},
+		{
+			name:        "empty token file errors for authed commands",
+			leaf:        "noop",
+			credentials: "empty",
+			wantErr:     "is empty",
+		},
+		{
+			name:      "tokenless command dials without a token file",
+			leaf:      "exempt",
+			wantToken: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			if tt.credentials == "empty" {
+				require.NoError(t, os.MkdirAll(filepath.Join(home, ".pgctl"), 0o700))
+				require.NoError(t, os.WriteFile(filepath.Join(home, ".pgctl", "credentials"), []byte("   \n"), 0o600))
+			}
+
+			var gotToken string
+			root := newTestRoot(func(addr, token string) (Client, error) {
+				gotToken = token
+				return fakeClient{}, nil
+			}, "noop", "exempt")
+			root.SetArgs([]string{tt.leaf})
+
+			err := root.Execute()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantToken, gotToken)
+		})
+	}
+}
+
+func newTestRoot(connect ConnectFunc, leaves ...string) *cobra.Command {
+	root := NewRootCmd(connect)
+	for _, name := range leaves {
+		leaf := &cobra.Command{
+			Use:  name,
+			RunE: func(*cobra.Command, []string) error { return nil },
+		}
+		if name == "exempt" {
+			// mirrors the login/init marker: RPCs are auth-exempt
+			leaf.Annotations = map[string]string{tokenlessAnnotation: "true"}
+		}
+		root.AddCommand(leaf)
+	}
+	return root
 }
