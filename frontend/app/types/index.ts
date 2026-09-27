@@ -287,6 +287,31 @@ export interface ChangeUserPasswordRequest {
   new_password?: string
 }
 
+export type AgentStatus = 'active' | 'passive' | 'disconnected'
+
+export interface Agent {
+  id: string
+  status: AgentStatus
+  hostname?: string
+  version?: string
+  labels?: Record<string, string>
+  last_heartbeat?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AgentListQuery {
+  search?: string
+  page_size?: number
+  page_token?: string
+}
+
+export interface AgentListResponse {
+  items: Agent[]
+  next_cursor?: string
+  total_count: number
+}
+
 export type FlowGraphKind = 'entrypoint' | 'flow' | 'router' | 'balancer' | 'pool' | 'proxy'
 
 export interface MetricCardData {

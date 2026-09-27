@@ -13,23 +13,35 @@ import (
 )
 
 type Adapter struct {
-	cp            ports.ControlPlane
-	authenticator ports.TokenAuthenticator
-	authManager   ports.AuthManager
-	users         ports.UserManager
-	cfg           config.DashboardConfig
-	server        *http.Server
+	cp                 ports.ControlPlane
+	authenticator      ports.TokenAuthenticator
+	authManager        ports.AuthManager
+	users              ports.UserManager
+	agents             ports.AgentManager
+	heartbeatThreshold time.Duration
+	cfg                config.DashboardConfig
+	server             *http.Server
 	// staticFS overrides the build-tagged UI embed (tests only).
 	staticFS fs.FS
 }
 
-func NewAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, users ports.UserManager, cfg config.DashboardConfig) *Adapter {
+func NewAdapter(
+	cp ports.ControlPlane,
+	authenticator ports.TokenAuthenticator,
+	authManager ports.AuthManager,
+	users ports.UserManager,
+	agents ports.AgentManager,
+	cfg config.DashboardConfig,
+	heartbeatThreshold time.Duration,
+) *Adapter {
 	a := &Adapter{
-		cp:            cp,
-		authenticator: authenticator,
-		authManager:   authManager,
-		users:         users,
-		cfg:           cfg,
+		cp:                 cp,
+		authenticator:      authenticator,
+		authManager:        authManager,
+		users:              users,
+		agents:             agents,
+		heartbeatThreshold: heartbeatThreshold,
+		cfg:                cfg,
 	}
 
 	a.server = &http.Server{

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/dashboard"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
@@ -503,7 +504,22 @@ func testAdapter(t *testing.T, cfg config.DashboardConfig, auth *fakeAuth, authM
 	if len(usersOpt) > 0 {
 		users = usersOpt[0]
 	}
-	a := dashboard.NewAdapter(cp, auth, authMgr, users, cfg)
+	a := dashboard.NewAdapter(cp, auth, authMgr, users, nil, cfg, 30*time.Second)
+	return a.Handler()
+}
+
+func testAdapterWithAgents(t *testing.T, cfg config.DashboardConfig, auth *fakeAuth, agents ports.AgentManager, threshold time.Duration) http.Handler {
+	t.Helper()
+	if cfg.ListenAddr == "" {
+		cfg.ListenAddr = "127.0.0.1:0"
+	}
+	if cfg.CORSAllowOrigins == nil {
+		cfg.CORSAllowOrigins = []string{}
+	}
+	if threshold <= 0 {
+		threshold = 30 * time.Second
+	}
+	a := dashboard.NewAdapter(&fakeCP{}, auth, nil, nil, agents, cfg, threshold)
 	return a.Handler()
 }
 

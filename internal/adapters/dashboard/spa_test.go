@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/aknEvrnky/pgway/internal/adapters/dashboard"
 	"github.com/aknEvrnky/pgway/internal/adapters/dashboard/ui"
@@ -69,7 +70,7 @@ func TestUI_StubDisabled(t *testing.T) {
 
 func testAdapterWithStatic(t *testing.T, fsys fs.FS) http.Handler {
 	t.Helper()
-	a := dashboard.NewAdapter(&fakeCP{}, &fakeAuth{principal: userPrincipal()}, nil, newFakeUserManager(), config.DashboardConfig{RateLimitRPS: 0})
+	a := dashboard.NewAdapter(&fakeCP{}, &fakeAuth{principal: userPrincipal()}, nil, newFakeUserManager(), nil, config.DashboardConfig{RateLimitRPS: 0}, 30*time.Second)
 	a.SetStaticFS(fsys)
 	return a.Handler()
 }
