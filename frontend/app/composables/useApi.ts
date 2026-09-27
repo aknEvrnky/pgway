@@ -16,7 +16,8 @@ function isAuthPublicPath(path: string) {
 
 export function useApi() {
   const config = useRuntimeConfig()
-  const baseURL = (config.public.apiBase as string) || 'http://localhost:8081'
+  // Empty string = same-origin (embedded UI). Do not coalesce "" with ||.
+  const baseURL = (config.public.apiBase as string | undefined) ?? 'http://localhost:8081'
   // Shared with useAuth — prefer cookie; bearer is same-tab fallback after login.
   const bearer = useState<string | null>('auth-bearer', () => null)
   const user = useState<{ id: string, role: string } | null>('auth-user', () => null)

@@ -5,6 +5,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  // Static SPA for `nuxt generate` / go:embed. Local `nuxt dev` still works.
+  ssr: false,
+
   css: ['~/assets/css/main.css'],
 
   modules: [
@@ -14,9 +17,10 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      // Prefer localhost (not 127.0.0.1) so httpOnly cookies stay same-site
-      // with the Nuxt origin at http://localhost:3000.
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8081',
+      // Dev (split process): prefer localhost so httpOnly cookies stay same-site
+      // with Nuxt on :3000. Embed/generate sets NUXT_PUBLIC_API_BASE="" for
+      // same-origin relative /api/v1 calls.
+      apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8081',
     },
   },
 

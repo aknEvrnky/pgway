@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ func TestListFlows_OK(t *testing.T) {
 			RouterId: "edge-router",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -51,7 +51,7 @@ func TestListFlows_FilterMode(t *testing.T) {
 			{Id: "both", RouterId: "api-router", BalancerId: "edge-rr"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows?mode=direct", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -76,7 +76,7 @@ func TestListFlows_FilterMode(t *testing.T) {
 }
 
 func TestListFlows_InvalidMode(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows?mode=weighted", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -94,7 +94,7 @@ func TestListFlows_Pagination(t *testing.T) {
 			{Id: "c", BalancerId: "lb"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -128,7 +128,7 @@ func TestApplyFlow_OK(t *testing.T) {
 	cp := &fakeCP{
 		flow: &domain.Flow{Id: "edge-flow", RouterId: "edge-router"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"edge-flow"},"spec":{"router_id":"edge-router"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader(body))
@@ -147,7 +147,7 @@ func TestGetFlow_OK(t *testing.T) {
 	cp := &fakeCP{
 		flow: &domain.Flow{Id: "edge-flow", RouterId: "edge-router"},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows/edge-flow", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -161,7 +161,7 @@ func TestGetFlow_OK(t *testing.T) {
 }
 
 func TestGetFlow_NotFound(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -180,7 +180,7 @@ func TestDeleteFlow_InUseConflict(t *testing.T) {
 			Dependents:   []api.ResourceDependent{{Type: "entrypoint", Name: "http-in"}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/flows/edge-flow", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -193,7 +193,7 @@ func TestDeleteFlow_InUseConflict(t *testing.T) {
 
 func TestDeleteFlow_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/flows/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -204,7 +204,7 @@ func TestDeleteFlow_NotFound(t *testing.T) {
 }
 
 func TestApplyFlow_InvalidSpec(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{"name":"bad"},"spec":{}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader(body))
@@ -217,7 +217,7 @@ func TestApplyFlow_InvalidSpec(t *testing.T) {
 }
 
 func TestApplyFlow_MissingName(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{},"spec":{"balancer_id":"lb"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader(body))
@@ -230,7 +230,7 @@ func TestApplyFlow_MissingName(t *testing.T) {
 }
 
 func TestApplyFlow_InvalidJSON(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/flows", bytes.NewReader([]byte(`{`)))
 	req.Header.Set("Authorization", "Bearer ok")
@@ -242,7 +242,7 @@ func TestApplyFlow_InvalidJSON(t *testing.T) {
 }
 
 func TestListFlows_InvalidPageSize(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/flows?page_size=-3", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -253,7 +253,7 @@ func TestListFlows_InvalidPageSize(t *testing.T) {
 }
 
 func TestDeleteFlow_OK(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/flows/edge-flow", nil)
 	req.Header.Set("Authorization", "Bearer ok")

@@ -41,7 +41,7 @@ func defaultWant(host string) Config {
 			RateLimitRPS:      100,
 			RateLimitBurst:    200,
 		},
-		Rest: RestConfig{
+		Dashboard: DashboardConfig{
 			Enabled:          true,
 			ListenAddr:       "127.0.0.1:8081",
 			CORSAllowOrigins: []string{},
@@ -116,7 +116,7 @@ path = "/data/pgway"
 [grpc]
 listen_addr = ":7000"
 
-[rest]
+[dashboard]
 enabled = false
 listen_addr = ":7001"
 
@@ -128,8 +128,8 @@ token_ttl = "1h"
 				w.Token = "file-token"
 				w.Badger.Path = "/data/pgway"
 				w.GRPC.ListenAddr = ":7000"
-				w.Rest.Enabled = false
-				w.Rest.ListenAddr = ":7001"
+				w.Dashboard.Enabled = false
+				w.Dashboard.ListenAddr = ":7001"
 				w.Auth.TokenTTL = time.Hour
 				return w
 			}(),
@@ -157,15 +157,15 @@ path = "/data/pgway"
 			}(),
 		},
 		{
-			name: "rest enabled env overrides file",
+			name: "dashboard enabled env overrides file",
 			file: `
-[rest]
+[dashboard]
 enabled = true
 `,
-			env: map[string]string{"PGWAY_REST_ENABLED": "false"},
+			env: map[string]string{"PGWAY_DASHBOARD_ENABLED": "false"},
 			want: func() Config {
 				w := defaultWant(host)
-				w.Rest.Enabled = false
+				w.Dashboard.Enabled = false
 				return w
 			}(),
 		},
@@ -435,18 +435,18 @@ rate_limit_burst = 0
 	assert.Contains(t, err.Error(), "grpc.rate_limit_burst")
 }
 
-func TestLoad_RestRateLimitBurstRequiredWhenEnabled(t *testing.T) {
+func TestLoad_DashboardRateLimitBurstRequiredWhenEnabled(t *testing.T) {
 	viper.Reset()
 	err := Load(writeConfig(t, `
 [badger]
 path = "/data/pgway"
 
-[rest]
+[dashboard]
 rate_limit_rps = 10
 rate_limit_burst = 0
 `))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "rest.rate_limit_burst")
+	assert.Contains(t, err.Error(), "dashboard.rate_limit_burst")
 }
 
 func TestLoad_EventCoalesceMaxBufferRequiredWhenEnabled(t *testing.T) {

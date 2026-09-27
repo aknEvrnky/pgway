@@ -20,7 +20,7 @@ type Config struct {
 
 	Badger    BadgerConfig    `mapstructure:"badger"`
 	GRPC      GRPCConfig      `mapstructure:"grpc"`
-	Rest      RestConfig      `mapstructure:"rest"`
+	Dashboard DashboardConfig `mapstructure:"dashboard"`
 	Probes    ProbesConfig    `mapstructure:"probes"`
 	Auth      AuthConfig      `mapstructure:"auth"`
 	Agent     AgentConfig     `mapstructure:"agent"`
@@ -63,17 +63,17 @@ func (c GRPCConfig) DialTarget() string {
 	return c.ListenAddr
 }
 
-type RestConfig struct {
-	// Enabled starts the REST API (dashboard backend; experimental).
-	// Default true for backward compatibility; disable when the dashboard
+type DashboardConfig struct {
+	// Enabled starts the dashboard HTTP surface (JSON API + embedded UI when built with -tags embeddashboard).
+	// Default true; disable when the dashboard
 	// is not used.
 	Enabled bool `mapstructure:"enabled"`
-	// ListenAddr is the REST API bind address. Default is loopback-only.
+	// ListenAddr is the dashboard bind address. Default is loopback-only.
 	ListenAddr string `mapstructure:"listen_addr"`
 	// CORSAllowOrigins lists browser Origins allowed for CORS. Empty means
 	// no cross-origin access (no Access-Control-Allow-Origin echo).
 	CORSAllowOrigins []string `mapstructure:"cors_allow_origins"`
-	// RateLimitRPS is the token-bucket refill rate for REST, applied per
+	// RateLimitRPS is the token-bucket refill rate for the dashboard HTTP surface, applied per
 	// client IP before auth and per user after auth. Zero disables both.
 	RateLimitRPS float64 `mapstructure:"rate_limit_rps"`
 	// RateLimitBurst is the token-bucket capacity. Required >= 1 when
@@ -86,7 +86,7 @@ type ProbesConfig struct {
 	// Enabled starts the dedicated probe HTTP listener.
 	// Default false — leave off outside orchestrated environments.
 	Enabled bool `mapstructure:"enabled"`
-	// ListenAddr is the probe bind address (separate from gRPC/REST/entrypoints).
+	// ListenAddr is the probe bind address (separate from gRPC/dashboard/entrypoints).
 	ListenAddr string `mapstructure:"listen_addr"`
 }
 
@@ -211,11 +211,11 @@ func Load(path string) error {
 	viper.SetDefault("grpc.keepalive_timeout", 20*time.Second)
 	viper.SetDefault("grpc.rate_limit_rps", 100.0)
 	viper.SetDefault("grpc.rate_limit_burst", 200)
-	viper.SetDefault("rest.enabled", true)
-	viper.SetDefault("rest.listen_addr", "127.0.0.1:8081")
-	viper.SetDefault("rest.cors_allow_origins", []string{})
-	viper.SetDefault("rest.rate_limit_rps", 100.0)
-	viper.SetDefault("rest.rate_limit_burst", 200)
+	viper.SetDefault("dashboard.enabled", true)
+	viper.SetDefault("dashboard.listen_addr", "127.0.0.1:8081")
+	viper.SetDefault("dashboard.cors_allow_origins", []string{})
+	viper.SetDefault("dashboard.rate_limit_rps", 100.0)
+	viper.SetDefault("dashboard.rate_limit_burst", 200)
 	viper.SetDefault("probes.enabled", false)
 	viper.SetDefault("probes.listen_addr", ":8082")
 	viper.SetDefault("auth.token_ttl", 720*time.Hour)
@@ -284,11 +284,11 @@ func Load(path string) error {
 	if cfg.GRPC.RateLimitRPS > 0 && cfg.GRPC.RateLimitBurst < 1 {
 		return fmt.Errorf("grpc.rate_limit_burst must be >= 1 when grpc.rate_limit_rps is enabled")
 	}
-	if cfg.Rest.RateLimitRPS > 0 && cfg.Rest.RateLimitBurst < 1 {
-		return fmt.Errorf("rest.rate_limit_burst must be >= 1 when rest.rate_limit_rps is enabled")
+	if cfg.Dashboard.RateLimitRPS > 0 && cfg.Dashboard.RateLimitBurst < 1 {
+		return fmt.Errorf("dashboard.rate_limit_burst must be >= 1 when dashboard.rate_limit_rps is enabled")
 	}
-	if cfg.Rest.CORSAllowOrigins == nil {
-		cfg.Rest.CORSAllowOrigins = []string{}
+	if cfg.Dashboard.CORSAllowOrigins == nil {
+		cfg.Dashboard.CORSAllowOrigins = []string{}
 	}
 	if cfg.Proxy.MaxIdleConns < 0 {
 		return fmt.Errorf("proxy.max_idle_conns must be >= 0")

@@ -30,16 +30,16 @@ rate_limit_rps = 100
 # Token-bucket burst capacity. Required when rate_limit_rps > 0.
 rate_limit_burst = 200
 
-[rest]
-# Start the REST API (dashboard backend; experimental). On by default for
-# backward compatibility — set to false when the dashboard is not used.
+[dashboard]
+# Start the dashboard HTTP surface (JSON API + embedded UI when built with
+# -tags embeddashboard). On by default — set to false when unused.
 enabled = true
 # Prefer loopback until you put a reverse proxy / trusted network in front.
 listen_addr = "127.0.0.1:8081"
 # Browser Origins allowed for CORS. Empty = no cross-origin (no reflective Origin).
-# Dashboard (Nuxt) typically needs: ["http://localhost:3000"]
+# Local Nuxt dev typically needs: ["http://localhost:3000"]
 cors_allow_origins = []
-# Per-client token-bucket for REST (0 = off). Same model as grpc.rate_limit_*.
+# Per-client token-bucket for dashboard HTTP (0 = off). Same model as grpc.rate_limit_*.
 rate_limit_rps = 100
 rate_limit_burst = 200
 
@@ -47,7 +47,7 @@ rate_limit_burst = 200
 # Opt-in process liveness/readiness HTTP listener (K8s probes). Off by default.
 enabled = false
 # Dedicated bind address — prefer loopback or cluster-internal (e.g. 127.0.0.1:8082).
-# Do not reuse entrypoint / gRPC / REST ports; avoid binding on public interfaces.
+# Do not reuse entrypoint / gRPC / dashboard ports; avoid binding on public interfaces.
 listen_addr = ":8082"
 
 [auth]

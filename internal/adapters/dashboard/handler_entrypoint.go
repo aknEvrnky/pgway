@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import (
 	"encoding/json"
@@ -6,23 +6,17 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
-	proxyv1 "github.com/aknEvrnky/pgway/internal/schema/proxy/v1"
+	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
 )
 
-type listProxiesResponse struct {
-	Items      []*domain.Proxy `json:"items"`
-	NextCursor string          `json:"next_cursor,omitempty"`
-	TotalCount int             `json:"total_count"`
+type listEntrypointsResponse struct {
+	Items      []*domain.Entrypoint `json:"items"`
+	NextCursor string               `json:"next_cursor,omitempty"`
+	TotalCount int                  `json:"total_count"`
 }
 
-func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) listEntrypoints(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-
-	protocol := q.Get("protocol")
-	if protocol != "" && !domain.Protocol(protocol).IsValid() {
-		writeError(w, http.StatusBadRequest, `protocol must be "http", "https", or "socks5"`)
-		return
-	}
 
 	pageSize, err := parsePageSize(q.Get("page_size"))
 	if err != nil {
@@ -36,48 +30,50 @@ func (a *Adapter) listProxies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := a.cp.ListProxies(r.Context(), domain.ListParams{
+	result, err := a.cp.ListEntrypoints(r.Context(), domain.ListParams{
 		PageSize: pageSize,
 		Cursor:   cursor,
-	}, domain.ProxyFilter{
+	}, domain.EntrypointFilter{
 		Search:   q.Get("search"),
-		Protocol: protocol,
+		Protocol: q.Get("protocol"),
+		Host:     q.Get("host"),
+		FlowId:   q.Get("flow_id"),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, listProxiesResponse{
-		Items:      redactProxies(result.Items),
+	writeJSON(w, http.StatusOK, listEntrypointsResponse{
+		Items:      result.Items,
 		NextCursor: encodePageToken(result.NextCursor),
 		TotalCount: result.TotalCount,
 	})
 }
 
-func (a *Adapter) getProxy(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) getEntrypoint(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	proxy, err := a.cp.GetProxy(r.Context(), name)
+	ep, err := a.cp.GetEntrypoint(r.Context(), name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, redactProxy(proxy))
+	writeJSON(w, http.StatusOK, ep)
 }
 
-type applyProxyRequest struct {
-	Metadata schema.Metadata     `json:"metadata"`
-	Spec     proxyv1.ProxySpecV1 `json:"spec"`
+type applyEntrypointRequest struct {
+	Metadata schema.Metadata               `json:"metadata"`
+	Spec     entrypointv1.EntrypointSpecV1 `json:"spec"`
 }
 
-func (a *Adapter) applyProxy(w http.ResponseWriter, r *http.Request) {
-	var req applyProxyRequest
+func (a *Adapter) applyEntrypoint(w http.ResponseWriter, r *http.Request) {
+	var req applyEntrypointRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -93,23 +89,23 @@ func (a *Adapter) applyProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proxy, err := a.cp.ApplyProxyV1(r.Context(), req.Metadata, req.Spec)
+	ep, err := a.cp.ApplyEntrypointV1(r.Context(), req.Metadata, req.Spec)
 	if err != nil {
 		writeCPError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, redactProxy(proxy))
+	writeJSON(w, http.StatusOK, ep)
 }
 
-func (a *Adapter) deleteProxy(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) deleteEntrypoint(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	if err := a.cp.DeleteProxy(r.Context(), name); err != nil {
+	if err := a.cp.DeleteEntrypoint(r.Context(), name); err != nil {
 		writeCPError(w, err)
 		return
 	}

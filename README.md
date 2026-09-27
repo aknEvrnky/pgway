@@ -11,7 +11,7 @@ Proxy gateway for upstream HTTP and SOCKS5 proxies — one stable entry point wh
 Client → pgway → Upstream Proxy Pool → Target
 ```
 
-> **Experimental** — the core gateway works; the **dashboard** and **REST API** are not production-ready.
+> **Experimental** — the core gateway works; the **dashboard** (HTTP API + UI) is not production-ready.
 
 ## Docs
 
@@ -75,7 +75,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributing guide](https://pg
 - ✅ OpenTelemetry metrics
 - ✅ OpenTelemetry tracing
 - ✅ GitHub Releases + multi-arch GHCR images (GoReleaser, tag-triggered)
-- 🚧 Dashboard / REST — experimental; resource CRUD + flow editor + admin Users shipped; agents/settings later
+- 🚧 Dashboard — experimental; embedded UI in release builds; resource CRUD + flow editor + admin Users shipped; agents/settings later
 - 🔜 Health checks with automatic pool recovery
 - 🔜 Homebrew formula ([#100](https://github.com/aknEvrnky/pgway/issues/100)) — after dashboard stabilizes
 

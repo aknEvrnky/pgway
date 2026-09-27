@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestListPools_OK(t *testing.T) {
 			},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -55,7 +55,7 @@ func TestListPools_FilterByType(t *testing.T) {
 			{Id: "d1", Type: domain.PoolTypeDynamic, Selector: &domain.LabelSelector{Allow: map[string]string{"k": "v"}}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?type=dynamic", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -71,7 +71,7 @@ func TestListPools_FilterByType(t *testing.T) {
 }
 
 func TestListPools_InvalidType(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?type=weighted", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -90,7 +90,7 @@ func TestListPools_Pagination(t *testing.T) {
 			{Id: "c", Type: domain.PoolTypeStatic, Members: []domain.PoolMember{{ProxyId: "p1", Weight: 1}}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -131,7 +131,7 @@ func TestApplyPool_StaticOK(t *testing.T) {
 			},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"static-1"},"spec":{"type":"static","members":[{"proxy_id":"p1","weight":2}]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pools", bytes.NewReader(body))
@@ -156,7 +156,7 @@ func TestApplyPool_MissingRefBadRequest(t *testing.T) {
 			MissingName:  "missing-proxy",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"static-1"},"spec":{"type":"static","members":[{"proxy_id":"missing-proxy"}]}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pools", bytes.NewReader(body))
@@ -180,7 +180,7 @@ func TestDeletePool_InUseConflict(t *testing.T) {
 			Dependents:   []api.ResourceDependent{{Type: "balancer", Name: "lb-1"}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/pools/static-1", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -193,7 +193,7 @@ func TestDeletePool_InUseConflict(t *testing.T) {
 
 func TestDeletePool_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/pools/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -204,7 +204,7 @@ func TestDeletePool_NotFound(t *testing.T) {
 }
 
 func TestApplyPool_InvalidSpec(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{"name":"bad"},"spec":{"type":"static"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pools", bytes.NewReader(body))
@@ -218,7 +218,7 @@ func TestApplyPool_InvalidSpec(t *testing.T) {
 }
 
 func TestApplyPool_MissingName(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{},"spec":{"type":"dynamic","selector":{"allow":{"a":"b"}}}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pools", bytes.NewReader(body))
@@ -234,7 +234,7 @@ func TestGetPool_OK(t *testing.T) {
 	cp := &fakeCP{
 		pool: &domain.Pool{Id: "static-1", Type: domain.PoolTypeStatic},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools/static-1", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -245,7 +245,7 @@ func TestGetPool_OK(t *testing.T) {
 }
 
 func TestDeletePool_OK(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/pools/static-1", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -256,7 +256,7 @@ func TestDeletePool_OK(t *testing.T) {
 }
 
 func TestListPools_InvalidPageSize(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/pools?page_size=0", nil)
 	req.Header.Set("Authorization", "Bearer ok")

@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -46,7 +46,7 @@ func (f *fakeAuthManager) Logout(_ context.Context, token string) error {
 func TestLogin_PublicAndSetsCookie(t *testing.T) {
 	authn := &fakeAuth{principal: userPrincipal()}
 	mgr := &fakeAuthManager{loginToken: "pgw_tok"}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, authn, mgr, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, authn, mgr, &fakeCP{})
 
 	body := []byte(`{"username":"alice","password":"secret-pass"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
@@ -70,7 +70,7 @@ func TestLogin_PublicAndSetsCookie(t *testing.T) {
 }
 
 func TestLogin_InvalidCredentials(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{}, &fakeAuthManager{
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{}, &fakeAuthManager{
 		loginErr: auth.ErrInvalidCredentials,
 	}, &fakeCP{})
 
@@ -82,7 +82,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 }
 
 func TestMe_CookieAuth(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, &fakeAuthManager{}, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, &fakeAuthManager{}, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	req.AddCookie(&http.Cookie{Name: "pgway_token", Value: "pgw_tok"})
@@ -98,7 +98,7 @@ func TestMe_CookieAuth(t *testing.T) {
 
 func TestLogout_RevokesAndClearsCookie(t *testing.T) {
 	mgr := &fakeAuthManager{}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, mgr, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, mgr, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
 	req.Header.Set("Authorization", "Bearer pgw_tok")

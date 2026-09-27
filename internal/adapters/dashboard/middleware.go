@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import (
 	"net"
@@ -74,7 +74,11 @@ func (a *Adapter) auth(next http.Handler) http.Handler {
 }
 
 func isPublicPath(r *http.Request) bool {
-	return r.Method == http.MethodPost && r.URL.Path == "/api/v1/auth/login"
+	// JSON API requires auth except login; embedded SPA assets are public.
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		return r.Method == http.MethodPost && r.URL.Path == "/api/v1/auth/login"
+	}
+	return true
 }
 
 // requestToken prefers Authorization: Bearer, then the httpOnly session cookie.

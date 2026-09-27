@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -151,7 +151,7 @@ func TestListUsers_AdminOK(t *testing.T) {
 		&domain.User{Id: "admin", Role: domain.RoleAdmin},
 		&domain.User{Id: "bob", Role: domain.RoleMember},
 	)
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
 	authHeader(req)
@@ -168,7 +168,7 @@ func TestListUsers_AdminOK(t *testing.T) {
 }
 
 func TestListUsers_MemberForbidden(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
 	authHeader(req)
@@ -178,7 +178,7 @@ func TestListUsers_MemberForbidden(t *testing.T) {
 }
 
 func TestListUsers_InvalidRole(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/users?role=super", nil)
 	authHeader(req)
@@ -189,7 +189,7 @@ func TestListUsers_InvalidRole(t *testing.T) {
 
 func TestCreateUser_AdminOK(t *testing.T) {
 	users := newFakeUserManager()
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"username":"carol","password":"password123","role":"member"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(body))
@@ -208,7 +208,7 @@ func TestCreateUser_AdminOK(t *testing.T) {
 
 func TestCreateUser_GeneratedPassword(t *testing.T) {
 	users := newFakeUserManager()
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"username":"dave","role":"admin"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(body))
@@ -225,7 +225,7 @@ func TestCreateUser_GeneratedPassword(t *testing.T) {
 }
 
 func TestCreateUser_MemberForbidden(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	body := []byte(`{"username":"eve","password":"password123"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(body))
@@ -237,7 +237,7 @@ func TestCreateUser_MemberForbidden(t *testing.T) {
 
 func TestCreateUser_Conflict(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "carol", Role: domain.RoleMember})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"username":"carol","password":"password123"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(body))
@@ -248,7 +248,7 @@ func TestCreateUser_Conflict(t *testing.T) {
 }
 
 func TestCreateUser_MissingUsername(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	body := []byte(`{"password":"password123"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(body))
@@ -260,7 +260,7 @@ func TestCreateUser_MissingUsername(t *testing.T) {
 
 func TestDeleteUser_AdminOK(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "bob", Role: domain.RoleMember})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/bob", nil)
 	authHeader(req)
@@ -274,7 +274,7 @@ func TestDeleteUser_AdminOK(t *testing.T) {
 func TestDeleteUser_LastAdminConflict(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "admin", Role: domain.RoleAdmin})
 	users.deleteErr = auth.ErrLastAdmin
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/admin", nil)
 	authHeader(req)
@@ -284,7 +284,7 @@ func TestDeleteUser_LastAdminConflict(t *testing.T) {
 }
 
 func TestDeleteUser_MemberForbidden(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/admin", nil)
 	authHeader(req)
@@ -294,7 +294,7 @@ func TestDeleteUser_MemberForbidden(t *testing.T) {
 }
 
 func TestDeleteUser_NotFound(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, newFakeUserManager())
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/ghost", nil)
 	authHeader(req)
@@ -305,7 +305,7 @@ func TestDeleteUser_NotFound(t *testing.T) {
 
 func TestChangePassword_SelfOK(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "bob", Role: domain.RoleMember})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"old_password":"oldpass12","new_password":"newpass12"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/bob/password", bytes.NewReader(body))
@@ -321,7 +321,7 @@ func TestChangePassword_SelfOK(t *testing.T) {
 
 func TestChangePassword_AdminResetOther(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "bob", Role: domain.RoleMember})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"new_password":"resetpass1"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/bob/password", bytes.NewReader(body))
@@ -336,7 +336,7 @@ func TestChangePassword_AdminResetOther(t *testing.T) {
 
 func TestChangePassword_AdminResetSelf(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "admin", Role: domain.RoleAdmin})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"new_password":"resetpass1"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/admin/password", bytes.NewReader(body))
@@ -352,7 +352,7 @@ func TestChangePassword_AdminResetSelf(t *testing.T) {
 
 func TestChangePassword_AdminResetRequiresPassword(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "bob", Role: domain.RoleMember})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: adminPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/bob/password", bytes.NewReader(body))
@@ -364,7 +364,7 @@ func TestChangePassword_AdminResetRequiresPassword(t *testing.T) {
 
 func TestChangePassword_MemberCannotResetOther(t *testing.T) {
 	users := newFakeUserManager(&domain.User{Id: "admin", Role: domain.RoleAdmin})
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, users)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: memberPrincipal()}, nil, &fakeCP{}, users)
 
 	body := []byte(`{"new_password":"hackedpassword"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/admin/password", bytes.NewReader(body))

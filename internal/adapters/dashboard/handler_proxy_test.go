@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ func TestListProxies_OK(t *testing.T) {
 	cp := &fakeCP{
 		proxy: &domain.Proxy{Id: "p1", Protocol: domain.ProtocolHTTP, Host: "1.1.1.1", Port: 8080},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -47,7 +47,7 @@ func TestListProxies_FilterByProtocol(t *testing.T) {
 			{Id: "socks-1", Protocol: domain.ProtocolSOCKS5, Host: "2.2.2.2", Port: 1080},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?protocol=socks5", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -62,7 +62,7 @@ func TestListProxies_FilterByProtocol(t *testing.T) {
 }
 
 func TestListProxies_InvalidProtocol(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?protocol=ftp", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -80,7 +80,7 @@ func TestListProxies_Pagination(t *testing.T) {
 			{Id: "c", Protocol: domain.ProtocolHTTP, Host: "1.1.1.1", Port: 3},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -117,7 +117,7 @@ func TestDeleteProxy_InUseConflict(t *testing.T) {
 			Dependents:   []api.ResourceDependent{{Type: "pool", Name: "static-1"}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/proxies/p1", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -130,7 +130,7 @@ func TestDeleteProxy_InUseConflict(t *testing.T) {
 
 func TestDeleteProxy_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/proxies/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -149,7 +149,7 @@ func TestApplyProxy_MissingRefBadRequest(t *testing.T) {
 			MissingName:  "x",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"p1"},"spec":{"protocol":"http","host":"1.1.1.1","port":8080}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/proxies", bytes.NewReader(body))
@@ -165,7 +165,7 @@ func TestApplyProxy_MissingRefBadRequest(t *testing.T) {
 }
 
 func TestListProxies_InvalidPageSize(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?page_size=abc", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -176,7 +176,7 @@ func TestListProxies_InvalidPageSize(t *testing.T) {
 }
 
 func TestListProxies_InvalidPageToken(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/proxies?page_token=!!", nil)
 	req.Header.Set("Authorization", "Bearer ok")

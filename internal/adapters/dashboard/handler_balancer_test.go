@@ -1,4 +1,4 @@
-package rest_test
+package dashboard_test
 
 import (
 	"bytes"
@@ -37,7 +37,7 @@ func TestListBalancers_OK(t *testing.T) {
 			PoolId: "am-static-pool",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -62,7 +62,7 @@ func TestListBalancers_FilterByType(t *testing.T) {
 			{Id: "lb", Type: domain.BalancerTypeLeastBytes, PoolId: "p1", ResetInterval: time.Minute},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers?type=weighted", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -78,7 +78,7 @@ func TestListBalancers_FilterByType(t *testing.T) {
 }
 
 func TestListBalancers_InvalidType(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers?type=static", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -97,7 +97,7 @@ func TestListBalancers_Pagination(t *testing.T) {
 			{Id: "c", Type: domain.BalancerTypeRoundRobin, PoolId: "p1"},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers?page_size=2", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -136,7 +136,7 @@ func TestApplyBalancer_RoundRobinOK(t *testing.T) {
 			PoolId: "am-static-pool",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"edge-rr"},"spec":{"type":"round-robin","pool_id":"am-static-pool"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -161,7 +161,7 @@ func TestApplyBalancer_LeastBytesResetInterval(t *testing.T) {
 			ResetInterval: time.Minute,
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"eu-least"},"spec":{"type":"least-bytes","pool_id":"eu-pool","reset_interval":"1m"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -185,7 +185,7 @@ func TestApplyBalancer_MissingRefBadRequest(t *testing.T) {
 			MissingName:  "missing-pool",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"edge-rr"},"spec":{"type":"round-robin","pool_id":"missing-pool"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -204,7 +204,7 @@ func TestApplyBalancer_WeightedRequiresStatic(t *testing.T) {
 	cp := &fakeCP{
 		applyErr: assertErr("weighted balancer requires static pool \"dyn\" (got \"dynamic\")"),
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	body := []byte(`{"metadata":{"name":"w"},"spec":{"type":"weighted","pool_id":"dyn"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -226,7 +226,7 @@ func TestDeleteBalancer_InUseConflict(t *testing.T) {
 			Dependents:   []api.ResourceDependent{{Type: "flow", Name: "main"}},
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/balancers/edge-rr", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -239,7 +239,7 @@ func TestDeleteBalancer_InUseConflict(t *testing.T) {
 
 func TestDeleteBalancer_NotFound(t *testing.T) {
 	cp := &fakeCP{deleteErr: domain.ErrNotFound}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/balancers/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -250,7 +250,7 @@ func TestDeleteBalancer_NotFound(t *testing.T) {
 }
 
 func TestApplyBalancer_InvalidSpec(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{"name":"bad"},"spec":{"type":"round-robin"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -264,7 +264,7 @@ func TestApplyBalancer_InvalidSpec(t *testing.T) {
 }
 
 func TestListBalancers_InvalidPageSize(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers?page_size=nope", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -275,7 +275,7 @@ func TestListBalancers_InvalidPageSize(t *testing.T) {
 }
 
 func TestApplyBalancer_MissingName(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	body := []byte(`{"metadata":{},"spec":{"type":"round-robin","pool_id":"p"}}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/balancers", bytes.NewReader(body))
@@ -288,7 +288,7 @@ func TestApplyBalancer_MissingName(t *testing.T) {
 }
 
 func TestDeleteBalancer_OK(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/balancers/edge-rr", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -306,7 +306,7 @@ func TestGetBalancer_OK(t *testing.T) {
 			PoolId: "static-1",
 		},
 	}
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers/edge-rr", nil)
 	req.Header.Set("Authorization", "Bearer ok")
@@ -320,7 +320,7 @@ func TestGetBalancer_OK(t *testing.T) {
 }
 
 func TestGetBalancer_NotFound(t *testing.T) {
-	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
+	h := testAdapter(t, config.DashboardConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, &fakeCP{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/balancers/missing", nil)
 	req.Header.Set("Authorization", "Bearer ok")

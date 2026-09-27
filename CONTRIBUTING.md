@@ -87,7 +87,7 @@ Use the GitHub issue templates (bug / feature). Include version (`go version`, h
 
 - Be respectful in reviews and issues.
 - Prefer questions over assumptions when requirements are unclear.
-- Experimental dashboard/REST is not the bar for gateway correctness — prefer `pgctl` / gRPC paths for core features.
+- Experimental dashboard is not the bar for gateway correctness — prefer `pgctl` / gRPC paths for core features.
 
 ## License
 

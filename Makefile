@@ -1,4 +1,4 @@
-.PHONY: proto build test tools
+.PHONY: proto build build-embed frontend-generate test tools
 
 VERSION ?= dev
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
@@ -8,9 +8,28 @@ LDFLAGS := -s -w \
 	-X github.com/aknEvrnky/pgway/internal/platform/version.Commit=$(COMMIT) \
 	-X github.com/aknEvrnky/pgway/internal/platform/version.Date=$(DATE)
 
+UI_DIST := internal/adapters/dashboard/ui/dist
+
+# Default builds omit the dashboard UI (no Node, no -tags embeddashboard).
 build:
 	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway ./cmd/pgway
 	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-cp ./cmd/pgway-cp
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-dp ./cmd/pgway-dp
+	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgctl ./cmd/pgctl
+
+# Generate static Nuxt assets into the Go embed directory.
+frontend-generate:
+	@command -v yarn >/dev/null 2>&1 || { echo 'error: yarn not found (needed for frontend-generate)'; exit 1; }
+	cd frontend && yarn install --frozen-lockfile
+	cd frontend && NUXT_PUBLIC_API_BASE= yarn generate
+	rm -rf $(UI_DIST)
+	mkdir -p $(UI_DIST)
+	cp -R frontend/.output/public/. $(UI_DIST)/
+
+# pgway + pgway-cp with embedded dashboard (requires frontend-generate first).
+build-embed: frontend-generate
+	go build -tags embeddashboard -trimpath -ldflags="$(LDFLAGS)" -o build/pgway ./cmd/pgway
+	go build -tags embeddashboard -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-cp ./cmd/pgway-cp
 	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgway-dp ./cmd/pgway-dp
 	go build -trimpath -ldflags="$(LDFLAGS)" -o build/pgctl ./cmd/pgctl
 

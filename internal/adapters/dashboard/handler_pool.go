@@ -1,4 +1,4 @@
-package rest
+package dashboard
 
 import (
 	"encoding/json"
@@ -6,17 +6,23 @@ import (
 
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/schema"
-	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
+	poolv1 "github.com/aknEvrnky/pgway/internal/schema/pool/v1"
 )
 
-type listEntrypointsResponse struct {
-	Items      []*domain.Entrypoint `json:"items"`
-	NextCursor string               `json:"next_cursor,omitempty"`
-	TotalCount int                  `json:"total_count"`
+type listPoolsResponse struct {
+	Items      []*domain.Pool `json:"items"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+	TotalCount int            `json:"total_count"`
 }
 
-func (a *Adapter) listEntrypoints(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) listPools(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+
+	poolType := q.Get("type")
+	if poolType != "" && poolType != string(domain.PoolTypeStatic) && poolType != string(domain.PoolTypeDynamic) {
+		writeError(w, http.StatusBadRequest, `type must be "static" or "dynamic"`)
+		return
+	}
 
 	pageSize, err := parsePageSize(q.Get("page_size"))
 	if err != nil {
@@ -30,50 +36,48 @@ func (a *Adapter) listEntrypoints(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := a.cp.ListEntrypoints(r.Context(), domain.ListParams{
+	result, err := a.cp.ListPools(r.Context(), domain.ListParams{
 		PageSize: pageSize,
 		Cursor:   cursor,
-	}, domain.EntrypointFilter{
-		Search:   q.Get("search"),
-		Protocol: q.Get("protocol"),
-		Host:     q.Get("host"),
-		FlowId:   q.Get("flow_id"),
+	}, domain.PoolFilter{
+		Search: q.Get("search"),
+		Type:   poolType,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, listEntrypointsResponse{
+	writeJSON(w, http.StatusOK, listPoolsResponse{
 		Items:      result.Items,
 		NextCursor: encodePageToken(result.NextCursor),
 		TotalCount: result.TotalCount,
 	})
 }
 
-func (a *Adapter) getEntrypoint(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) getPool(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	ep, err := a.cp.GetEntrypoint(r.Context(), name)
+	pool, err := a.cp.GetPool(r.Context(), name)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	writeJSON(w, http.StatusOK, ep)
+	writeJSON(w, http.StatusOK, pool)
 }
 
-type applyEntrypointRequest struct {
-	Metadata schema.Metadata               `json:"metadata"`
-	Spec     entrypointv1.EntrypointSpecV1 `json:"spec"`
+type applyPoolRequest struct {
+	Metadata schema.Metadata   `json:"metadata"`
+	Spec     poolv1.PoolSpecV1 `json:"spec"`
 }
 
-func (a *Adapter) applyEntrypoint(w http.ResponseWriter, r *http.Request) {
-	var req applyEntrypointRequest
+func (a *Adapter) applyPool(w http.ResponseWriter, r *http.Request) {
+	var req applyPoolRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -89,23 +93,23 @@ func (a *Adapter) applyEntrypoint(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ep, err := a.cp.ApplyEntrypointV1(r.Context(), req.Metadata, req.Spec)
+	pool, err := a.cp.ApplyPoolV1(r.Context(), req.Metadata, req.Spec)
 	if err != nil {
 		writeCPError(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, ep)
+	writeJSON(w, http.StatusOK, pool)
 }
 
-func (a *Adapter) deleteEntrypoint(w http.ResponseWriter, r *http.Request) {
+func (a *Adapter) deletePool(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	if err := a.cp.DeleteEntrypoint(r.Context(), name); err != nil {
+	if err := a.cp.DeletePool(r.Context(), name); err != nil {
 		writeCPError(w, err)
 		return
 	}
