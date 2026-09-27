@@ -5,18 +5,18 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 )
 
 // writeCPError maps control-plane errors to HTTP status codes for the dashboard.
 func writeCPError(w http.ResponseWriter, err error) {
-	var inUse *controlplane.ResourceInUseError
+	var inUse *api.ResourceInUseError
 	if errors.As(err, &inUse) {
 		writeError(w, http.StatusConflict, err.Error())
 		return
 	}
-	var missing *controlplane.ResourceMissingRefError
+	var missing *api.ResourceMissingRefError
 	if errors.As(err, &missing) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return

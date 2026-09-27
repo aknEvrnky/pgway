@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -149,7 +149,7 @@ func TestApplyPool_StaticOK(t *testing.T) {
 
 func TestApplyPool_MissingRefBadRequest(t *testing.T) {
 	cp := &fakeCP{
-		applyErr: &controlplane.ResourceMissingRefError{
+		applyErr: &api.ResourceMissingRefError{
 			ResourceType: "pool",
 			Name:         "static-1",
 			MissingType:  "proxy",
@@ -174,10 +174,10 @@ func TestApplyPool_MissingRefBadRequest(t *testing.T) {
 func TestDeletePool_InUseConflict(t *testing.T) {
 	cp := &fakeCP{
 		pool: &domain.Pool{Id: "static-1", Type: domain.PoolTypeStatic},
-		deleteErr: &controlplane.ResourceInUseError{
+		deleteErr: &api.ResourceInUseError{
 			ResourceType: "pool",
 			Name:         "static-1",
-			Dependents:   []controlplane.ResourceDependent{{Type: "balancer", Name: "lb-1"}},
+			Dependents:   []api.ResourceDependent{{Type: "balancer", Name: "lb-1"}},
 		},
 	}
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)

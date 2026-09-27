@@ -14,11 +14,11 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/probes"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
-	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
-	"github.com/aknEvrnky/pgway/internal/application/auth"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/aknEvrnky/pgway/internal/platform/logger"
 	"github.com/aknEvrnky/pgway/internal/platform/metrics"
@@ -101,7 +101,7 @@ func main() {
 
 	pubsub := memory.NewPubSub(10)
 
-	cpService := controlplane.NewService(
+	cpService := api.NewService(
 		proxyRepo,
 		poolRepo,
 		lbRepo,

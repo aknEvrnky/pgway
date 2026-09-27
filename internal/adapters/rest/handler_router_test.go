@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -153,7 +153,7 @@ func TestApplyRouter_OK(t *testing.T) {
 
 func TestApplyRouter_MissingRefBadRequest(t *testing.T) {
 	cp := &fakeCP{
-		applyErr: &controlplane.ResourceMissingRefError{
+		applyErr: &api.ResourceMissingRefError{
 			ResourceType: "router",
 			Name:         "edge-router",
 			MissingType:  "balancer",
@@ -175,10 +175,10 @@ func TestApplyRouter_MissingRefBadRequest(t *testing.T) {
 func TestDeleteRouter_InUseConflict(t *testing.T) {
 	cp := &fakeCP{
 		router: &domain.Router{Id: "edge-router"},
-		deleteErr: &controlplane.ResourceInUseError{
+		deleteErr: &api.ResourceInUseError{
 			ResourceType: "router",
 			Name:         "edge-router",
-			Dependents:   []controlplane.ResourceDependent{{Type: "flow", Name: "main"}},
+			Dependents:   []api.ResourceDependent{{Type: "flow", Name: "main"}},
 		},
 	}
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -210,7 +210,7 @@ func TestApplyEntrypoint_InvalidJSON(t *testing.T) {
 
 func TestApplyEntrypoint_MissingRef(t *testing.T) {
 	cp := &fakeCP{
-		applyErr: &controlplane.ResourceMissingRefError{
+		applyErr: &api.ResourceMissingRefError{
 			ResourceType: "entrypoint",
 			Name:         "public-http",
 			MissingType:  "flow",

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -15,10 +15,10 @@ func TestMapResourceError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("in use maps to FailedPrecondition", func(t *testing.T) {
-		err := &controlplane.ResourceInUseError{
+		err := &api.ResourceInUseError{
 			ResourceType: "proxy",
 			Name:         "p1",
-			Dependents:   []controlplane.ResourceDependent{{Type: "pool", Name: "static-1"}},
+			Dependents:   []api.ResourceDependent{{Type: "pool", Name: "static-1"}},
 		}
 		mapped := mapResourceError("delete proxy", err)
 		st, ok := status.FromError(mapped)
@@ -28,7 +28,7 @@ func TestMapResourceError(t *testing.T) {
 	})
 
 	t.Run("missing ref maps to FailedPrecondition", func(t *testing.T) {
-		err := &controlplane.ResourceMissingRefError{
+		err := &api.ResourceMissingRefError{
 			ResourceType: "flow",
 			Name:         "edge",
 			MissingType:  "balancer",

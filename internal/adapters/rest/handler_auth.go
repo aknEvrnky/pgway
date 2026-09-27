@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 	"github.com/aknEvrnky/pgway/internal/ports"
 )
 

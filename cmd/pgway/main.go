@@ -17,9 +17,9 @@ import (
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
 	badgerrepo "github.com/aknEvrnky/pgway/internal/adapters/repository/badger"
 	"github.com/aknEvrnky/pgway/internal/adapters/rest"
-	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
-	"github.com/aknEvrnky/pgway/internal/application/auth"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
+	cpapi "github.com/aknEvrnky/pgway/internal/application/controlplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/agenthost"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/dataplane/consumer"
@@ -100,7 +100,7 @@ func main() {
 	pubSub := memory.NewPubSub(10)
 
 	// Control Plane — single service, used in both gRPC and data-plane
-	cpService := controlplane.NewService(
+	cpService := cpapi.NewService(
 		badgerrepo.NewProxyRepository(db),
 		badgerrepo.NewPoolRepository(db),
 		badgerrepo.NewBalancerRepository(db),

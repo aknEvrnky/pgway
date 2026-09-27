@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -111,10 +111,10 @@ func TestListProxies_Pagination(t *testing.T) {
 func TestDeleteProxy_InUseConflict(t *testing.T) {
 	cp := &fakeCP{
 		proxy: &domain.Proxy{Id: "p1", Host: "1.1.1.1", Port: 8080},
-		deleteErr: &controlplane.ResourceInUseError{
+		deleteErr: &api.ResourceInUseError{
 			ResourceType: "proxy",
 			Name:         "p1",
-			Dependents:   []controlplane.ResourceDependent{{Type: "pool", Name: "static-1"}},
+			Dependents:   []api.ResourceDependent{{Type: "pool", Name: "static-1"}},
 		},
 	}
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)
@@ -142,7 +142,7 @@ func TestDeleteProxy_NotFound(t *testing.T) {
 
 func TestApplyProxy_MissingRefBadRequest(t *testing.T) {
 	cp := &fakeCP{
-		applyErr: &controlplane.ResourceMissingRefError{
+		applyErr: &api.ResourceMissingRefError{
 			ResourceType: "proxy",
 			Name:         "p1",
 			MissingType:  "pool",

@@ -9,9 +9,9 @@ import (
 	badgerutil "github.com/aknEvrnky/pgway/integration/testutil/badger"
 	grpcserver "github.com/aknEvrnky/pgway/internal/adapters/grpc/server"
 	"github.com/aknEvrnky/pgway/internal/adapters/pubsub/memory"
-	agentapp "github.com/aknEvrnky/pgway/internal/application/agent"
-	"github.com/aknEvrnky/pgway/internal/application/auth"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	agentapp "github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -84,7 +84,7 @@ func NewAuthTestServerWithOpts(t *testing.T, opts AuthTestServerOpts) (string, *
 
 	store := badgerutil.NewBadgerStore(t)
 	pubsub := memory.NewPubSub(10)
-	cpService := controlplane.NewService(
+	cpService := api.NewService(
 		store.Proxies,
 		store.Pools,
 		store.LBs,

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 	"github.com/aknEvrnky/pgway/internal/ports"
 
-	"github.com/aknEvrnky/pgway/internal/application/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

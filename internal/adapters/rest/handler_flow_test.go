@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -174,10 +174,10 @@ func TestGetFlow_NotFound(t *testing.T) {
 func TestDeleteFlow_InUseConflict(t *testing.T) {
 	cp := &fakeCP{
 		flow: &domain.Flow{Id: "edge-flow", RouterId: "edge-router"},
-		deleteErr: &controlplane.ResourceInUseError{
+		deleteErr: &api.ResourceInUseError{
 			ResourceType: "flow",
 			Name:         "edge-flow",
-			Dependents:   []controlplane.ResourceDependent{{Type: "entrypoint", Name: "http-in"}},
+			Dependents:   []api.ResourceDependent{{Type: "entrypoint", Name: "http-in"}},
 		},
 	}
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)

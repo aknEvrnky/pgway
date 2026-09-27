@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/aknEvrnky/pgway/integration/testutil"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
@@ -38,7 +38,7 @@ func TestApplyForwardRefs(t *testing.T) {
 			Title: "s", Type: "static", Members: []poolv1.PoolMemberSpec{{ProxyId: "missing"}},
 		})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "proxy", missing.MissingType)
 		assert.Equal(t, "missing", missing.MissingName)
@@ -50,7 +50,7 @@ func TestApplyForwardRefs(t *testing.T) {
 			Title: "lb", Type: "round-robin", PoolId: "nope",
 		})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "pool", missing.MissingType)
 	})
@@ -62,7 +62,7 @@ func TestApplyForwardRefs(t *testing.T) {
 			Rules: []routerv1.RuleSpec{{Id: "x", Match: routerv1.MatchSpec{Type: "catch_all"}, Target: "ghost-lb"}},
 		})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "balancer", missing.MissingType)
 	})
@@ -71,7 +71,7 @@ func TestApplyForwardRefs(t *testing.T) {
 		svc, _ := testutil.NewSvcWithPublisher(t)
 		_, err := svc.ApplyFlowV1(ctx, schema.Metadata{Name: "f1"}, flowv1.FlowSpecV1{BalancerId: "ghost"})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "balancer", missing.MissingType)
 	})
@@ -82,7 +82,7 @@ func TestApplyForwardRefs(t *testing.T) {
 			Title: "e", Protocol: "http", Host: "0.0.0.0", Port: 1, FlowId: "ghost",
 		})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "flow", missing.MissingType)
 	})
@@ -103,7 +103,7 @@ func TestApplyForwardRefs(t *testing.T) {
 		require.NoError(t, err)
 		_, err = svc.ApplyFlowV1(ctx, schema.Metadata{Name: "f1"}, flowv1.FlowSpecV1{BalancerId: "missing-lb"})
 		require.Error(t, err)
-		var missing *controlplane.ResourceMissingRefError
+		var missing *api.ResourceMissingRefError
 		require.True(t, errors.As(err, &missing))
 		assert.Equal(t, "missing-lb", missing.MissingName)
 	})
