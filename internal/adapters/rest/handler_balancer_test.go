@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/platform/config"
 	"github.com/stretchr/testify/assert"
@@ -178,7 +178,7 @@ func TestApplyBalancer_LeastBytesResetInterval(t *testing.T) {
 
 func TestApplyBalancer_MissingRefBadRequest(t *testing.T) {
 	cp := &fakeCP{
-		applyErr: &controlplane.ResourceMissingRefError{
+		applyErr: &api.ResourceMissingRefError{
 			ResourceType: "balancer",
 			Name:         "edge-rr",
 			MissingType:  "pool",
@@ -220,10 +220,10 @@ func TestApplyBalancer_WeightedRequiresStatic(t *testing.T) {
 func TestDeleteBalancer_InUseConflict(t *testing.T) {
 	cp := &fakeCP{
 		balancer: &domain.LoadBalancer{Id: "edge-rr", Type: domain.BalancerTypeRoundRobin, PoolId: "p1"},
-		deleteErr: &controlplane.ResourceInUseError{
+		deleteErr: &api.ResourceInUseError{
 			ResourceType: "balancer",
 			Name:         "edge-rr",
-			Dependents:   []controlplane.ResourceDependent{{Type: "flow", Name: "main"}},
+			Dependents:   []api.ResourceDependent{{Type: "flow", Name: "main"}},
 		},
 	}
 	h := testAdapter(t, config.RestConfig{RateLimitRPS: 0}, &fakeAuth{principal: userPrincipal()}, nil, cp)

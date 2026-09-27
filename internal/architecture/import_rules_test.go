@@ -30,19 +30,17 @@ func TestImportRules(t *testing.T) {
 	}
 
 	const (
-		dataplanePrefix   = "github.com/aknEvrnky/pgway/internal/application/dataplane"
-		controlplanePkg   = "github.com/aknEvrnky/pgway/internal/application/controlplane"
-		authPkg           = "github.com/aknEvrnky/pgway/internal/application/auth"
-		agentPkg          = "github.com/aknEvrnky/pgway/internal/application/agent"
-		portsPkg          = "github.com/aknEvrnky/pgway/internal/ports"
-		domainPkg         = "github.com/aknEvrnky/pgway/internal/application/core/domain"
-		applicationPrefix = "github.com/aknEvrnky/pgway/internal/application/"
+		dataplanePrefix    = "github.com/aknEvrnky/pgway/internal/application/dataplane"
+		controlplanePrefix = "github.com/aknEvrnky/pgway/internal/application/controlplane"
+		portsPkg           = "github.com/aknEvrnky/pgway/internal/ports"
+		domainPkg          = "github.com/aknEvrnky/pgway/internal/application/core/domain"
+		applicationPrefix  = "github.com/aknEvrnky/pgway/internal/application/"
 	)
 
 	for _, p := range pkgs {
 		for _, imp := range p.Imports {
 			if strings.HasPrefix(p.ImportPath, dataplanePrefix) {
-				if imp == controlplanePkg || imp == authPkg || imp == agentPkg {
+				if strings.HasPrefix(imp, controlplanePrefix) {
 					t.Errorf("%s must not import %s", p.ImportPath, imp)
 				}
 			}

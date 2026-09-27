@@ -6,8 +6,8 @@ import (
 	"time"
 
 	controlplanev1 "github.com/aknEvrnky/pgway/gen/pgway/controlplane/v1"
-	"github.com/aknEvrnky/pgway/internal/application/agent"
-	"github.com/aknEvrnky/pgway/internal/application/auth"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/agent"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/auth"
 	"github.com/aknEvrnky/pgway/internal/application/core/domain"
 	"github.com/aknEvrnky/pgway/internal/ports"
 	"go.uber.org/zap"

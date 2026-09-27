@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/aknEvrnky/pgway/integration/testutil"
-	"github.com/aknEvrnky/pgway/internal/application/controlplane"
+	"github.com/aknEvrnky/pgway/internal/application/controlplane/api"
 	"github.com/aknEvrnky/pgway/internal/schema"
 	balancerv1 "github.com/aknEvrnky/pgway/internal/schema/balancer/v1"
 	entrypointv1 "github.com/aknEvrnky/pgway/internal/schema/entrypoint/v1"
@@ -50,7 +50,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeleteProxy(ctx, "p1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "proxy", inUse.ResourceType)
 		assert.Equal(t, "static-pool", inUse.Dependents[0].Name)
@@ -84,7 +84,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeletePool(ctx, "pool-1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "balancer", inUse.Dependents[0].Type)
 		assert.Equal(t, "lb-1", inUse.Dependents[0].Name)
@@ -98,7 +98,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeleteBalancer(ctx, "lb-1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "flow", inUse.Dependents[0].Type)
 	})
@@ -116,7 +116,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeleteBalancer(ctx, "lb-1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "router", inUse.Dependents[0].Type)
 	})
@@ -138,7 +138,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeleteRouter(ctx, "router-1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "flow", inUse.Dependents[0].Type)
 	})
@@ -155,7 +155,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 
 		err = svc.DeleteFlow(ctx, "flow-1")
 		require.Error(t, err)
-		var inUse *controlplane.ResourceInUseError
+		var inUse *api.ResourceInUseError
 		require.True(t, errors.As(err, &inUse))
 		assert.Equal(t, "entrypoint", inUse.Dependents[0].Type)
 	})
@@ -212,7 +212,7 @@ func TestDeleteReferentialIntegrity(t *testing.T) {
 	})
 }
 
-func seedBalancerGraph(t *testing.T, svc *controlplane.Service) {
+func seedBalancerGraph(t *testing.T, svc *api.Service) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := svc.ApplyProxyV1(ctx, schema.Metadata{Name: "p1"}, proxyv1.ProxySpecV1{
