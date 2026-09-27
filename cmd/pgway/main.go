@@ -179,7 +179,7 @@ func main() {
 	// Dashboard (JSON API + optional embedded UI)
 	var dashAdapter *dashboard.Adapter
 	if cfg.Dashboard.Enabled {
-		dashAdapter = dashboard.NewAdapter(cpService, authenticator, authService, authService, cfg.Dashboard)
+		dashAdapter = dashboard.NewAdapter(cpService, authenticator, authService, authService, agentService, cfg.Dashboard, cfg.Agent.HeartbeatThreshold)
 	}
 
 	var probeAdapter *probes.Adapter
