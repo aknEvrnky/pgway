@@ -15,15 +15,17 @@ type Adapter struct {
 	cp            ports.ControlPlane
 	authenticator ports.TokenAuthenticator
 	authManager   ports.AuthManager
+	users         ports.UserManager
 	cfg           config.RestConfig
 	server        *http.Server
 }
 
-func NewRestAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, cfg config.RestConfig) *Adapter {
+func NewRestAdapter(cp ports.ControlPlane, authenticator ports.TokenAuthenticator, authManager ports.AuthManager, users ports.UserManager, cfg config.RestConfig) *Adapter {
 	a := &Adapter{
 		cp:            cp,
 		authenticator: authenticator,
 		authManager:   authManager,
+		users:         users,
 		cfg:           cfg,
 	}
 

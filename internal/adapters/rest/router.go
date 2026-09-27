@@ -9,6 +9,11 @@ func (a *Adapter) routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/logout", a.logout)
 	mux.HandleFunc("GET /api/v1/auth/me", a.me)
 
+	mux.HandleFunc("GET /api/v1/users", a.listUsers)
+	mux.HandleFunc("POST /api/v1/users", a.createUser)
+	mux.HandleFunc("DELETE /api/v1/users/{username}", a.deleteUser)
+	mux.HandleFunc("POST /api/v1/users/{username}/password", a.changeUserPassword)
+
 	mux.HandleFunc("GET /api/v1/proxies", a.listProxies)
 	mux.HandleFunc("GET /api/v1/proxies/{name}", a.getProxy)
 	mux.HandleFunc("POST /api/v1/proxies", a.applyProxy)

@@ -1,18 +1,24 @@
 <script setup lang="ts">
 const route = useRoute()
 const { isCollapsed, toggle } = useSidebar()
+const auth = useAuth()
 
-const navItems = [
-  { label: 'Dashboard', to: '/', icon: 'dashboard' },
-  { label: 'Proxies', to: '/proxies', icon: 'proxy' },
-  { label: 'Pools', to: '/pools', icon: 'pool' },
-  { label: 'LB', to: '/load-balancers', icon: 'lb' },
-  { label: 'Routers', to: '/routers', icon: 'router' },
-  { label: 'Flows', to: '/flows', icon: 'flow' },
-  { label: 'Entrypoints', to: '/entrypoints', icon: 'entrypoint' },
-  { label: 'Agents', to: '/agents', icon: 'agent' },
-  // { label: 'Settings', to: '/settings', icon: 'settings' },
-]
+const navItems = computed(() => {
+  const items = [
+    { label: 'Dashboard', to: '/', icon: 'dashboard' },
+    { label: 'Proxies', to: '/proxies', icon: 'proxy' },
+    { label: 'Pools', to: '/pools', icon: 'pool' },
+    { label: 'LB', to: '/load-balancers', icon: 'lb' },
+    { label: 'Routers', to: '/routers', icon: 'router' },
+    { label: 'Flows', to: '/flows', icon: 'flow' },
+    { label: 'Entrypoints', to: '/entrypoints', icon: 'entrypoint' },
+    { label: 'Agents', to: '/agents', icon: 'agent' },
+  ]
+  if (auth.isAdmin.value) {
+    items.push({ label: 'Users', to: '/users', icon: 'users' })
+  }
+  return items
+})
 
 const footerItems = [
   { label: 'Docs', icon: 'docs' },
@@ -118,6 +124,13 @@ function isActive(to: string) {
           <rect x="2" y="3" width="20" height="14" rx="2" />
           <line x1="8" y1="21" x2="16" y2="21" />
           <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+        <!-- Users -->
+        <svg v-else-if="item.icon === 'users'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 00-3-3.87" />
+          <path d="M16 3.13a4 4 0 010 7.75" />
         </svg>
         <!-- Settings (hidden until settings exist)
         <svg v-else-if="item.icon === 'settings'" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
